@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= t.navGallery %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="container">
+    <div class="nav">
+      <div class="logo"><a href="/">AI Brand</a></div>
+      <nav>
+        <a href="/"><%= t.navHome %></a>
+        <a href="/apps?lang=<%= lang %>"><%= t.navApps %></a>
+        <a href="/gallery?lang=<%= lang %>" class="active"><%= t.navGallery %></a>
+        <a href="/blog?lang=<%= lang %>"><%= t.navBlog %></a>
+      </nav>
+      <div class="nav-actions">
+        <span class="plan"><%= plan === 'pro' ? t.planPro : t.planFree %></span>
+        <a class="secondary" href="/set-plan?plan=pro"><%= t.upgrade %></a>
+        <a class="lang" href="/gallery?lang=<%= lang === 'zh' ? 'en' : 'zh' %>"><%= t.langSwitch %></a>
+      </div>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card">
+      <h2><%= t.navGallery %></h2>
+      <div class="grid logos">
+        <% if (items && items.length) { %>
+          <% items.forEach(function(it){ %>
+            <div class="logo-item">
+              <img src="<%= it.url %>" alt="logo" />
+              <div class="meta">#<%= it.sid %></div>
+            </div>
+          <% }) %>
+        <% } else { %>
+          <div class="placeholder">暂无作品，先到首页生成一个吧</div>
+        <% } %>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

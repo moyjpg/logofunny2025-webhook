@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= t.results %> - <%= brand %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+</head>
+<body>
+  <header class="container">
+    <div class="nav">
+      <div class="logo"><a href="/">AI Brand</a></div>
+      <nav>
+        <a href="/"><%= t.navHome %></a>
+        <a href="/apps?lang=<%= lang %>"><%= t.navApps %></a>
+        <a href="/gallery?lang=<%= lang %>"><%= t.navGallery %></a>
+        <a href="/blog?lang=<%= lang %>"><%= t.navBlog %></a>
+      </nav>
+      <div class="nav-actions">
+        <span class="plan"><%= plan === 'pro' ? t.planPro : t.planFree %></span>
+        <a class="secondary" href="/set-plan?plan=pro"><%= t.upgrade %></a>
+        <a class="lang" href="/?lang=<%= lang === 'zh' ? 'en' : 'zh' %>"><%= t.langSwitch %></a>
+      </div>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card">
+      <h2><%= brand %> — <%= tag %></h2>
+      <div class="palette">
+        <% palette.forEach(function(c){ %>
+          <div class="swatch" style="background:<%= c %>"><span><%= c %></span></div>
+        <% }) %>
+      </div>
+      <div class="grid logos">
+        <% svgs.forEach(function(item){ %>
+          <div class="logo-item">
+            <a href="<%= item.url %>" download><%= item.name %> (SVG)</a>
+          </div>
+        <% }) %>
+        <% pngs.forEach(function(item){ %>
+          <div class="logo-item">
+            <img src="<%= item.url %>" alt="logo" />
+            <a href="<%= item.url %>" download><%= item.name %></a>
+          </div>
+        <% }) %>
+      </div>
+      <div class="actions">
+        <a class="primary" href="<%= zipUrl %>" download><%= t.downloadZip %></a>
+        <a class="secondary" href="<%= pdfUrl %>"><%= t.pdfGuide %></a>
+        <button id="shareBtn" class="secondary"><%= t.share %></button>
+        <a class="secondary" href="/"><%= t.regenerate %></a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>3D Preview</h2>
+      <canvas id="c" width="600" height="400"></canvas>
+    </section>
+  </main>
+  <script>
+    (function(){
+      const canvas = document.getElementById('c')
+      const renderer = new THREE.WebGLRenderer({ canvas })
+      const scene = new THREE.Scene()
+      const camera = new THREE.PerspectiveCamera(45, canvas.width/canvas.height, 0.1, 100)
+      camera.position.z = 3
+      const light = new THREE.DirectionalLight(0xffffff, 1)
+      light.position.set(2,2,5)
+      scene.add(light)
+      const geo = new THREE.BoxGeometry(1.8,1,0.1)
+      const texLoader = new THREE.TextureLoader()
+      texLoader.load('<%= previewUrl %>', function(tex){
+        const mat = new THREE.MeshPhongMaterial({ map: tex })
+        const mesh = new THREE.Mesh(geo, mat)
+        scene.add(mesh)
+        animate()
+        function animate(){
+          requestAnimationFrame(animate)
+          mesh.rotation.y += 0.01
+          renderer.render(scene, camera)
+        }
+      })
+    })()
+    // share
+    document.getElementById('shareBtn').addEventListener('click', async () => {
+      const url = location.href
+      const data = { title: '<%= brand %>', text: '<%= tag %>', url }
+      if (navigator.share) {
+        try { await navigator.share(data) } catch {}
+      } else {
+        alert('Copy link: ' + url)
+      }
+    })
+  </script>
+</body>
+</html>

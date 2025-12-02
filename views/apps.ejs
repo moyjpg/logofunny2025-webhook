@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= t.navApps %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="container">
+    <div class="nav">
+      <div class="logo"><a href="/">AI Brand</a></div>
+      <nav>
+        <a href="/"><%= t.navHome %></a>
+        <a href="/apps?lang=<%= lang %>" class="active"><%= t.navApps %></a>
+        <a href="/gallery?lang=<%= lang %>"><%= t.navGallery %></a>
+        <a href="/blog?lang=<%= lang %>"><%= t.navBlog %></a>
+      </nav>
+      <div class="nav-actions">
+        <span class="plan"><%= plan === 'pro' ? t.planPro : t.planFree %></span>
+        <a class="secondary" href="/set-plan?plan=pro"><%= t.upgrade %></a>
+        <a class="lang" href="/apps?lang=<%= lang === 'zh' ? 'en' : 'zh' %>"><%= t.langSwitch %></a>
+      </div>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card">
+      <h2><%= t.navApps %></h2>
+      <div class="grid logos">
+        <div class="logo-item">
+          <h3>名片</h3>
+          <% if (pngSampleUrl) { %>
+            <div class="mock card-mock">
+              <img src="<%= pngSampleUrl %>" alt="preview" />
+            </div>
+          <% } else { %>
+            <div class="mock placeholder">生成一个Logo以预览名片效果</div>
+          <% } %>
+        </div>
+        <div class="logo-item">
+          <h3>信纸</h3>
+          <% if (pngSampleUrl) { %>
+            <div class="mock letter-mock">
+              <img src="<%= pngSampleUrl %>" alt="preview" />
+            </div>
+          <% } else { %>
+            <div class="mock placeholder">生成一个Logo以预览信纸效果</div>
+          <% } %>
+        </div>
+        <div class="logo-item">
+          <h3>社交媒体模板</h3>
+          <% if (pngSampleUrl) { %>
+            <div class="mock social-mock">
+              <img src="<%= pngSampleUrl %>" alt="preview" />
+            </div>
+          <% } else { %>
+            <div class="mock placeholder">生成一个Logo以预览社交模板</div>
+          <% } %>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

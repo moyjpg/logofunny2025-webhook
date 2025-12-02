@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= t.navBlog %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="container">
+    <div class="nav">
+      <div class="logo"><a href="/">AI Brand</a></div>
+      <nav>
+        <a href="/"><%= t.navHome %></a>
+        <a href="/apps?lang=<%= lang %>"><%= t.navApps %></a>
+        <a href="/gallery?lang=<%= lang %>"><%= t.navGallery %></a>
+        <a href="/blog?lang=<%= lang %>" class="active"><%= t.navBlog %></a>
+      </nav>
+      <div class="nav-actions">
+        <span class="plan"><%= plan === 'pro' ? t.planPro : t.planFree %></span>
+        <a class="secondary" href="/set-plan?plan=pro"><%= t.upgrade %></a>
+        <a class="lang" href="/blog?lang=<%= lang === 'zh' ? 'en' : 'zh' %>"><%= t.langSwitch %></a>
+      </div>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card">
+      <h2><%= t.navBlog %></h2>
+      <div class="blog-list">
+        <% posts.forEach(function(p){ %>
+          <article class="blog-item">
+            <h3><%= p.title %></h3>
+            <p><%= p.excerpt %></p>
+          </article>
+        <% }) %>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= t.title %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:wght@700&family=Montserrat:wght@600&family=Lora:wght@400;600&family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="container">
+    <div class="nav">
+      <div class="logo"><a href="/">AI Brand</a></div>
+      <nav>
+        <a href="/"><%= t.navHome %></a>
+        <a href="/apps?lang=<%= lang %>"><%= t.navApps %></a>
+        <a href="/gallery?lang=<%= lang %>"><%= t.navGallery %></a>
+        <a href="/blog?lang=<%= lang %>"><%= t.navBlog %></a>
+      </nav>
+      <div class="nav-actions">
+        <span class="plan"><%= plan === 'pro' ? t.planPro : t.planFree %></span>
+        <a class="secondary" href="/set-plan?plan=pro"><%= t.upgrade %></a>
+        <% if (user) { %>
+          <form action="/logout" method="post" style="display:inline"><button class="secondary" type="submit"><%= t.logout %></button></form>
+        <% } else { %>
+          <a class="secondary" href="/login"><%= t.login %></a>
+        <% } %>
+        <a class="lang" href="/?lang=<%= lang === 'zh' ? 'en' : 'zh' %>"><%= t.langSwitch %></a>
+      </div>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card">
+      <h2><%= t.formTitle %></h2>
+      <form action="/generate?lang=<%= lang %>" method="post" enctype="multipart/form-data" class="grid">
+        <label>
+          <span><%= t.brandName %></span>
+          <input type="text" name="brandName" required placeholder="Acme 全球" />
+        </label>
+        <label>
+          <span><%= t.tagline %></span>
+          <input type="text" name="tagline" required placeholder="Design the future" />
+        </label>
+        <label>
+          <span><%= t.keywords %></span>
+          <input type="text" name="keywords" required placeholder="innovative, eco, global" />
+        </label>
+        <label>
+          <span><%= t.mainColor %></span>
+          <input type="text" name="mainColor" required value="#3b82f6" />
+        </label>
+        <label>
+          <span><%= t.fontPref %></span>
+          <select name="fontPref" required>
+            <option value="modern"><%= t.modern %></option>
+            <option value="classic"><%= t.classic %></option>
+            <option value="handwritten"><%= t.handwritten %></option>
+          </select>
+        </label>
+        <label>
+          <span>导出质量</span>
+          <select name="exportQuality">
+            <option value="web">网页</option>
+            <option value="print">印刷</option>
+          </select>
+        </label>
+        <label>
+          <span><%= t.uploadLogo %></span>
+          <input type="file" name="logo" accept=".png,.jpg,.jpeg,.svg" <%= plan==='pro'?'':'disabled' %> />
+          <% if (plan !== 'pro') { %>
+            <small class="hint">高级功能，<a href="/set-plan?plan=pro"><%= t.upgrade %></a></small>
+          <% } %>
+        </label>
+        <label>
+          <span><%= t.uploadRefs %></span>
+          <input type="file" name="refs" multiple accept=".png,.jpg,.jpeg" <%= plan==='pro'?'':'disabled' %> />
+          <% if (plan !== 'pro') { %>
+            <small class="hint">高级功能，<a href="/set-plan?plan=pro"><%= t.upgrade %></a></small>
+          <% } %>
+        </label>
+        <button class="primary" type="submit"><%= t.submit %></button>
+      </form>
+    </section>
+  </main>
+  <script src="/js/main.js"></script>
+</body>
+</html>

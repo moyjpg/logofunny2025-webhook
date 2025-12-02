@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= t.login %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="container">
+    <div class="nav">
+      <div class="logo"><a href="/">AI Brand</a></div>
+    </div>
+  </header>
+  <main class="container">
+    <section class="card">
+      <h2><%= t.login %></h2>
+      <form action="/login" method="post" class="grid">
+        <label>
+          <span>Email</span>
+          <input type="email" name="email" required />
+        </label>
+        <button class="primary" type="submit"><%= t.login %></button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
