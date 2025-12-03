@@ -1,24 +1,24 @@
 {
-  "name": "ai-logo-mock-service",
+  "name": "logofunny-backend",
   "version": "1.0.0",
-  "description": "Simple mock backend service for an AI Logo Generator using Node.js + Express.",
-  {
+  "description": "LogoFunny mock AI logo generator backend",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
-  }
-}
-  "keywords": [
-    "express",
-    "logo",
-    "mock",
-    "api"
-  ],
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "node-fetch": "^2.7.0"
+    "axios": "^1.7.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.0",
+    "ejs": "^3.1.10",
+    "express": "^4.19.0",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
   }
 }
