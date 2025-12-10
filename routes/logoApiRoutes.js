@@ -2,9 +2,14 @@ const express = require('express');
 const { generateLogoMock } = require('../services/logoGenerateMock');
 
 const router = express.Router();
-// 🔍 Elementor Webhook 调试专用：打印收到的 body
 router.post('/debug', (req, res) => {
-  console.log('[ /debug ] incoming RAW body:');
+  console.log('[/debug] headers:');
+  console.log(JSON.stringify(req.headers, null, 2));
+
+  console.log('[/debug] query:');
+  console.log(JSON.stringify(req.query, null, 2));
+
+  console.log('[/debug] body:');
   console.log(JSON.stringify(req.body, null, 2));
 
   return res.status(200).json({
