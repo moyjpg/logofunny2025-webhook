@@ -1,0 +1,9 @@
+POST http://localhost:3000/generate-logo
+Content-Type: application/json
+
+{
+  "brandName": "LogoFunny Studio",
+  "industry": "Technology",
+  "keywords": "clean, modern",
+  "colorTheme": "blue and white"
+}

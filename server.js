@@ -21,9 +21,87 @@ const app = express()
 app.set('view engine', 'ejs')
 app.set('views', path.join(__dirname, 'views'))
 app.use(express.static(path.join(__dirname, 'public')))
+app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
+// ====== Prompt builder ======
+function buildPromptFromBody(body) {
+  const {
+    brandName,
+    brandTagline,
+    keywords,
+    colorTheme,
+    brandFontStyle,
+    taglineFontStyle,
+    otherNotes
+  } = body || {};
 
+  let parts = [];
+
+  if (brandName) parts.push(`Brand name: ${brandName}`);
+  if (brandTagline) parts.push(`Tagline: ${brandTagline}`);
+  if (keywords) parts.push(`Keywords: ${keywords}`);
+  if (colorTheme) parts.push(`Color theme: ${colorTheme}`);
+  if (brandFontStyle) parts.push(`Brand font style: ${brandFontStyle}`);
+  if (taglineFontStyle) parts.push(`Tagline font style: ${taglineFontStyle}`);
+  if (otherNotes) parts.push(`Notes: ${otherNotes}`);
+
+  if (parts.length === 0) {
+    return 'Minimal clean logo';
+  }
+
+  return parts.join(' | ');
+}
+
+// ====== Mock logo generator ======
+async function mockGenerateLogo(body) {
+  const prompt = buildPromptFromBody(body);
+
+  return {
+    imageUrl: 'https://dummyimage.com/1024x1024/eeeeee/000000.png&text=Mock+Logo',
+    prompt,
+    model: 'mock-local',
+    mode: 'text-only'
+  };
+}
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: Date.now() });
+});
+app.post("/ping", (req, res) => {
+  res.json({ message: "pong", body: req.body });
+});
+// ====== Core generate-logo endpoint (mock) ======
+app.post('/generate-logo', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const { brandName, keywords } = body;
+
+    // basic validation
+    if (!brandName && !keywords) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Missing required fields: at least brandName or keywords is required.'
+      });
+    }
+
+    console.log('[/generate-logo] incoming body:', body);
+
+    // use mock generator for now
+    const result = await mockGenerateLogo(body);
+
+    return res.status(200).json({
+      ok: true,
+      source: 'mock-generate-logo',
+      data: result
+    });
+  } catch (err) {
+    console.error('[/generate-logo] error:', err);
+    return res.status(500).json({
+      ok: false,
+      error: 'Internal server error in /generate-logo'
+    });
+  }
+});
 const i18n = {
   en: {
     title: 'AI Brand Visual Generator',

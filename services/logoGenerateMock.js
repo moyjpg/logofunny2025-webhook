@@ -1,0 +1,228 @@
+// services/logoGenerateMock.js
+
+const fetch = require('node-fetch');
+// ====== Color Theme Normalizer (EN only, safe) ======
+function normalizeColorTheme(input) {
+  if (!input) return "";
+
+  const txt = input.toLowerCase().trim();
+
+  const map = {
+    blue: "blue",
+    navy: "navy",
+    sky: "sky blue",
+    black: "black",
+    white: "white",
+    gold: "gold",
+    silver: "silver",
+    red: "red",
+    green: "green",
+    yellow: "yellow",
+    purple: "purple",
+    orange: "orange",
+    pink: "pink"
+  };
+
+  // single color
+  if (map[txt]) return map[txt];
+
+  // multi-color cases "blue and white", "black & gold"
+  const parts = txt.split(/,|&|and/).map(s => s.trim()).filter(Boolean);
+  const normalized = parts.map(p => map[p] || p);
+
+  return normalized.join(" and ");
+}
+// ====== Prompt builder (with industry support) ======
+function buildPromptFromBody(body) {
+  const {
+    brandName,
+    brandTagline,
+    keywords,
+    colorTheme,
+    brandFontStyle,
+    taglineFontStyle,
+    otherNotes,
+    industry
+  } = body || {};
+
+  const baseParts = [];
+
+  // 1) Core identity
+  if (brandName) {
+    baseParts.push(`a professional brand logo for "${brandName}"`);
+  } else {
+    baseParts.push("a professional minimalist brand logo");
+  }
+
+  if (brandTagline) {
+    baseParts.push(`subtle concept inspired by tagline: ${brandTagline}`);
+  }
+
+  // 2) Industry → design direction
+  if (industry) {
+    baseParts.push(`for a business in the ${industry} industry`);
+    const industryLower = industry.toLowerCase();
+
+    if (industryLower.includes("tech") || industryLower.includes("technology")) {
+      baseParts.push("modern, geometric, clean, innovative look");
+    } else if (industryLower.includes("food") || industryLower.includes("beverage") || industryLower.includes("coffee")) {
+      baseParts.push("warm, inviting, slightly vintage cafe-style look");
+    } else if (industryLower.includes("beauty") || industryLower.includes("fashion")) {
+      baseParts.push("elegant, refined, soft curves, premium aesthetic");
+    } else if (industryLower.includes("fitness")) {
+      baseParts.push("bold, strong shapes, dynamic and energetic feel");
+    } else if (industryLower.includes("real estate")) {
+      baseParts.push("trustworthy, stable, structured, architectural feel");
+    } else if (industryLower.includes("kids") || industryLower.includes("toys")) {
+      baseParts.push("playful, friendly, simple shapes, high readability");
+    } else if (industryLower.includes("pets")) {
+      baseParts.push("friendly, caring, organic shapes, soft curves");
+    } else if (industryLower.includes("finance")) {
+      baseParts.push("trustworthy, minimal, serious, institutional feel");
+    } else if (industryLower.includes("education")) {
+      baseParts.push("inspiring, structured, approachable academic feel");
+    }
+  }
+
+  // 3) Visual concept
+  if (keywords) {
+    baseParts.push(`symbolic icon based on: ${keywords}`);
+  }
+  // Overall logo layout preference
+  baseParts.push(
+    "logo layout: clear central icon with brand name in clean typography, no slogan wall of text"
+  );
+  const cleanColor = normalizeColorTheme(colorTheme);
+  if (cleanColor) {
+  baseParts.push(`color palette: ${cleanColor}`);
+  }
+
+  // 4) Typography direction (even if logo may end up without text)
+  const fontHints = [];
+  if (brandFontStyle) fontHints.push(`brand font style: ${brandFontStyle}`);
+  if (taglineFontStyle) fontHints.push(`tagline font style: ${taglineFontStyle}`);
+  if (fontHints.length > 0) {
+    baseParts.push(fontHints.join(", "));
+  }
+
+  // 5) Extra user notes
+  if (otherNotes) {
+    baseParts.push(`art direction notes: ${otherNotes}`);
+  }
+
+  // 6) Logo-specific style constraints + layout
+  baseParts.push(
+  // 核心：要的是“商标级别”的简洁 logo，而不是插画
+  "minimalist flat vector logo, clean geometric shapes, strong silhouette, high contrast",
+  "no photo, no 3d render, no realistic lighting, no complex illustration",
+
+  // 版式倾向：像真实 logo 的构图
+  "single clear icon with simple negative space, balanced composition",
+  "brand name and optional tagline placed clearly next to or below the icon",
+
+  // 可注册、可印刷
+  "suitable for professional brand trademark, scalable, works well in black and white",
+  "no detailed background scene, no busy composition, no tiny unreadable elements"
+  );
+
+  return baseParts.join(", ");
+}
+
+// ====== HuggingFace text-to-image call (SDXL) ======
+const HF_API_TOKEN = process.env.HF_API_TOKEN;
+const HF_MODEL_ID = process.env.HF_MODEL_ID || "stabilityai/stable-diffusion-xl-base-1.0";
+
+async function callHuggingFaceTextToImage(prompt) {
+  if (!HF_API_TOKEN) {
+    throw new Error("HF_API_TOKEN is not set");
+  }
+
+  console.log("[HF] Calling SDXL model:", HF_MODEL_ID);
+
+  const url = `https://router.huggingface.co/hf-inference/models/${HF_MODEL_ID}`;
+
+  const payload = {
+  inputs: prompt,
+  parameters: {
+    // 提示跟随程度：8–9 对 logo 比较合适（更听话）
+    guidance_scale: 8.5,
+
+    // 明确禁止各种“插画 / 写实 / 场景”
+    negative_prompt: [
+      "photo, photography, photorealistic, 3d render, realistic lighting",
+      "complex background, detailed scene, landscape, environment",
+      "busy composition, clutter, too many small details",
+      "low contrast, blurry, low quality, distorted text, bad typography",
+      "watermark, signature, logo of other brands, stock photo"
+    ].join(", "),
+
+    // 尺寸：1:1 正方形 → 方便后面缩放
+    width: 1024,
+    height: 1024,
+
+    // 步数 35：比 30 稍微细一点，又不会太慢
+    num_inference_steps: 35
+    }
+  };
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${HF_API_TOKEN}`,
+      "Content-Type": "application/json",
+      Accept: "image/png"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`HF API error ${res.status}: ${text}`);
+  }
+
+  // HuggingFace 返回图片二进制（buffer）
+  const buffer = await res.arrayBuffer();
+  const base64 = Buffer.from(buffer).toString("base64");
+  const dataUrl = `data:image/png;base64,${base64}`;
+
+  return {
+    imageUrl: dataUrl,
+    model: HF_MODEL_ID,
+    mode: "text-only"
+  };
+}
+
+// ====== Logo generator (HF first, fallback to dummy) ======
+async function generateLogoMock(body) {
+  const prompt = buildPromptFromBody(body);
+
+  try {
+    console.log('[HF] Calling SDXL model:', HF_MODEL_ID);
+
+    const imageDataUrl = await callHuggingFaceTextToImage(prompt);
+
+    // ✅ 这里是最终标准结构
+    return {
+      imageUrl: imageDataUrl,                 // <- 直接是 string，不再套一层对象
+      prompt,
+      model: HF_MODEL_ID,
+      mode: 'text-to-image'
+    };
+
+  } catch (err) {
+    console.error('[HF] text-to-image failed, fallback to dummy image:', err);
+
+    // ✅ 失败也保持同样结构，方便前端处理
+    return {
+      imageUrl: 'https://dummyimage.com/1024x1024/eeeeee/000000.png&text=Mock+Logo',
+      prompt,
+      model: 'mock-local-fallback',
+      mode: 'text-only'
+    };
+  }
+}
+
+module.exports = {
+  buildPromptFromBody,
+  generateLogoMock
+};

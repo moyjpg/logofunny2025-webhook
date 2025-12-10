@@ -9,23 +9,18 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Health check: GET /
 app.get('/', (req, res) => {
   res.send('logofunny backend online');
 });
 
-// Simple test route: POST /test-generate-logo
-app.post('/test-generate-logo', (req, res) => {
-  return res.json({
-    success: true,
-    source: 'test-generate-logo',
-    received: req.body || null
-  });
-});
+const logoRoutes = require('./routes/logoRoutes');
 
 // Enable /generate route via dedicated router
 const generateRoutes = require('./routes/generateRoutes');
+const logoApiRoutes = require('./routes/logoApiRoutes');
+app.use('/', logoApiRoutes);
 app.use('/', generateRoutes);
+app.use('/', logoRoutes);
 
 // Helpful GET handler to guide usage of /generate
 app.get('/generate', (req, res) => {
@@ -45,6 +40,7 @@ app.get('/generate', (req, res) => {
     }
   });
 });
+
 
 app.listen(port, () => {
   console.log(`logofunny backend running on port ${port}`);
