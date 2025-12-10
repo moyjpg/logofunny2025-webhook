@@ -2,6 +2,25 @@ const express = require('express');
 const { generateLogoMock } = require('../services/logoGenerateMock');
 
 const router = express.Router();
+
+// --- Elementor → AI 字段映射器 ---
+function mapElementorToAI(body) {
+  const f = body?.form?.fields || {};
+
+  return {
+    brandName: f.brand_name?.value || "",
+    tagline: f.brand_tagline?.value || "",
+    keywords: f.keywords?.value || "",
+    industry: f.industry?.value || "",
+    colorTheme: Array.isArray(f.color_theme?.raw_value)
+      ? f.color_theme.raw_value
+      : (f.color_theme?.value ? [f.color_theme.value] : []),
+    styleFont: f.brand_font_style?.value || "",
+    taglineFont: f.tagline_font_style?.value || "",
+    notes: f.other_notes?.value || "",
+    uploadImage: f.upload_logo?.value || null,   // 后面我们会做文件代理，现在可为空
+  };
+}
 router.post('/debug', (req, res) => {
   console.log('[/debug] headers:');
   console.log(JSON.stringify(req.headers, null, 2));
@@ -32,60 +51,23 @@ router.post('/test-generate-logo', (req, res) => {
 
 // POST /generate-logo
 router.post('/generate-logo', async (req, res) => {
-    try {
-        const body = req.body || {};
-        const { brandName, keywords } = body;
+  try {
+    console.log('[generate-logo] RAW body:', JSON.stringify(req.body, null, 2));
 
-        // 简单校验：至少要有 brandName 或 keywords
-        if (!brandName && !keywords) {
-            return res.status(400).json({
-                success: false,
-                data: null,
-                error: 'Missing required fields: at least brandName or keywords is required.'
-            });
-        }
+    const mapped = mapElementorToAI(req.body);
 
-        console.log('[/generate-logo] incoming body:', body);
+    console.log('[generate-logo] mapped fields:', mapped);
 
-        const result = await generateLogoMock(body);
+    // 暂时先返回 mapped，确认字段正确
+    return res.json({
+      ok: true,
+      mapped
+    });
 
-        // ====== 这里把任何奇怪的结构都“拍平”成一个 imageUrl ======
-        let imageUrl = null;
-
-        if (typeof result === 'string') {
-            // 如果 generateLogoMock 直接返回 string
-            imageUrl = result;
-        } else if (result && typeof result.imageUrl === 'string') {
-            // { imageUrl: "data:..." }
-            imageUrl = result.imageUrl;
-        } else if (
-            result &&
-            result.imageUrl &&
-            typeof result.imageUrl.imageUrl === 'string'
-        ) {
-            // { imageUrl: { imageUrl: "data:..." } }
-            imageUrl = result.imageUrl.imageUrl;
-        }
-
-        return res.status(200).json({
-            success: true,
-            data: {
-                imageUrl,                // ✅ 前端只用这一条就够了
-                prompt: result.prompt || null,
-                model: result.model || null,
-                mode: result.mode || null
-            },
-            error: null
-        });
-
-    } catch (err) {
-        console.error('[/generate-logo] error:', err);
-        return res.status(500).json({
-            success: false,
-            data: null,
-            error: 'Internal server error in /generate-logo'
-        });
-    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 module.exports = router;
