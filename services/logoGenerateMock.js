@@ -5,6 +5,17 @@ const fetch = require('node-fetch');
 function normalizeColorTheme(input) {
   if (!input) return "";
 
+  // ✅ Elementor checkbox → array
+  if (Array.isArray(input)) {
+    const joined = input.join(" ");
+    return normalizeColorTheme(joined);
+  }
+
+  // ✅ 确保是字符串
+  if (typeof input !== "string") {
+    input = String(input);
+  }
+
   const txt = input.toLowerCase().trim();
 
   const map = {
@@ -20,15 +31,19 @@ function normalizeColorTheme(input) {
     yellow: "yellow",
     purple: "purple",
     orange: "orange",
-    pink: "pink"
+    pink: "pink",
   };
 
   // single color
   if (map[txt]) return map[txt];
 
-  // multi-color cases "blue and white", "black & gold"
-  const parts = txt.split(/,|&|and/).map(s => s.trim()).filter(Boolean);
-  const normalized = parts.map(p => map[p] || p);
+  // multi-color cases: "blue and white", "black & gold"
+  const parts = txt
+    .split(/,|&|and/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const normalized = parts.map((p) => map[p] || p);
 
   return normalized.join(" and ");
 }
