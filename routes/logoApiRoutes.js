@@ -107,5 +107,12 @@ router.post('/generate-logo', async (req, res) => {
     });
   }
 });
-
+router.post("/generate-logo-direct", async (req, res) => {
+  try {
+    const result = await generateLogoMock(req.body);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 module.exports = router;

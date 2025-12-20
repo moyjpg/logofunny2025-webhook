@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const Replicate = require("replicate");
+const fetch = require("node-fetch");
 
 const app = express();
 const replicate = new Replicate({
@@ -42,6 +43,39 @@ app.post("/generate", async (req, res) => {
       ok: false,
       error: err?.message || String(err),
     });
+  }
+});
+app.post("/generate-svg", async (req, res) => {
+  try {
+    const model = process.env.REPLICATE_MODEL || "recraft-ai/recraft-v3-svg";
+    const prompt =
+      (req.body && (req.body.prompt || req.body.text)) ||
+      "minimal vector logo, clean, modern, flat design, no gradients";
+
+    // 1) 先生成（得到 delivery url）
+    const output = await replicate.run(model, { input: { prompt: String(prompt) } });
+    const svgUrl = output.url();
+
+    // 2) 立刻由后端去拉 SVG 文本
+    const r = await fetch(svgUrl, { redirect: "follow" });
+
+    if (!r.ok) {
+      const t = await r.text().catch(() => "");
+      return res.status(502).json({
+        ok: false,
+        error: `Failed to fetch SVG from delivery (status ${r.status})`,
+        detail: t.slice(0, 300),
+        svg_url: svgUrl,
+      });
+    }
+
+    const svgText = await r.text();
+
+    // 3) 返回给前端：浏览器直接显示 SVG
+    res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+    res.status(200).send(svgText);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
   }
 });
 const logoRoutes = require('./routes/logoRoutes');

@@ -1,6 +1,12 @@
 // services/logoGenerateMock.js
 
 const fetch = require('node-fetch');
+const Replicate = require("replicate");
+
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN,
+});
+
 // ====== Color Theme Normalizer (EN only, safe) ======
 function normalizeColorTheme(input) {
   if (!input) return "";
@@ -209,30 +215,57 @@ async function callHuggingFaceTextToImage(prompt) {
 
 // ====== Logo generator (HF first, fallback to dummy) ======
 async function generateLogoMock(body) {
+  const uploadImage = body?.uploadImage || body?.upload_image || null;
   const prompt = buildPromptFromBody(body);
 
   try {
-    console.log('[HF] Calling SDXL model:', HF_MODEL_ID);
+  // ===============================
+  // 优先：有图 → Replicate 图生图
+  // ===============================
+  if (uploadImage) {
+    console.log("[Replicate] image-to-image");
 
-    const imageDataUrl = await callHuggingFaceTextToImage(prompt);
+    const output = await replicate.run(
+      "stability-ai/sdxl-controlnet",
+      {
+        input: {
+          image: uploadImage,
+          prompt,
+          guidance_scale: 7,
+        },
+      }
+    );
 
-    // ✅ 这里是最终标准结构
     return {
-      imageUrl: imageDataUrl,                 // <- 直接是 string，不再套一层对象
+      imageUrl: Array.isArray(output) ? output[0] : output,
       prompt,
-      model: HF_MODEL_ID,
-      mode: 'text-to-image'
+      model: "replicate-sdxl-controlnet",
+      mode: "image-to-image",
     };
+  }
 
-  } catch (err) {
-    console.error('[HF] text-to-image failed, fallback to dummy image:', err);
+  // ===============================
+  // 没图：HF 文生图
+  // ===============================
+  console.log("[HF] text-to-image");
 
-    // ✅ 失败也保持同样结构，方便前端处理
+  const hf = await callHuggingFaceTextToImage(prompt);
+
+  return {
+  imageUrl: hf.imageUrl,
+  prompt,
+  model: hf.model,
+  mode: "text-to-image",
+};
+
+} catch (err) {
+    console.error("[AI] generate failed, fallback dummy:", err);
+
     return {
-      imageUrl: 'https://dummyimage.com/1024x1024/eeeeee/000000.png&text=Mock+Logo',
+      imageUrl: "https://dummyimage.com/1024x1024/eeeeee/000000.png&text=Mock+Logo",
       prompt,
-      model: 'mock-local-fallback',
-      mode: 'text-only'
+      model: "mock-fallback",
+      mode: "fallback",
     };
   }
 }
