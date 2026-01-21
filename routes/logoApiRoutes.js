@@ -3,39 +3,50 @@ const { generateLogoMock } = require('../services/logoGenerateMock');
 
 const router = express.Router();
 
-// --- Elementor → AI 字段映射器（以 body.fields 为准） ---
+// --- Elementor → AI 字段映射器（兼容 body.fields / 直接 body / curl） ---
 function mapElementorToAI(body) {
-  // Elementor 的字段通常在 body.fields
-  const f = body?.fields || body?.form?.fields || {};
+  // 兼容：Elementor(常见) body.fields / 有些版本 body.form.fields / 你 curl 可能直接传 body
+  const f = body?.fields || body?.form?.fields || body || {};
 
-  const pick = (key) => {
-    const field = f?.[key];
-    if (!field) return "";
+  // 允许传多个 key（camelCase / snake_case 都试一遍）
+  const pick = (...keys) => {
+    for (const key of keys) {
+      const field = f?.[key];
+      if (field === undefined || field === null) continue;
 
-    // Elementor 常见：value / raw_value
-    const v = field.value ?? field.raw_value ?? "";
+      // ✅ 1) curl 直接传字符串/数组
+      if (typeof field === "string" || typeof field === "number" || typeof field === "boolean") {
+        return String(field).trim();
+      }
+      if (Array.isArray(field)) return field;
 
-    // checkbox 多选时可能是数组
-    if (Array.isArray(v)) return v;
-
-    return String(v || "").trim();
+      // ✅ 2) Elementor 传对象：{ value } / { raw_value }
+      if (typeof field === "object") {
+        const v = field.value ?? field.raw_value ?? field.url ?? field;
+        if (Array.isArray(v)) return v;
+        if (v === undefined || v === null) continue;
+        return String(v).trim();
+      }
+    }
+    return "";
   };
 
+  const color = pick("colorTheme", "color_theme");
   return {
-    brandName: pick("brand_name"),
-    tagline: pick("brand_tagline"),
+    brandName: pick("brandName", "brand_name"),
+    tagline: pick("brandTagline", "brand_tagline", "tagline"),
     keywords: pick("keywords"),
     industry: pick("industry"),
 
-    // 这里可能是数组（多选），也可能是字符串
-    colorTheme: pick("color_theme"),
+    // 统一成数组（checkbox 多选）
+    colorTheme: Array.isArray(color) ? color : color ? [color] : [],
 
-    styleFont: pick("brand_font_style"),
-    taglineFont: pick("tagline_font_style"),
-    notes: pick("other_notes"),
+    styleFont: pick("brandFontStyle", "brand_font_style", "styleFont"),
+    taglineFont: pick("taglineFontStyle", "tagline_font_style", "taglineFont"),
+    notes: pick("notes", "otherNotes", "other_notes"),
 
-    // 上传字段：Elementor 可能给空、也可能给 URL/对象，先占位不影响打通
-    uploadImage: pick("upload_logo") || null,
+    // 上传字段（你现在字段叫 uploadLogo）
+    uploadImage: pick("uploadLogo", "upload_logo") || null,
   };
 }
 // 简单测试路由：不调模型，只验证 Webhook 是否通畅
