@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>LogoFunny Generator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: system-ui, -apple-system, Arial; padding: 20px; max-width: 820px; margin: 0 auto; }
+      label { display:block; margin: 12px 0 6px; }
+      input, select, button, textarea { width: 100%; padding: 10px; font-size: 16px; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; margin-top: 16px; }
+      pre { white-space: pre-wrap; word-break: break-word; }
+      img { max-width: 320px; display:block; margin-top: 12px; }
+    </style>
+  </head>
+  <body>
+    <h2>LogoFunny Generator</h2>
+
+    <div class="row">
+      <div>
+        <label>Type</label>
+        <select id="type">
+          <option value="letter">letter (B)</option>
+          <option value="symbol">symbol (C)</option>
+        </select>
+      </div>
+      <div>
+        <label>Brand</label>
+        <input id="brand" value="LOGOFUNNY" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Letter (only for letter)</label>
+        <input id="letter" value="L" />
+      </div>
+      <div>
+        <label>Concept (only for symbol)</label>
+        <input id="concept" value="fluid motion" />
+      </div>
+    </div>
+
+    <label>Color style</label>
+    <input id="color" value="black and white" />
+
+    <label><input type="checkbox" id="strictSafe" checked /> strict_safe</label>
+
+    <button id="btn">Generate (SVG + PNG)</button>
+
+    <div class="card">
+      <h3>Result</h3>
+      <div id="status">Idle</div>
+      <img id="preview" alt="" />
+      <div style="margin-top:10px;">
+        <a id="svgLink" href="#" target="_blank" rel="noreferrer">Open SVG</a>
+      </div>
+      <h4>Prompt Meta</h4>
+      <pre id="meta"></pre>
+    </div>
+
+    <script src="/js/app.js"></script>
+  </body>
+</html>

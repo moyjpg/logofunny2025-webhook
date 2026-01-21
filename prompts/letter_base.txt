@@ -1,0 +1,25 @@
+A clean, professional vector letter logo based on the letter(s): {{LETTER}}
+
+Design style:
+- minimalist
+- flat vector logo
+- strong geometric structure
+- clear, readable letterform
+- balanced proportions
+- centered composition
+
+Color style:
+- {{COLOR_STYLE}}
+
+Background:
+- solid color or transparent
+- no mockup, no texture, no photo
+
+Brand context:
+{{DESIGN_BRIEF}}
+
+Hard rules:
+{{HARD_RULES}}
+
+Usage:
+- suitable for branding, app icon, website logo

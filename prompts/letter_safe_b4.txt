@@ -1,0 +1,5 @@
+Safety rules:
+- preserve core letter structure
+- avoid excessive abstraction
+- no hidden faces, animals, or symbols
+- ensure high contrast and clarity at small sizes

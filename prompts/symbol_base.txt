@@ -1,0 +1,24 @@
+A modern abstract symbol logo representing the brand concept: {{CONCEPT}}
+
+Design style:
+- minimalist
+- geometric or organic abstract shape
+- flat vector logo
+- strong silhouette
+- simple, iconic form
+
+Color style:
+- {{COLOR_STYLE}}
+
+Background:
+- solid color or transparent
+- no mockup, no photography
+
+Brand context:
+{{DESIGN_BRIEF}}
+
+Hard rules:
+{{HARD_RULES}}
+
+Usage:
+- suitable for app icon, packaging, and brand identity

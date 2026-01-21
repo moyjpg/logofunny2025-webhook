@@ -1,0 +1,25 @@
+Create a clean, professional wordmark logo for "{{BRAND_NAME}}".
+
+Design style:
+- minimalist
+- flat vector logo
+- strong typographic structure
+- clear legibility at small sizes
+- balanced proportions, centered composition
+
+Typography:
+- Use a cohesive wordmark where the brand name is the hero.
+- If a tagline exists, place it as a secondary line with clear hierarchy: "{{TAGLINE}}"
+
+Color style:
+{{COLOR_STYLE}}
+
+Background:
+- solid color or transparent
+- no mockup, no texture, no photo
+
+Brand context:
+{{DESIGN_BRIEF}}
+
+Hard rules:
+{{HARD_RULES}}
