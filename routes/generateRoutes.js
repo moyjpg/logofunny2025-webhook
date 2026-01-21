@@ -3,6 +3,6 @@ const router = express.Router();
 
 const generateController = require("../services/generateController");
 
-router.post("/generate", generateController.handleGenerate);
+router.post("/generate__controller", generateController.handleGenerate);
 
 module.exports = router;

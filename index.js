@@ -168,7 +168,7 @@ app.get('/health', (req, res) => {
 app.get("/debug", (req, res) => {
   res.json({ ok: true, where: "index.js debug root" });
 });
-app.post("/generate", async (req, res) => {
+app.post("/generate__legacy", async (req, res) => {
   try {
     const model = process.env.REPLICATE_MODEL || "recraft-ai/recraft-v3-svg";
     const prompt =
@@ -266,9 +266,9 @@ const logoRoutes = require('./routes/logoRoutes');
 // Enable /generate route via dedicated router
 const generateRoutes = require('./routes/generateRoutes');
 const logoApiRoutes = require('./routes/logoApiRoutes');
-app.use('/', logoApiRoutes);
-app.use('/', generateRoutes);
-app.use('/', logoRoutes);
+app.use('/', logoApiRoutes);        // 里面有 /generate-logo
+app.use('/internal', generateRoutes); // 现在 generateRoutes 变 internal
+app.use('/internal', logoRoutes);     // 也变 internal
 
 // Helpful GET handler to guide usage of /generate
 app.get('/generate', (req, res) => {

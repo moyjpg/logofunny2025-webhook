@@ -5,7 +5,7 @@ const router = express.Router();
 const { buildPrompts } = require("../utils/promptEngine");
 const { generateSvgFromPrompt, svgToPngBuffer } = require("../services/aiGenerateService");
 
-router.post("/generate", async (req, res) => {
+router.post("/generate__ai", async (req, res) => {
   try {
     const type = req.body?.type || "letter";
     const brand = req.body?.brand || "LOGOFUNNY";
