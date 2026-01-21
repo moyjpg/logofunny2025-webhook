@@ -165,6 +165,9 @@ app.get('/health', (req, res) => {
     timestamp: Date.now()
   });
 });
+app.get("/debug", (req, res) => {
+  res.json({ ok: true, where: "index.js debug root" });
+});
 app.post("/generate", async (req, res) => {
   try {
     const model = process.env.REPLICATE_MODEL || "recraft-ai/recraft-v3-svg";
