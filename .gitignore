@@ -1,2 +1,38 @@
 .env*
 .env*
+# macOS
+.DS_Store
+
+# local env
+.env
+
+# build / outputs
+out.png
+preview.png
+preview.svg
+b64.txt
+*.png
+*.svg
+
+# node
+node_modules/
+# macOS
+.DS_Store
+
+# secrets
+.env
+
+# node
+node_modules/
+
+# local outputs
+b64.txt
+out.png
+preview.png
+preview.svg
+*.png
+*.svgheaders.txt
+resp.txt
+out.png
+out.jpg
+.DS_Store
