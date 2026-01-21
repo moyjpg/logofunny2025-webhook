@@ -54,7 +54,8 @@ router.post('/test-generate-logo', (req, res) => {
 router.post('/generate-logo', async (req, res) => {
   try {
     // 1) 把 Elementor 原始 body 显示出来（保留，方便排错）
-    console.log('[generate-logo] RAW body:', JSON.stringify(req.body, null, 2));
+    console.log('[generate-logo] body keys =', Object.keys(req.body || {}));
+    console.log('[generate-logo] raw body =', JSON.stringify(req.body || {}, null, 2));
 
     // 2) 字段映射：Elementor -> AI 输入
     const mapped = mapElementorToAI(req.body);
