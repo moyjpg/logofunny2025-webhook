@@ -1,11 +1,30 @@
 // index.js
 const path = require("path");
+// 如果入口在 /src，就回到上一级；否则就用当前目录
+const ROOT_DIR = path.resolve(__dirname, "..");
 const express = require('express');
 const cors = require('cors');
 const multer = require("multer");
 require('dotenv').config();
-const upload = multer(); // 内存模式：只解析字段/文件，不落盘
-const { buildPrompts } = require(path.resolve(__dirname, "utils/promptEngine"));
+const upload = multer(); 
+
+function requireFromProjectRoot(relPath) {
+  const candidates = [
+    path.resolve(__dirname, relPath),
+    path.resolve(__dirname, "..", relPath),
+  ];
+  for (const p of candidates) {
+    try {
+      return require(p);
+    } catch (e) {}
+  }
+  throw new Error(
+    `Cannot require ${relPath}. Tried:\n` + candidates.join("\n")
+  );
+}
+
+// 内存模式：只解析字段/文件，不落盘
+const { buildPrompts } = requireFromProjectRoot("utils/promptEngine");
 const debugRoutes = require("./routes/debugRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const Replicate = require("replicate");
