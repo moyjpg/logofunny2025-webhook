@@ -66,7 +66,15 @@ router.post('/generate-logo', async (req, res) => {
   try {
     // 1) 把 Elementor 原始 body 显示出来（保留，方便排错）
     console.log('[generate-logo] body keys =', Object.keys(req.body || {}));
-    console.log('[generate-logo] raw body =', JSON.stringify(req.body || {}, null, 2));
+    const safe = JSON.parse(JSON.stringify(req.body || {}));
+
+    // 常见“炸弹字段”兜底：如果有就用占位符替换
+    if (safe?.fields?.uploadLogo) safe.fields.uploadLogo = "[uploadLogo present]";
+    if (safe?.fields?.uploadImage) safe.fields.uploadImage = "[uploadImage present]";
+    if (safe?.form?.fields?.uploadLogo) safe.form.fields.uploadLogo = "[uploadLogo present]";
+    if (safe?.form?.fields?.uploadImage) safe.form.fields.uploadImage = "[uploadImage present]";
+
+    console.log("[generate-logo] body preview =", JSON.stringify(safe, null, 2));
 
     // 2) 字段映射：Elementor -> AI 输入
     const mapped = mapElementorToAI(req.body);
