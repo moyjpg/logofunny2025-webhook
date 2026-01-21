@@ -4,7 +4,7 @@ const cors = require('cors');
 require('dotenv').config();
 const multer = require("multer");
 const upload = multer(); // 内存模式：只解析字段/文件，不落盘
-const { buildPrompts } = require("./utils/promptEngine");
+const { buildPrompts } = require(path.resolve(__dirname, "utils/promptEngine"));
 const path = require("path");
 const debugRoutes = require("./routes/debugRoutes");
 const aiRoutes = require("./routes/aiRoutes");
