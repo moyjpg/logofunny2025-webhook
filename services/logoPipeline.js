@@ -1,6 +1,8 @@
 const { generateLogoMock, buildPromptFromBody } = require("./logoGenerateMock");
 const { uploadLogoImageToR2 } = require("./r2Upload");
 const { scoreImageUrl } = require("./designScore");
+const { judgeLogo, getOpenAIConfig } = require("./openaiJudge");
+const { maybeGenerateMagicPrompt, shouldUseMagicPrompt } = require("./promptMagic");
 
 const STYLE_VARIANTS = [
   "bold geometric mark, strong silhouette",
@@ -61,21 +63,65 @@ async function runLogoPipeline(mapped, options = {}) {
   const topN = Math.max(1, Math.min(3, options.topN || 3));
 
   const seedPrompt = mapped?.promptOverride || buildPromptFromBody(mapped);
-  const promptVariants = buildPromptVariants(seedPrompt, count);
+  let finalSeedPrompt = seedPrompt;
+
+  if (shouldUseMagicPrompt(mapped, options)) {
+    const magic = await maybeGenerateMagicPrompt(mapped, seedPrompt);
+    if (magic) {
+      finalSeedPrompt = `${seedPrompt} / ${magic}`;
+    }
+  }
+
+  const promptVariants = buildPromptVariants(finalSeedPrompt, count);
 
   const candidates = await Promise.all(
     promptVariants.map((p, i) => generateCandidate(mapped, p, i))
   );
 
-  const ranked = [...candidates].sort((a, b) => {
+  const ruleRanked = [...candidates].sort((a, b) => {
     const sa = a.score?.score ?? -1;
     const sb = b.score?.score ?? -1;
     return sb - sa;
   });
 
+  const openaiCfg = getOpenAIConfig();
+  let ranked = ruleRanked;
+  let rankingMethod = "rule_only";
+
+  if (openaiCfg) {
+    const llmTopK = Math.max(1, Math.min(5, options.llmTopK || 3));
+    const judgeTargets = ruleRanked.slice(0, llmTopK);
+
+    for (const candidate of judgeTargets) {
+      try {
+        const judge = await judgeLogo(candidate.imageUrl, mapped);
+        candidate.llmScore = judge?.score ?? null;
+        candidate.llmBreakdown = judge?.breakdown || null;
+        candidate.llmNotes = judge?.notes || null;
+      } catch (err) {
+        console.error("[pipeline] LLM judge failed:", err);
+      }
+    }
+
+    ranked = [...candidates].sort((a, b) => {
+      const ruleA = a.score?.score ?? 0;
+      const ruleB = b.score?.score ?? 0;
+      const llmA = typeof a.llmScore === "number" ? a.llmScore : ruleA;
+      const llmB = typeof b.llmScore === "number" ? b.llmScore : ruleB;
+      const finalA = ruleA * 0.6 + llmA * 0.4;
+      const finalB = ruleB * 0.6 + llmB * 0.4;
+      a.finalScore = Math.round(finalA);
+      b.finalScore = Math.round(finalB);
+      return finalB - finalA;
+    });
+
+    rankingMethod = "rule_plus_llm";
+  }
+
   return {
     candidates,
     top: ranked.slice(0, topN),
+    rankingMethod,
   };
 }
 

@@ -89,6 +89,57 @@ function scorePixels(data, channels) {
   };
 }
 
+function computeEdgeStats(gray, width, height) {
+  const get = (x, y) => gray[y * width + x];
+  let sumMag = 0;
+  let count = 0;
+  let strongEdges = 0;
+  let centerSum = 0;
+  let centerCount = 0;
+
+  const edgeThreshold = 32;
+  const cx0 = Math.floor(width * 0.2);
+  const cx1 = Math.ceil(width * 0.8);
+  const cy0 = Math.floor(height * 0.2);
+  const cy1 = Math.ceil(height * 0.8);
+
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const gx =
+        -get(x - 1, y - 1) + get(x + 1, y - 1) +
+        -2 * get(x - 1, y) + 2 * get(x + 1, y) +
+        -get(x - 1, y + 1) + get(x + 1, y + 1);
+      const gy =
+        -get(x - 1, y - 1) - 2 * get(x, y - 1) - get(x + 1, y - 1) +
+        get(x - 1, y + 1) + 2 * get(x, y + 1) + get(x + 1, y + 1);
+
+      const mag = Math.sqrt(gx * gx + gy * gy);
+      sumMag += mag;
+      count += 1;
+      if (mag > edgeThreshold) strongEdges += 1;
+
+      if (x >= cx0 && x <= cx1 && y >= cy0 && y <= cy1) {
+        centerSum += mag;
+        centerCount += 1;
+      }
+    }
+  }
+
+  const meanEdge = count > 0 ? sumMag / count : 0;
+  const edgeDensity = count > 0 ? strongEdges / count : 0;
+  const centerEdge = centerCount > 0 ? centerSum / centerCount : 0;
+
+  return { meanEdge, edgeDensity, centerEdge };
+}
+
+function computeReadabilityProxy(meanEdge, edgeDensity, centerEdge, contrast) {
+  const clarity = clamp01(meanEdge / 120);
+  const density = clamp01(1 - Math.abs(edgeDensity - 0.12) / 0.12);
+  const centerBoost = clamp01(centerEdge / 140);
+  const contrastBoost = clamp01(contrast / 128);
+  return clamp01(clarity * 0.35 + density * 0.35 + centerBoost * 0.2 + contrastBoost * 0.1);
+}
+
 async function scoreImageUrl(imageUrl) {
   const buffer = isDataUrl(imageUrl)
     ? dataUrlToBuffer(imageUrl)
@@ -100,7 +151,45 @@ async function scoreImageUrl(imageUrl) {
     .toBuffer({ resolveWithObject: true });
 
   const channels = info.channels || 3;
-  return scorePixels(data, channels);
+  const base = scorePixels(data, channels);
+
+  const gray = await sharp(buffer)
+    .resize(64, 64, { fit: "inside" })
+    .grayscale()
+    .raw()
+    .toBuffer();
+
+  const edgeStats = computeEdgeStats(gray, info.width, info.height);
+  const readabilityProxy = computeReadabilityProxy(
+    edgeStats.meanEdge,
+    edgeStats.edgeDensity,
+    edgeStats.centerEdge,
+    base.metrics.contrast
+  );
+
+  const clarityScore = clamp01(edgeStats.meanEdge / 120);
+  const edgeDensityScore = clamp01(1 - Math.abs(edgeStats.edgeDensity - 0.12) / 0.12);
+  const readabilityScore = readabilityProxy;
+
+  const combined = clamp01(
+    base.score / 100 * 0.55 +
+      clarityScore * 0.2 +
+      edgeDensityScore * 0.15 +
+      readabilityScore * 0.1
+  );
+
+  return {
+    score: Math.round(combined * 100),
+    metrics: {
+      ...base.metrics,
+      edgeStrength: Number(edgeStats.meanEdge.toFixed(2)),
+      edgeDensity: Number(edgeStats.edgeDensity.toFixed(4)),
+      centerEdgeStrength: Number(edgeStats.centerEdge.toFixed(2)),
+      clarityScore: Number(clarityScore.toFixed(3)),
+      edgeDensityScore: Number(edgeDensityScore.toFixed(3)),
+      readabilityScore: Number(readabilityScore.toFixed(3)),
+    },
+  };
 }
 
 module.exports = {

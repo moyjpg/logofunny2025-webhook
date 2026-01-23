@@ -169,14 +169,16 @@ router.post('/generate-logo-pipeline', async (req, res) => {
 
     const count = Number.parseInt(req.body?.count, 10) || 5;
     const topN = Number.parseInt(req.body?.topN, 10) || 3;
+    const llmTopK = Number.parseInt(req.body?.llmTopK, 10) || 3;
 
-    const result = await runLogoPipeline(mapped, { count, topN });
+    const result = await runLogoPipeline(mapped, { count, topN, llmTopK });
 
     return res.status(200).json({
       success: true,
       data: {
         top: result.top,
         candidates: result.candidates,
+        rankingMethod: result.rankingMethod,
         mapped,
       },
       error: null,
