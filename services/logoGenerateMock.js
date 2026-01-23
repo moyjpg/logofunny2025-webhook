@@ -254,6 +254,10 @@ async function generateLogoMock(body) {
   // ===============================
   // 没图：优先 Replicate（可开关），HF 作为备选（可开关）
   // ===============================
+  if (isProviderEnabled("ideogram")) {
+    console.warn("[Ideogram] enabled but not implemented yet");
+  }
+
   if (isProviderEnabled("replicate")) {
     try {
       console.log("[Replicate] text-to-image");
