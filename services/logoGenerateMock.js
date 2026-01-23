@@ -213,7 +213,7 @@ async function callHuggingFaceTextToImage(prompt) {
   };
 }
 
-// ====== Logo generator (HF first, fallback to dummy) ======
+// ====== Logo generator (Replicate first, HF fallback, then dummy) ======
 async function generateLogoMock(body) {
   const uploadImage = body?.uploadImage || body?.upload_image || null;
   const prompt = body?.promptOverride || buildPromptFromBody(body);
@@ -245,18 +245,42 @@ async function generateLogoMock(body) {
   }
 
   // ===============================
-  // 没图：HF 文生图
+  // 没图：优先 Replicate 文生图（HF 作为备选）
   // ===============================
-  console.log("[HF] text-to-image");
+  try {
+    console.log("[Replicate] text-to-image");
+    const output = await replicate.run(
+      "stability-ai/sdxl",
+      {
+        input: {
+          prompt,
+          guidance_scale: 7,
+          width: 1024,
+          height: 1024,
+          num_inference_steps: 35,
+        },
+      }
+    );
 
-  const hf = await callHuggingFaceTextToImage(prompt);
+    return {
+      imageUrl: Array.isArray(output) ? output[0] : output,
+      prompt,
+      model: "replicate-sdxl",
+      mode: "text-to-image",
+    };
+  } catch (replicateErr) {
+    console.error("[Replicate] text-to-image failed, fallback to HF:", replicateErr);
 
-  return {
-  imageUrl: hf.imageUrl,
-  prompt,
-  model: hf.model,
-  mode: "text-to-image",
-};
+    console.log("[HF] text-to-image");
+    const hf = await callHuggingFaceTextToImage(prompt);
+
+    return {
+      imageUrl: hf.imageUrl,
+      prompt,
+      model: hf.model,
+      mode: "text-to-image",
+    };
+  }
 
 } catch (err) {
     console.error("[AI] generate failed, fallback dummy:", err);
