@@ -214,6 +214,13 @@ async function callHuggingFaceTextToImage(prompt) {
 }
 
 // ====== Logo generator (Replicate first, HF fallback, then dummy) ======
+function isProviderEnabled(name) {
+  const envKey = `USE_${name.toUpperCase()}`;
+  const raw = process.env[envKey];
+  if (raw == null) return true;
+  return String(raw).toLowerCase() !== "false";
+}
+
 async function generateLogoMock(body) {
   const uploadImage = body?.uploadImage || body?.upload_image || null;
   const prompt = body?.promptOverride || buildPromptFromBody(body);
@@ -245,32 +252,36 @@ async function generateLogoMock(body) {
   }
 
   // ===============================
-  // 没图：优先 Replicate 文生图（HF 作为备选）
+  // 没图：优先 Replicate（可开关），HF 作为备选（可开关）
   // ===============================
-  try {
-    console.log("[Replicate] text-to-image");
-    const output = await replicate.run(
-      "stability-ai/sdxl",
-      {
-        input: {
-          prompt,
-          guidance_scale: 7,
-          width: 1024,
-          height: 1024,
-          num_inference_steps: 35,
-        },
-      }
-    );
+  if (isProviderEnabled("replicate")) {
+    try {
+      console.log("[Replicate] text-to-image");
+      const output = await replicate.run(
+        "stability-ai/sdxl",
+        {
+          input: {
+            prompt,
+            guidance_scale: 7,
+            width: 1024,
+            height: 1024,
+            num_inference_steps: 35,
+          },
+        }
+      );
 
-    return {
-      imageUrl: Array.isArray(output) ? output[0] : output,
-      prompt,
-      model: "replicate-sdxl",
-      mode: "text-to-image",
-    };
-  } catch (replicateErr) {
-    console.error("[Replicate] text-to-image failed, fallback to HF:", replicateErr);
+      return {
+        imageUrl: Array.isArray(output) ? output[0] : output,
+        prompt,
+        model: "replicate-sdxl",
+        mode: "text-to-image",
+      };
+    } catch (replicateErr) {
+      console.error("[Replicate] text-to-image failed, fallback to HF:", replicateErr);
+    }
+  }
 
+  if (isProviderEnabled("hf")) {
     console.log("[HF] text-to-image");
     const hf = await callHuggingFaceTextToImage(prompt);
 
@@ -281,6 +292,8 @@ async function generateLogoMock(body) {
       mode: "text-to-image",
     };
   }
+
+  throw new Error("No text-to-image providers enabled");
 
 } catch (err) {
     console.error("[AI] generate failed, fallback dummy:", err);
