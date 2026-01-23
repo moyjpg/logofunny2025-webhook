@@ -216,7 +216,7 @@ async function callHuggingFaceTextToImage(prompt) {
 // ====== Logo generator (HF first, fallback to dummy) ======
 async function generateLogoMock(body) {
   const uploadImage = body?.uploadImage || body?.upload_image || null;
-  const prompt = buildPromptFromBody(body);
+  const prompt = body?.promptOverride || buildPromptFromBody(body);
 
   try {
   // ===============================

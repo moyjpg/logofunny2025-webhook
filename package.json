@@ -12,6 +12,7 @@
   "license": "MIT",
   "dependencies": {
     "archiver": "^7.0.1",
+    "@aws-sdk/client-s3": "^3.758.0",
     "axios": "^1.7.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

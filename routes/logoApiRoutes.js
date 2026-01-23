@@ -1,5 +1,7 @@
 const express = require('express');
 const { generateLogoMock } = require('../services/logoGenerateMock');
+const { uploadLogoImageToR2 } = require('../services/r2Upload');
+const { runLogoPipeline } = require('../services/logoPipeline');
 
 const router = express.Router();
 
@@ -87,14 +89,28 @@ router.post('/generate-logo', async (req, res) => {
       imageUrl = result.data.imageUrl;
     }
 
-    // 6) 统一返回格式（给 Elementor/前端用）
+    // 6) 上传到 R2，拿可访问 URL
+    let finalImageUrl = imageUrl;
+    let r2Key = null;
+    if (imageUrl) {
+      try {
+        const uploaded = await uploadLogoImageToR2(imageUrl);
+        finalImageUrl = uploaded.publicUrl;
+        r2Key = uploaded.key;
+      } catch (uploadErr) {
+        console.error('[generate-logo] R2 upload failed:', uploadErr);
+      }
+    }
+
+    // 7) 统一返回格式（给 Elementor/前端用）
     return res.status(200).json({
       success: true,
       data: {
-        imageUrl,
+        imageUrl: finalImageUrl,
         prompt: result?.prompt || null,
         model: result?.model || 'mock',
         mode: result?.mode || (mapped.uploadImage ? 'img2img' : 'text2img'),
+        r2Key,
         mapped, // ✅ 先一起回传，方便你肉眼确认字段没丢。等稳定后我们再删掉
       },
       error: null,
@@ -113,9 +129,65 @@ router.post('/generate-logo', async (req, res) => {
 router.post("/generate-logo-direct", async (req, res) => {
   try {
     const result = await generateLogoMock(req.body);
-    res.json({ success: true, data: result });
+    const imageUrl = result?.imageUrl || null;
+    let finalImageUrl = imageUrl;
+    let r2Key = null;
+    if (imageUrl) {
+      try {
+        const uploaded = await uploadLogoImageToR2(imageUrl);
+        finalImageUrl = uploaded.publicUrl;
+        r2Key = uploaded.key;
+      } catch (uploadErr) {
+        console.error('[generate-logo-direct] R2 upload failed:', uploadErr);
+      }
+    }
+    res.json({
+      success: true,
+      data: {
+        ...result,
+        imageUrl: finalImageUrl,
+        r2Key,
+      },
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /generate-logo-pipeline  (multi-model -> score -> top N)
+router.post('/generate-logo-pipeline', async (req, res) => {
+  try {
+    const mapped = mapElementorToAI(req.body);
+    const hasText = (mapped.brandName && mapped.brandName.trim()) || (mapped.keywords && mapped.keywords.trim());
+    if (!hasText) {
+      return res.status(200).json({
+        success: false,
+        data: null,
+        error: 'Missing required fields: please provide Brand Name or Keywords.',
+      });
+    }
+
+    const count = Number.parseInt(req.body?.count, 10) || 5;
+    const topN = Number.parseInt(req.body?.topN, 10) || 3;
+
+    const result = await runLogoPipeline(mapped, { count, topN });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        top: result.top,
+        candidates: result.candidates,
+        mapped,
+      },
+      error: null,
+    });
+  } catch (err) {
+    console.error('[generate-logo-pipeline] error:', err);
+    return res.status(200).json({
+      success: false,
+      data: null,
+      error: err?.message || 'Internal error',
+    });
   }
 });
 module.exports = router;

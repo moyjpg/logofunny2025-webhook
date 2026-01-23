@@ -1,0 +1,14 @@
+HTTP/2 200 
+date: Wed, 21 Jan 2026 15:50:41 GMT
+content-type: application/json; charset=utf-8
+cf-ray: 9c17f7ab8f484e41-LAX
+access-control-allow-origin: *
+etag: W/"cd105-qklsUGkgmIbbwaHQyPFf/bYI4yc"
+rndr-id: dcbd061d-bb1c-40f7
+vary: Accept-Encoding
+x-powered-by: Express
+x-render-origin-server: Render
+cf-cache-status: DYNAMIC
+server: cloudflare
+alt-svc: h3=":443"; ma=86400
+
