@@ -61,6 +61,8 @@ async function generateCandidate(mapped, prompt, index) {
 async function runLogoPipeline(mapped, options = {}) {
   const count = Math.max(1, Math.min(10, options.count || 5));
   const topN = Math.max(1, Math.min(3, options.topN || 3));
+  const maxParallelEnv = Number.parseInt(process.env.PIPELINE_MAX_PARALLEL, 10);
+  const maxParallel = Number.isFinite(maxParallelEnv) ? maxParallelEnv : 2;
 
   const seedPrompt = mapped?.promptOverride || buildPromptFromBody(mapped);
   let finalSeedPrompt = seedPrompt;
@@ -74,9 +76,14 @@ async function runLogoPipeline(mapped, options = {}) {
 
   const promptVariants = buildPromptVariants(finalSeedPrompt, count);
 
-  const candidates = await Promise.all(
-    promptVariants.map((p, i) => generateCandidate(mapped, p, i))
-  );
+  const candidates = [];
+  for (let i = 0; i < promptVariants.length; i += maxParallel) {
+    const batch = promptVariants.slice(i, i + maxParallel);
+    const results = await Promise.all(
+      batch.map((p, idx) => generateCandidate(mapped, p, i + idx))
+    );
+    candidates.push(...results);
+  }
 
   const ruleRanked = [...candidates].sort((a, b) => {
     const sa = a.score?.score ?? -1;

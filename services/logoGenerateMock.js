@@ -221,6 +221,48 @@ function isProviderEnabled(name) {
   return String(raw).toLowerCase() !== "false";
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRateLimitError(err) {
+  const msg = String(err?.message || err || "");
+  return msg.includes("429") || msg.toLowerCase().includes("too many requests");
+}
+
+async function replicateTextToImage(prompt) {
+  const maxRetries = Number.parseInt(process.env.REPLICATE_MAX_RETRIES, 10);
+  const baseDelay = Number.parseInt(process.env.REPLICATE_RETRY_BASE_MS, 10);
+  const retries = Number.isFinite(maxRetries) ? maxRetries : 2;
+  const delayBase = Number.isFinite(baseDelay) ? baseDelay : 1200;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const output = await replicate.run(
+        "stability-ai/sdxl",
+        {
+          input: {
+            prompt,
+            guidance_scale: 7,
+            width: 1024,
+            height: 1024,
+            num_inference_steps: 35,
+          },
+        }
+      );
+      return output;
+    } catch (err) {
+      if (!isRateLimitError(err) || attempt >= retries) {
+        throw err;
+      }
+      const delay = delayBase * Math.pow(2, attempt);
+      console.warn(`[Replicate] 429 retry in ${delay}ms`);
+      await sleep(delay);
+    }
+  }
+  return null;
+}
+
 async function generateLogoMock(body) {
   const uploadImage = body?.uploadImage || body?.upload_image || null;
   const prompt = body?.promptOverride || buildPromptFromBody(body);
@@ -261,18 +303,7 @@ async function generateLogoMock(body) {
   if (isProviderEnabled("replicate")) {
     try {
       console.log("[Replicate] text-to-image");
-      const output = await replicate.run(
-        "stability-ai/sdxl",
-        {
-          input: {
-            prompt,
-            guidance_scale: 7,
-            width: 1024,
-            height: 1024,
-            num_inference_steps: 35,
-          },
-        }
-      );
+      const output = await replicateTextToImage(prompt);
 
       return {
         imageUrl: Array.isArray(output) ? output[0] : output,
