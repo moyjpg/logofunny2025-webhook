@@ -101,7 +101,7 @@ async function runLogoPipeline(mapped, options = {}) {
 
     for (const candidate of judgeTargets) {
       try {
-        const judge = await judgeLogo(candidate.imageUrl, mapped);
+        const judge = await judgeLogo(candidate.imageUrl, mapped, { r2Key: candidate.r2Key });
         candidate.llmScore = judge?.score ?? null;
         candidate.llmBreakdown = judge?.breakdown || null;
         candidate.llmNotes = judge?.notes || null;

@@ -230,6 +230,13 @@ function isRateLimitError(err) {
   return msg.includes("429") || msg.toLowerCase().includes("too many requests");
 }
 
+function formatReplicateError(err) {
+  const status = err?.response?.status || err?.status || "";
+  const data = err?.response?.data || err?.data || "";
+  const msg = err?.message || String(err);
+  return `${msg}${status ? ` (status ${status})` : ""}${data ? ` ${JSON.stringify(data)}` : ""}`;
+}
+
 async function replicateTextToImage(prompt) {
   const maxRetries = Number.parseInt(process.env.REPLICATE_MAX_RETRIES, 10);
   const baseDelay = Number.parseInt(process.env.REPLICATE_RETRY_BASE_MS, 10);
@@ -315,7 +322,7 @@ async function generateLogoMock(body) {
         mode: "text-to-image",
       };
     } catch (replicateErr) {
-      console.error("[Replicate] text-to-image failed, fallback to HF:", replicateErr);
+      console.error("[Replicate] text-to-image failed, fallback to HF:", formatReplicateError(replicateErr));
     }
   }
 

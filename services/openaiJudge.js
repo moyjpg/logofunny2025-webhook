@@ -1,5 +1,6 @@
 const fetch = require("node-fetch");
 const sharp = require("sharp");
+const { getR2ObjectBuffer } = require("./r2Upload");
 
 function getOpenAIConfig() {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -30,25 +31,39 @@ function buildJudgePrompt(context) {
   ].join("\n");
 }
 
-async function judgeLogo(imageUrl, context = {}) {
+async function judgeLogo(imageUrl, context = {}, opts = {}) {
   const cfg = getOpenAIConfig();
   if (!cfg) return null;
 
   let imageInput = imageUrl;
   try {
     const res = await fetch(imageUrl);
-    if (res.ok) {
-      const arrayBuffer = await res.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      const resized = await sharp(buffer)
-        .resize(512, 512, { fit: "inside" })
-        .jpeg({ quality: 80 })
-        .toBuffer();
-      imageInput = `data:image/jpeg;base64,${resized.toString("base64")}`;
+    if (!res.ok) {
+      throw new Error(`fetch status ${res.status}`);
     }
+    const arrayBuffer = await res.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const resized = await sharp(buffer)
+      .resize(512, 512, { fit: "inside" })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+    imageInput = `data:image/jpeg;base64,${resized.toString("base64")}`;
   } catch (err) {
-    // If fetch/resize fails, fall back to original URL.
-    console.warn("[OpenAI judge] image fetch failed, using URL:", err?.message || err);
+    // If fetch/resize fails, try R2 credentials (more reliable than public URL).
+    if (opts?.r2Key) {
+      try {
+        const { buffer } = await getR2ObjectBuffer(opts.r2Key);
+        const resized = await sharp(buffer)
+          .resize(512, 512, { fit: "inside" })
+          .jpeg({ quality: 80 })
+          .toBuffer();
+        imageInput = `data:image/jpeg;base64,${resized.toString("base64")}`;
+      } catch (r2Err) {
+        console.warn("[OpenAI judge] R2 fetch failed, using URL:", r2Err?.message || r2Err);
+      }
+    } else {
+      console.warn("[OpenAI judge] image fetch failed, using URL:", err?.message || err);
+    }
   }
 
   const input = [

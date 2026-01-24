@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { v4: uuidv4 } = require("uuid");
 const fetch = require("node-fetch");
 
@@ -95,6 +95,25 @@ async function uploadLogoImageToR2(imageUrl, opts = {}) {
   return { key, publicUrl: buildPublicUrl(key) };
 }
 
+async function getR2ObjectBuffer(key) {
+  const client = getR2Client();
+  const res = await client.send(
+    new GetObjectCommand({
+      Bucket: process.env.R2_BUCKET,
+      Key: key,
+    })
+  );
+  const chunks = [];
+  for await (const chunk of res.Body) {
+    chunks.push(chunk);
+  }
+  return {
+    buffer: Buffer.concat(chunks),
+    contentType: res.ContentType || "image/png",
+  };
+}
+
 module.exports = {
   uploadLogoImageToR2,
+  getR2ObjectBuffer,
 };
