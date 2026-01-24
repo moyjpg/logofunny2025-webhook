@@ -1,4 +1,5 @@
 const fetch = require("node-fetch");
+const sharp = require("sharp");
 
 function getOpenAIConfig() {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -33,12 +34,29 @@ async function judgeLogo(imageUrl, context = {}) {
   const cfg = getOpenAIConfig();
   if (!cfg) return null;
 
+  let imageInput = imageUrl;
+  try {
+    const res = await fetch(imageUrl);
+    if (res.ok) {
+      const arrayBuffer = await res.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const resized = await sharp(buffer)
+        .resize(512, 512, { fit: "inside" })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      imageInput = `data:image/jpeg;base64,${resized.toString("base64")}`;
+    }
+  } catch (err) {
+    // If fetch/resize fails, fall back to original URL.
+    console.warn("[OpenAI judge] image fetch failed, using URL:", err?.message || err);
+  }
+
   const input = [
     {
       role: "user",
       content: [
         { type: "input_text", text: buildJudgePrompt(context) },
-        { type: "input_image", image_url: imageUrl },
+        { type: "input_image", image_url: imageInput },
       ],
     },
   ];

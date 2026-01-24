@@ -300,7 +300,10 @@ async function generateLogoMock(body) {
     console.warn("[Ideogram] enabled but not implemented yet");
   }
 
-  if (isProviderEnabled("replicate")) {
+  const replicateEnabled = isProviderEnabled("replicate");
+  const hfEnabled = isProviderEnabled("hf");
+
+  if (replicateEnabled) {
     try {
       console.log("[Replicate] text-to-image");
       const output = await replicateTextToImage(prompt);
@@ -316,7 +319,7 @@ async function generateLogoMock(body) {
     }
   }
 
-  if (isProviderEnabled("hf")) {
+  if (hfEnabled) {
     console.log("[HF] text-to-image");
     const hf = await callHuggingFaceTextToImage(prompt);
 
@@ -328,7 +331,9 @@ async function generateLogoMock(body) {
     };
   }
 
-  throw new Error("No text-to-image providers enabled");
+  throw new Error(
+    `No text-to-image providers enabled (USE_REPLICATE=${process.env.USE_REPLICATE}, USE_HF=${process.env.USE_HF})`
+  );
 
 } catch (err) {
     console.error("[AI] generate failed, fallback dummy:", err);
