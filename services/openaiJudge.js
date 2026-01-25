@@ -148,7 +148,26 @@ async function judgeLogo(imageUrl, context = {}, opts = {}) {
   }
 
   const data = await res.json();
-  const outputText = data?.output_text || "";
+  const outputText =
+    (typeof data?.output_text === "string" && data.output_text.trim()
+      ? data.output_text
+      : "") ||
+    (() => {
+      const output = data?.output;
+      if (!Array.isArray(output)) return "";
+      for (const item of output) {
+        const content = item?.content;
+        if (Array.isArray(content)) {
+          for (const part of content) {
+            const text = part?.output_text ?? part?.text;
+            if (typeof text === "string" && text.trim()) return text;
+          }
+        } else if (typeof content === "string" && content.trim()) {
+          return content;
+        }
+      }
+      return "";
+    })();
   try {
     return JSON.parse(outputText);
   } catch (parseErr) {
@@ -160,7 +179,10 @@ async function judgeLogo(imageUrl, context = {}, opts = {}) {
         console.warn("[OpenAI judge] JSON parse failed:", nestedErr?.message || nestedErr);
       }
     } else {
-      console.warn("[OpenAI judge] JSON missing in response:", outputText.slice(0, 200));
+      const hint =
+        data?.id ||
+        (Array.isArray(data?.output) ? `output_len=${data.output.length}` : "no_output");
+      console.warn("[OpenAI judge] JSON missing in response:", hint);
     }
   }
   return null;
