@@ -19,10 +19,12 @@ function buildJudgePrompt(context) {
 
   return [
     "You are a strict logo judge. Score the logo from 0-100 using the rubric.",
-    "Return ONLY valid JSON with keys:",
+    "Return ONLY a JSON object (no markdown, no extra text).",
+    "Required keys:",
     "score (0-100),",
     "breakdown: { brand_consistency, legibility, trademark_viability, originality, simplicity, scalability, versatility, text_rendering, prompt_alignment, image_coherence, composition_balance } (each 0-10),",
     "notes (short string).",
+    "If unsure, still return JSON with best estimates.",
     "",
     `Brand name: ${brand}`,
     `Keywords: ${keywords}`,
@@ -86,6 +88,8 @@ async function judgeLogo(imageUrl, context = {}, opts = {}) {
       model: cfg.model,
       input,
       text: { format: { type: "json_object" } },
+      temperature: 0,
+      max_output_tokens: 300,
     }),
   });
 
@@ -107,7 +111,7 @@ async function judgeLogo(imageUrl, context = {}, opts = {}) {
         console.warn("[OpenAI judge] JSON parse failed:", nestedErr?.message || nestedErr);
       }
     } else {
-      console.warn("[OpenAI judge] JSON missing in response");
+      console.warn("[OpenAI judge] JSON missing in response:", outputText.slice(0, 200));
     }
   }
   return null;
