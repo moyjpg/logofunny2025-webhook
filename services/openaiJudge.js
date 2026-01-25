@@ -133,7 +133,7 @@ async function judgeLogo(imageUrl, context = {}, opts = {}) {
     body: JSON.stringify({
       model: cfg.model,
       input,
-      response_format: { type: "json_schema", json_schema: buildResponseSchema() },
+      text: { format: { type: "json_schema", json_schema: buildResponseSchema() } },
       temperature: 0,
       max_output_tokens: 300,
     }),
