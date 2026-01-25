@@ -237,16 +237,21 @@ function formatReplicateError(err) {
   return `${msg}${status ? ` (status ${status})` : ""}${data ? ` ${JSON.stringify(data)}` : ""}`;
 }
 
+function getReplicateModel() {
+  return process.env.REPLICATE_MODEL || "stability-ai/sdxl";
+}
+
 async function replicateTextToImage(prompt) {
   const maxRetries = Number.parseInt(process.env.REPLICATE_MAX_RETRIES, 10);
   const baseDelay = Number.parseInt(process.env.REPLICATE_RETRY_BASE_MS, 10);
   const retries = Number.isFinite(maxRetries) ? maxRetries : 2;
   const delayBase = Number.isFinite(baseDelay) ? baseDelay : 1200;
+  const model = getReplicateModel();
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
       const output = await replicate.run(
-        "stability-ai/sdxl",
+        model,
         {
           input: {
             prompt,
@@ -310,9 +315,10 @@ async function generateLogoMock(body) {
   const replicateEnabled = isProviderEnabled("replicate");
   const hfEnabled = isProviderEnabled("hf");
 
+  let replicateError = null;
   if (replicateEnabled) {
     try {
-      console.log("[Replicate] text-to-image");
+      console.log(`[Replicate] text-to-image model=${getReplicateModel()}`);
       const output = await replicateTextToImage(prompt);
 
       return {
@@ -322,6 +328,7 @@ async function generateLogoMock(body) {
         mode: "text-to-image",
       };
     } catch (replicateErr) {
+      replicateError = replicateErr;
       console.error("[Replicate] text-to-image failed, fallback to HF:", formatReplicateError(replicateErr));
     }
   }
@@ -336,6 +343,12 @@ async function generateLogoMock(body) {
       model: hf.model,
       mode: "text-to-image",
     };
+  }
+
+  if (replicateEnabled && !hfEnabled) {
+    throw new Error(
+      `Replicate failed and HF disabled (USE_REPLICATE=${process.env.USE_REPLICATE}, USE_HF=${process.env.USE_HF}): ${formatReplicateError(replicateError)}`
+    );
   }
 
   throw new Error(

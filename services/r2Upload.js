@@ -113,7 +113,27 @@ async function getR2ObjectBuffer(key) {
   };
 }
 
+async function uploadBufferToR2(buffer, contentType, opts = {}) {
+  const client = getR2Client();
+  const prefix = opts.prefix || "logos";
+  const ext = contentTypeToExt(contentType);
+  const key = `${prefix}/${Date.now()}-${uuidv4()}.${ext}`;
+
+  await client.send(
+    new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+      CacheControl: "public, max-age=31536000, immutable",
+    })
+  );
+
+  return { key, publicUrl: buildPublicUrl(key) };
+}
+
 module.exports = {
   uploadLogoImageToR2,
   getR2ObjectBuffer,
+  uploadBufferToR2,
 };

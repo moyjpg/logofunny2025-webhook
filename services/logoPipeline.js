@@ -1,8 +1,10 @@
 const { generateLogoMock, buildPromptFromBody } = require("./logoGenerateMock");
-const { uploadLogoImageToR2 } = require("./r2Upload");
+const { uploadLogoImageToR2, uploadBufferToR2 } = require("./r2Upload");
 const { scoreImageUrl } = require("./designScore");
 const { judgeLogo, getOpenAIConfig } = require("./openaiJudge");
 const { maybeGenerateMagicPrompt, shouldUseMagicPrompt } = require("./promptMagic");
+const fetch = require("node-fetch");
+const sharp = require("sharp");
 
 const STYLE_VARIANTS = [
   "bold geometric mark, strong silhouette",
@@ -31,20 +33,40 @@ async function generateCandidate(mapped, prompt, index) {
   const imageUrl = result?.imageUrl || null;
 
   let score = null;
-  if (imageUrl) {
-    score = await scoreImageUrl(imageUrl);
-  }
-
   let finalImageUrl = imageUrl;
   let r2Key = null;
+  let svgUrl = null;
+  let svgKey = null;
+
   if (imageUrl) {
     try {
-      const uploaded = await uploadLogoImageToR2(imageUrl);
-      finalImageUrl = uploaded.publicUrl;
-      r2Key = uploaded.key;
+      const res = await fetch(imageUrl);
+      const contentType = res.headers.get("content-type") || "";
+      const isSvg = contentType.includes("image/svg+xml") || imageUrl.toLowerCase().includes(".svg");
+
+      if (isSvg) {
+        const arrayBuffer = await res.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const svgUploaded = await uploadBufferToR2(buffer, "image/svg+xml");
+        svgUrl = svgUploaded.publicUrl;
+        svgKey = svgUploaded.key;
+
+        const pngBuffer = await sharp(buffer).resize(1024, 1024, { fit: "inside" }).png().toBuffer();
+        const pngUploaded = await uploadBufferToR2(pngBuffer, "image/png");
+        finalImageUrl = pngUploaded.publicUrl;
+        r2Key = pngUploaded.key;
+      } else {
+        const uploaded = await uploadLogoImageToR2(imageUrl);
+        finalImageUrl = uploaded.publicUrl;
+        r2Key = uploaded.key;
+      }
     } catch (uploadErr) {
       console.error("[pipeline] R2 upload failed:", uploadErr);
     }
+  }
+
+  if (finalImageUrl) {
+    score = await scoreImageUrl(finalImageUrl);
   }
 
   return {
@@ -52,6 +74,8 @@ async function generateCandidate(mapped, prompt, index) {
     promptUsed: prompt,
     imageUrl: finalImageUrl,
     r2Key,
+    svgUrl,
+    svgKey,
     score,
     model: result?.model || "mock",
     mode: result?.mode || "text2img",
@@ -91,7 +115,8 @@ async function runLogoPipeline(mapped, options = {}) {
     return sb - sa;
   });
 
-  const openaiCfg = getOpenAIConfig();
+  const llmEnabled = String(process.env.USE_LLM || "").toLowerCase() !== "false";
+  const openaiCfg = llmEnabled ? getOpenAIConfig() : null;
   let ranked = ruleRanked;
   let rankingMethod = "rule_only";
 
