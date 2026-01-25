@@ -96,13 +96,21 @@ async function judgeLogo(imageUrl, context = {}, opts = {}) {
 
   const data = await res.json();
   const outputText = data?.output_text || "";
-
-  const jsonMatch = outputText.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("OpenAI judge returned no JSON");
+  try {
+    return JSON.parse(outputText);
+  } catch (parseErr) {
+    const jsonMatch = outputText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch (nestedErr) {
+        console.warn("[OpenAI judge] JSON parse failed:", nestedErr?.message || nestedErr);
+      }
+    } else {
+      console.warn("[OpenAI judge] JSON missing in response");
+    }
   }
-  const parsed = JSON.parse(jsonMatch[0]);
-  return parsed;
+  return null;
 }
 
 module.exports = {
