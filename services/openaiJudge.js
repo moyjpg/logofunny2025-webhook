@@ -33,6 +33,52 @@ function buildJudgePrompt(context) {
   ].join("\n");
 }
 
+function buildResponseSchema() {
+  return {
+    name: "logo_judge",
+    strict: true,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["score", "breakdown", "notes"],
+      properties: {
+        score: { type: "number", minimum: 0, maximum: 100 },
+        notes: { type: "string" },
+        breakdown: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "brand_consistency",
+            "legibility",
+            "trademark_viability",
+            "originality",
+            "simplicity",
+            "scalability",
+            "versatility",
+            "text_rendering",
+            "prompt_alignment",
+            "image_coherence",
+            "composition_balance",
+          ],
+          properties: {
+            brand_consistency: { type: "number", minimum: 0, maximum: 10 },
+            legibility: { type: "number", minimum: 0, maximum: 10 },
+            trademark_viability: { type: "number", minimum: 0, maximum: 10 },
+            originality: { type: "number", minimum: 0, maximum: 10 },
+            simplicity: { type: "number", minimum: 0, maximum: 10 },
+            scalability: { type: "number", minimum: 0, maximum: 10 },
+            versatility: { type: "number", minimum: 0, maximum: 10 },
+            text_rendering: { type: "number", minimum: 0, maximum: 10 },
+            prompt_alignment: { type: "number", minimum: 0, maximum: 10 },
+            image_coherence: { type: "number", minimum: 0, maximum: 10 },
+            composition_balance: { type: "number", minimum: 0, maximum: 10 },
+          },
+        },
+      },
+    },
+  };
+}
+
 async function judgeLogo(imageUrl, context = {}, opts = {}) {
   const cfg = getOpenAIConfig();
   if (!cfg) return null;
@@ -87,7 +133,7 @@ async function judgeLogo(imageUrl, context = {}, opts = {}) {
     body: JSON.stringify({
       model: cfg.model,
       input,
-      text: { format: { type: "json_object" } },
+      response_format: { type: "json_schema", json_schema: buildResponseSchema() },
       temperature: 0,
       max_output_tokens: 300,
     }),
