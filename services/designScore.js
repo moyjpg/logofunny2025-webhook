@@ -145,6 +145,10 @@ async function scoreImageUrl(imageUrl) {
     ? dataUrlToBuffer(imageUrl)
     : await fetchImageBuffer(imageUrl);
 
+  return scoreImageBuffer(buffer);
+}
+
+async function scoreImageBuffer(buffer) {
   const { data, info } = await sharp(buffer)
     .resize(64, 64, { fit: "inside" })
     .raw()
@@ -194,4 +198,5 @@ async function scoreImageUrl(imageUrl) {
 
 module.exports = {
   scoreImageUrl,
+  scoreImageBuffer,
 };

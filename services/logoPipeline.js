@@ -1,6 +1,6 @@
 const { generateLogoMock, buildPromptFromBody } = require("./logoGenerateMock");
 const { uploadLogoImageToR2, uploadBufferToR2 } = require("./r2Upload");
-const { scoreImageUrl } = require("./designScore");
+const { scoreImageUrl, scoreImageBuffer } = require("./designScore");
 const { judgeLogo, getOpenAIConfig } = require("./openaiJudge");
 const { maybeGenerateMagicPrompt, shouldUseMagicPrompt } = require("./promptMagic");
 const fetch = require("node-fetch");
@@ -40,13 +40,24 @@ async function generateCandidate(mapped, prompt, index) {
 
   if (imageUrl) {
     try {
-      const res = await fetch(imageUrl);
-      const contentType = res.headers.get("content-type") || "";
+      let buffer = null;
+      let contentType = "";
+      const isDataUrl = /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(imageUrl);
+
+      if (isDataUrl) {
+        const match = imageUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+        contentType = match ? match[1] : "image/png";
+        buffer = Buffer.from(match ? match[2] : "", "base64");
+      } else {
+        const res = await fetch(imageUrl);
+        contentType = res.headers.get("content-type") || "";
+        const arrayBuffer = await res.arrayBuffer();
+        buffer = Buffer.from(arrayBuffer);
+      }
+
       const isSvg = contentType.includes("image/svg+xml") || imageUrl.toLowerCase().includes(".svg");
 
       if (isSvg) {
-        const arrayBuffer = await res.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
         const svgUploaded = await uploadBufferToR2(buffer, "image/svg+xml");
         svgUrl = svgUploaded.publicUrl;
         svgKey = svgUploaded.key;
@@ -55,17 +66,19 @@ async function generateCandidate(mapped, prompt, index) {
         const pngUploaded = await uploadBufferToR2(pngBuffer, "image/png");
         finalImageUrl = pngUploaded.publicUrl;
         r2Key = pngUploaded.key;
+        score = await scoreImageBuffer(pngBuffer);
       } else {
-        const uploaded = await uploadLogoImageToR2(imageUrl);
+        const uploaded = await uploadBufferToR2(buffer, contentType || "image/png");
         finalImageUrl = uploaded.publicUrl;
         r2Key = uploaded.key;
+        score = await scoreImageBuffer(buffer);
       }
     } catch (uploadErr) {
       console.error("[pipeline] R2 upload failed:", uploadErr);
     }
   }
 
-  if (finalImageUrl) {
+  if (!score && finalImageUrl) {
     score = await scoreImageUrl(finalImageUrl);
   }
 
