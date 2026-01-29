@@ -238,7 +238,9 @@ function formatReplicateError(err) {
 }
 
 function getReplicateModel() {
-  return process.env.REPLICATE_MODEL || "stability-ai/sdxl";
+  // Default to Recraft SVG for more logo-like vector results.
+  // You can override via REPLICATE_MODEL (e.g. stability-ai/sdxl).
+  return process.env.REPLICATE_MODEL || "recraft-ai/recraft-v3-svg";
 }
 
 async function replicateTextToImage(prompt) {
@@ -250,18 +252,31 @@ async function replicateTextToImage(prompt) {
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
-      const output = await replicate.run(
-        model,
-        {
+      // Recraft SVG expects prompt + size (+ optional style)
+      if (String(model).includes("recraft-ai/recraft-v3-svg")) {
+        const output = await replicate.run(model, {
           input: {
             prompt,
-            guidance_scale: 7,
-            width: 1024,
-            height: 1024,
-            num_inference_steps: 35,
+            size: process.env.RECRAFT_SIZE || "1024x1024",
+            // Keep style wide-open for now; we can tighten later once we see results.
+            style: process.env.RECRAFT_STYLE || "any",
           },
-        }
-      );
+        });
+        return output;
+      }
+
+      // SDXL-style models fallback
+      const output = await replicate.run(model, {
+        input: {
+          prompt,
+          negative_prompt:
+            "people, person, human, character, mascot, animal, cartoon, illustration, scene, background elements, hands, tools, ladders, workers, builders, sticker, clipart, sketch, outline drawing, photo, 3d, render, realistic lighting, clutter",
+          guidance_scale: 7,
+          width: 1024,
+          height: 1024,
+          num_inference_steps: 35,
+        },
+      });
       return output;
     } catch (err) {
       if (!isRateLimitError(err) || attempt >= retries) {
@@ -324,7 +339,7 @@ async function generateLogoMock(body) {
       return {
         imageUrl: Array.isArray(output) ? output[0] : output,
         prompt,
-        model: "replicate-sdxl",
+        model: String(getReplicateModel()).includes("recraft-ai/recraft-v3-svg") ? "replicate-recraft-v3-svg" : "replicate-sdxl",
         mode: "text-to-image",
       };
     } catch (replicateErr) {

@@ -18,13 +18,20 @@ function buildJudgePrompt(context) {
     : context?.colorTheme || "";
 
   return [
-    "You are a strict logo judge. Score the logo from 0-100 using the rubric.",
-    "Return ONLY a JSON object (no markdown, no extra text).",
-    "Required keys:",
-    "score (0-100),",
-    "breakdown: { brand_consistency, legibility, trademark_viability, originality, simplicity, scalability, versatility, text_rendering, prompt_alignment, image_coherence, composition_balance } (each 0-10),",
-    "notes (short string).",
-    "If unsure, still return JSON with best estimates.",
+    "You are a strict commercial logo compliance judge.",
+    "Analyze the image and return ONLY valid JSON that matches the provided JSON schema.",
+    "No markdown, no extra text.",
+    "",
+    "Scoring:",
+    "- score: 0-100 overall commercial logo quality",
+    "- breakdown: each 0-10",
+    "",
+    "Hard rules for violations:",
+    "- If ANY human/person/worker/photographer/character/mascot/humanoid appears (even small) => violations.hasPeople = true",
+    "- If the image is primarily a scene/illustration rather than a logo => violations.tooIllustrative = true",
+    "- If there is a background scene or multiple objects beyond a simple logo mark => violations.hasScene = true",
+    "",
+    "Violations must be conservative: when unsure, mark the violation as true.",
     "",
     `Brand name: ${brand}`,
     `Keywords: ${keywords}`,
@@ -37,10 +44,22 @@ function buildResponseSchema() {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["score", "breakdown", "notes"],
+    required: ["score", "breakdown", "notes", "violations"],
     properties: {
       score: { type: "number", minimum: 0, maximum: 100 },
       notes: { type: "string" },
+      violations: {
+        type: "object",
+        additionalProperties: false,
+        required: ["hasPeople", "hasHuman", "hasMascot", "hasScene", "tooIllustrative"],
+        properties: {
+          hasPeople: { type: "boolean" },
+          hasHuman: { type: "boolean" },
+          hasMascot: { type: "boolean" },
+          hasScene: { type: "boolean" },
+          tooIllustrative: { type: "boolean" },
+        },
+      },
       breakdown: {
         type: "object",
         additionalProperties: false,
@@ -78,6 +97,34 @@ function buildResponseSchema() {
 async function judgeLogo(imageUrl, context = {}, opts = {}) {
   const cfg = getOpenAIConfig();
   if (!cfg) return null;
+
+  // Dev switch: return a deterministic mock judge payload (useful to unblock UI work)
+  if (process.env.JUDGE_MOCK === "1") {
+    return {
+      score: 50,
+      notes: "mock_judge_enabled",
+      violations: {
+        hasPeople: false,
+        hasHuman: false,
+        hasMascot: false,
+        hasScene: false,
+        tooIllustrative: false,
+      },
+      breakdown: {
+        brand_consistency: 5,
+        legibility: 5,
+        trademark_viability: 5,
+        originality: 5,
+        simplicity: 5,
+        scalability: 5,
+        versatility: 5,
+        text_rendering: 5,
+        prompt_alignment: 5,
+        image_coherence: 5,
+        composition_balance: 5,
+      },
+    };
+  }
 
   let imageInput = imageUrl;
   try {
