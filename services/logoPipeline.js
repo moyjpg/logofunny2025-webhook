@@ -96,8 +96,11 @@ async function generateCandidate(mapped, prompt, index) {
 }
 
 async function runLogoPipeline(mapped, options = {}) {
-  const count = Math.max(1, Math.min(10, options.count || 5));
-  const topN = Math.max(1, Math.min(3, options.topN || 3));
+  // A1: For V1 frontend, keep generation count aligned with UI (1–3)
+  const requestedCount = Math.max(1, Math.min(3, Number(options.count ?? 1)));
+  // topN should never exceed requestedCount; default to requestedCount
+  const topN = Math.max(1, Math.min(requestedCount, Number(options.topN ?? requestedCount)));
+  const count = requestedCount;
   const maxParallelEnv = Number.parseInt(process.env.PIPELINE_MAX_PARALLEL, 10);
   const maxParallel = Number.isFinite(maxParallelEnv) ? maxParallelEnv : 2;
 
@@ -134,7 +137,8 @@ async function runLogoPipeline(mapped, options = {}) {
   let rankingMethod = "rule_only";
 
   if (openaiCfg) {
-    const llmTopK = Math.max(1, Math.min(5, options.llmTopK || 3));
+    // Judge only up to what we actually generated, and keep it modest
+    const llmTopK = Math.max(1, Math.min(5, Number(options.llmTopK ?? 3), ruleRanked.length));
     const judgeTargets = ruleRanked.slice(0, llmTopK);
 
     for (const candidate of judgeTargets) {
@@ -164,6 +168,8 @@ async function runLogoPipeline(mapped, options = {}) {
   }
 
   return {
+    requestedCount,
+    topN,
     candidates,
     top: ranked.slice(0, topN),
     rankingMethod,
