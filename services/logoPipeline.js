@@ -7,17 +7,35 @@ const fetch = require("node-fetch");
 const sharp = require("sharp");
 
 const STYLE_VARIANTS = [
-  "bold geometric mark, strong silhouette",
-  "monoline minimal icon, thin strokes",
-  "rounded friendly shapes, soft corners",
-  "sharp angular forms, tech-forward",
-  "luxury premium feel, elegant spacing",
-  "playful modern icon, simple shapes",
-  "abstract emblem, balanced symmetry",
-  "clean wordmark emphasis, minimal icon",
-  "negative space concept, clever cutouts",
-  "flat vector, ultra-minimal",
+  "pure wordmark, clean kerning, no icon",
+  "monogram / lettermark, interlocking letters, no icon",
+  "minimal geometric mark, single symbol, no illustration",
+  "flat vector badge, minimal, no characters",
+  "negative space logo, simple cutouts, no illustration",
+  "tech geometric, grid-based, sharp lines, no illustration",
+  "luxury minimal, elegant spacing, no illustration",
+  "ultra-minimal flat vector, single mark, no illustration",
 ];
+
+const LOGO_RULE_BLOCK = `
+LOGO RULES (STRICT, MUST FOLLOW):
+- Output must look like a REAL commercial logo suitable for trademark registration.
+- Single logo only. ONE mark (either: wordmark OR monogram OR one abstract symbol).
+- Plain background. Centered composition. No extra decorations.
+- Flat vector logo style (no photo, no 3D, no gradients, no shadows).
+- Geometric / minimal / grid-based structure.
+- High legibility at small sizes.
+
+ABSOLUTELY FORBIDDEN (if any appear, the result is INVALID):
+- Any people / humans / characters / mascots / animals.
+- Any scenes / environments / storytelling / objects held by characters.
+- Any illustration style (cartoon, outline人物, doodle, clipart).
+- Any complex multi-object composition.
+
+TEXT RULES:
+- If the logo contains text, the brand name must be clean, readable, and correctly spelled.
+- Prefer: wordmark-only or lettermark/monogram when brand name is short.
+`;
 
 function buildPromptVariants(basePrompt, count) {
   const variants = [];
@@ -104,13 +122,17 @@ async function runLogoPipeline(mapped, options = {}) {
   const maxParallelEnv = Number.parseInt(process.env.PIPELINE_MAX_PARALLEL, 10);
   const maxParallel = Number.isFinite(maxParallelEnv) ? maxParallelEnv : 2;
 
-  const seedPrompt = mapped?.promptOverride || buildPromptFromBody(mapped);
+  const basePrompt = mapped?.promptOverride || buildPromptFromBody(mapped);
+  const seedPrompt = `${basePrompt}\n\n${LOGO_RULE_BLOCK}\n\nNEGATIVE (HARD AVOID):\npeople, person, human, character, mascot, animal, cartoon, illustration, scene, background elements, hands, tools, ladders, workers, builders, sticker, clipart, sketch, outline drawing`;
+
   let finalSeedPrompt = seedPrompt;
 
+  // A1.5: Magic prompt is allowed ONLY as style refinement,
+  // never to override logo structure rules.
   if (shouldUseMagicPrompt(mapped, options)) {
     const magic = await maybeGenerateMagicPrompt(mapped, seedPrompt);
     if (magic) {
-      finalSeedPrompt = `${seedPrompt} / ${magic}`;
+      finalSeedPrompt = `${seedPrompt}\n\nMAGIC REFINEMENT (STYLE ONLY — must NOT introduce forbidden items):\n${magic}`;
     }
   }
 
@@ -144,23 +166,61 @@ async function runLogoPipeline(mapped, options = {}) {
     for (const candidate of judgeTargets) {
       try {
         const judge = await judgeLogo(candidate.imageUrl, mapped, { r2Key: candidate.r2Key });
+
+        // LLM judge fields
         candidate.llmScore = judge?.score ?? null;
         candidate.llmBreakdown = judge?.breakdown || null;
         candidate.llmNotes = judge?.notes || null;
+
+        // A1.5-2: hard disqualify if any people/characters/mascots/scenes are detected
+        // Support multiple possible return shapes to stay backward-compatible.
+        const v = judge?.violations || null;
+        const hasPeople =
+          v?.hasPeople === true ||
+          v?.hasHuman === true ||
+          v?.people === true ||
+          judge?.hasPeople === true ||
+          judge?.hasHuman === true;
+        const hasMascot = v?.hasMascot === true || v?.hasCharacter === true || judge?.hasMascot === true;
+        const hasScene = v?.hasScene === true || v?.hasEnvironment === true || judge?.hasScene === true;
+        const tooIllustrative = v?.tooIllustrative === true || v?.illustration === true || judge?.tooIllustrative === true;
+
+        candidate.violations = v;
+
+        if (hasPeople || hasMascot || hasScene || tooIllustrative) {
+          candidate.disqualified = true;
+          candidate.disqualifyReason = {
+            hasPeople,
+            hasMascot,
+            hasScene,
+            tooIllustrative,
+          };
+          // Force it to the bottom no matter what the other scores say
+          candidate.llmScore = 0;
+          candidate.finalScore = -999;
+        }
       } catch (err) {
         console.error("[pipeline] LLM judge failed:", err);
       }
     }
 
     ranked = [...candidates].sort((a, b) => {
+      // Always push disqualified candidates to the bottom
+      const da = a.disqualified ? 1 : 0;
+      const db = b.disqualified ? 1 : 0;
+      if (da !== db) return da - db;
+
       const ruleA = a.score?.score ?? 0;
       const ruleB = b.score?.score ?? 0;
       const llmA = typeof a.llmScore === "number" ? a.llmScore : ruleA;
-      const llmB = typeof b.llmScore === "number" ? b.llmScore : ruleB;
+      const llmB = typeof a.llmScore === "number" ? a.llmScore : ruleB;
       const finalA = ruleA * 0.6 + llmA * 0.4;
       const finalB = ruleB * 0.6 + llmB * 0.4;
-      a.finalScore = Math.round(finalA);
-      b.finalScore = Math.round(finalB);
+
+      // Keep any pre-set disqualify finalScore
+      if (typeof a.finalScore !== "number") a.finalScore = Math.round(finalA);
+      if (typeof b.finalScore !== "number") b.finalScore = Math.round(finalB);
+
       return finalB - finalA;
     });
 
@@ -171,7 +231,8 @@ async function runLogoPipeline(mapped, options = {}) {
     requestedCount,
     topN,
     candidates,
-    top: ranked.slice(0, topN),
+    // Keep top aligned to requestedCount/topN and skip disqualified ones first
+    top: ranked.filter((c) => !c.disqualified).slice(0, topN),
     rankingMethod,
   };
 }
