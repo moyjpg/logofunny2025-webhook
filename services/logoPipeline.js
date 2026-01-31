@@ -1,7 +1,7 @@
 const { generateLogoMock, buildPromptFromBody } = require("./logoGenerateMock");
 const { uploadLogoImageToR2, uploadBufferToR2 } = require("./r2Upload");
 const { scoreImageUrl, scoreImageBuffer } = require("./designScore");
-const { judgeLogo, getOpenAIConfig } = require("./openaiJudge");
+const { judgeLogo, getOpenAIConfig, isCommercialLogoPass } = require("./openaiJudge");
 const { maybeGenerateMagicPrompt, shouldUseMagicPrompt } = require("./promptMagic");
 const fetch = require("node-fetch");
 const sharp = require("sharp");
@@ -216,6 +216,21 @@ async function runLogoPipeline(mapped, options = {}) {
         candidate.llmScore = judge?.score ?? null;
         candidate.llmBreakdown = judge?.breakdown || null;
         candidate.llmNotes = judge?.notes || null;
+
+        // === COMMERCIAL LOGO HARD GATE ===
+        const commercialPass = isCommercialLogoPass(judge);
+        candidate.commercialPass = commercialPass;
+
+        if (!commercialPass) {
+          candidate.disqualified = true;
+          candidate.disqualifyReason = {
+            type: "commercial_gate",
+            detail: judge?.violations || null,
+          };
+          candidate.llmScore = 0;
+          candidate.finalScore = -999;
+          continue;
+        }
 
         // A1.5-2: hard disqualify if any people/characters/mascots/scenes are detected
         // Support multiple possible return shapes to stay backward-compatible.

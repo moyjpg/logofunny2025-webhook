@@ -94,6 +94,29 @@ function buildResponseSchema() {
   };
 }
 
+function isCommercialLogoPass(judgeResult) {
+  if (!judgeResult) return false;
+
+  const v = judgeResult.violations || {};
+  // 任何一项为 true 都直接判定不合格
+  if (
+    v.hasPeople ||
+    v.hasHuman ||
+    v.hasMascot ||
+    v.hasScene ||
+    v.tooIllustrative
+  ) {
+    return false;
+  }
+
+  // 商业商标最低质量阈值
+  if (typeof judgeResult.score === "number" && judgeResult.score < 70) {
+    return false;
+  }
+
+  return true;
+}
+
 async function judgeLogo(imageUrl, context = {}, opts = {}) {
   const cfg = getOpenAIConfig();
   if (!cfg) return null;
@@ -238,4 +261,5 @@ async function judgeLogo(imageUrl, context = {}, opts = {}) {
 module.exports = {
   judgeLogo,
   getOpenAIConfig,
+  isCommercialLogoPass,
 };
