@@ -152,7 +152,7 @@ async function runLogoPipeline(mapped, options = {}) {
   const requestedCount = Math.max(1, Math.min(3, Number(options.count ?? 1)));
   // topN should never exceed requestedCount; default to requestedCount
   const topN = Math.max(1, Math.min(requestedCount, Number(options.topN ?? requestedCount)));
-  const count = requestedCount;
+
   const maxParallelEnv = Number.parseInt(process.env.PIPELINE_MAX_PARALLEL, 10);
   const maxParallel = Number.isFinite(maxParallelEnv) ? maxParallelEnv : 2;
 
@@ -181,110 +181,201 @@ async function runLogoPipeline(mapped, options = {}) {
     }
   }
 
-  const promptVariants = buildPromptVariants(finalSeedPrompt, count, logoType);
-
-  const candidates = [];
-  for (let i = 0; i < promptVariants.length; i += maxParallel) {
-    const batch = promptVariants.slice(i, i + maxParallel);
-    const results = await Promise.all(
-      batch.map((p, idx) => generateCandidate(mapped, p, i + idx))
-    );
-    candidates.push(...results);
-  }
-
-  const ruleRanked = [...candidates].sort((a, b) => {
-    const sa = a.score?.score ?? -1;
-    const sb = b.score?.score ?? -1;
-    return sb - sa;
-  });
-
+  // LLM judge toggle
   const llmEnabled = String(process.env.USE_LLM || "").toLowerCase() !== "false";
   const openaiCfg = llmEnabled ? getOpenAIConfig() : null;
-  let ranked = ruleRanked;
-  let rankingMethod = "rule_only";
 
-  if (openaiCfg) {
-    // Judge only up to what we actually generated, and keep it modest
-    const llmTopK = Math.max(1, Math.min(5, Number(options.llmTopK ?? 3), ruleRanked.length));
-    const judgeTargets = ruleRanked.slice(0, llmTopK);
+  // Hard-gated pipeline: keep generating until we have enough passing candidates
+  const maxAttemptsEnv = Number.parseInt(process.env.PIPELINE_MAX_ATTEMPTS, 10);
+  const maxAttempts = Number.isFinite(maxAttemptsEnv)
+    ? maxAttemptsEnv
+    : Math.max(6, requestedCount * 6);
 
-    for (const candidate of judgeTargets) {
-      try {
-        const judge = await judgeLogo(candidate.imageUrl, mapped, { r2Key: candidate.r2Key });
+  // We will try multiple style variants; cycle deterministically for debuggability.
+  const stylePool = STYLE_VARIANTS_BY_TYPE[
+    ["wordmark", "lettermark", "icon"].includes(String(logoType)) ? String(logoType) : "auto"
+  ] || STYLE_VARIANTS_BY_TYPE.auto;
 
-        // LLM judge fields
-        candidate.llmScore = judge?.score ?? null;
-        candidate.llmBreakdown = judge?.breakdown || null;
-        candidate.llmNotes = judge?.notes || null;
+  const candidates = [];
+  const passing = [];
 
-        // === COMMERCIAL LOGO HARD GATE ===
-        const commercialPass = isCommercialLogoPass(judge);
-        candidate.commercialPass = commercialPass;
+  const debug = {
+    attempted: 0,
+    maxAttempts,
+    requestedCount,
+    topN,
+    llmEnabled: Boolean(openaiCfg),
+    disqualified: 0,
+    pass: 0,
+    reasons: {
+      commercial_gate: 0,
+      hasPeople: 0,
+      hasMascot: 0,
+      hasScene: 0,
+      tooIllustrative: 0,
+      judge_failed: 0,
+    },
+    stoppedBecause: "unknown",
+  };
 
-        if (!commercialPass) {
-          candidate.disqualified = true;
-          candidate.disqualifyReason = {
-            type: "commercial_gate",
-            detail: judge?.violations || null,
-          };
-          candidate.llmScore = 0;
-          candidate.finalScore = -999;
-          continue;
-        }
+  async function judgeAndTag(candidate) {
+    if (!openaiCfg) return candidate;
 
-        // A1.5-2: hard disqualify if any people/characters/mascots/scenes are detected
-        // Support multiple possible return shapes to stay backward-compatible.
-        const v = judge?.violations || null;
-        const hasPeople =
-          v?.hasPeople === true ||
-          v?.hasHuman === true ||
-          v?.people === true ||
-          judge?.hasPeople === true ||
-          judge?.hasHuman === true;
-        const hasMascot = v?.hasMascot === true || v?.hasCharacter === true || judge?.hasMascot === true;
-        const hasScene = v?.hasScene === true || v?.hasEnvironment === true || judge?.hasScene === true;
-        const tooIllustrative = v?.tooIllustrative === true || v?.illustration === true || judge?.tooIllustrative === true;
+    try {
+      const judge = await judgeLogo(candidate.imageUrl, mapped, { r2Key: candidate.r2Key });
 
-        candidate.violations = v;
+      // LLM judge fields
+      candidate.llmScore = judge?.score ?? null;
+      candidate.llmBreakdown = judge?.breakdown || null;
+      candidate.llmNotes = judge?.notes || null;
 
-        if (hasPeople || hasMascot || hasScene || tooIllustrative) {
-          candidate.disqualified = true;
-          candidate.disqualifyReason = {
-            hasPeople,
-            hasMascot,
-            hasScene,
-            tooIllustrative,
-          };
-          // Force it to the bottom no matter what the other scores say
-          candidate.llmScore = 0;
-          candidate.finalScore = -999;
-        }
-      } catch (err) {
-        console.error("[pipeline] LLM judge failed:", err);
+      // === COMMERCIAL LOGO HARD GATE ===
+      const commercialPass = isCommercialLogoPass(judge);
+      candidate.commercialPass = commercialPass;
+
+      if (!commercialPass) {
+        candidate.disqualified = true;
+        candidate.disqualifyReason = {
+          type: "commercial_gate",
+          detail: judge?.violations || null,
+        };
+        candidate.llmScore = 0;
+        candidate.finalScore = -999;
+        debug.disqualified += 1;
+        debug.reasons.commercial_gate += 1;
+        return candidate;
       }
+
+      // Hard disqualify if any people/characters/mascots/scenes are detected
+      const v = judge?.violations || null;
+      const hasPeople =
+        v?.hasPeople === true ||
+        v?.hasHuman === true ||
+        v?.people === true ||
+        judge?.hasPeople === true ||
+        judge?.hasHuman === true;
+      const hasMascot =
+        v?.hasMascot === true ||
+        v?.hasCharacter === true ||
+        judge?.hasMascot === true;
+      const hasScene =
+        v?.hasScene === true ||
+        v?.hasEnvironment === true ||
+        judge?.hasScene === true;
+      const tooIllustrative =
+        v?.tooIllustrative === true ||
+        v?.illustration === true ||
+        judge?.tooIllustrative === true;
+
+      candidate.violations = v;
+
+      if (hasPeople || hasMascot || hasScene || tooIllustrative) {
+        candidate.disqualified = true;
+        candidate.disqualifyReason = {
+          hasPeople,
+          hasMascot,
+          hasScene,
+          tooIllustrative,
+        };
+        candidate.llmScore = 0;
+        candidate.finalScore = -999;
+
+        debug.disqualified += 1;
+        if (hasPeople) debug.reasons.hasPeople += 1;
+        if (hasMascot) debug.reasons.hasMascot += 1;
+        if (hasScene) debug.reasons.hasScene += 1;
+        if (tooIllustrative) debug.reasons.tooIllustrative += 1;
+      }
+
+      return candidate;
+    } catch (err) {
+      console.error("[pipeline] LLM judge failed:", err);
+      candidate.disqualified = true;
+      candidate.disqualifyReason = { type: "judge_failed" };
+      candidate.llmScore = 0;
+      candidate.finalScore = -999;
+      debug.disqualified += 1;
+      debug.reasons.judge_failed += 1;
+      return candidate;
+    }
+  }
+
+  // Generate in batches for speed, but stop early once we have enough passing.
+  while (debug.attempted < maxAttempts && passing.length < topN) {
+    const remainingAttempts = maxAttempts - debug.attempted;
+    const batchSize = Math.min(maxParallel, remainingAttempts, Math.max(1, topN - passing.length));
+
+    const batchPrompts = [];
+    for (let j = 0; j < batchSize; j += 1) {
+      const style = stylePool[(debug.attempted + j) % stylePool.length];
+      batchPrompts.push(`${finalSeedPrompt}, style: ${style}`);
     }
 
-    ranked = [...candidates].sort((a, b) => {
-      // Always push disqualified candidates to the bottom
-      const da = a.disqualified ? 1 : 0;
-      const db = b.disqualified ? 1 : 0;
-      if (da !== db) return da - db;
+    const batchResults = await Promise.all(
+      batchPrompts.map((p, idx) => generateCandidate(mapped, p, debug.attempted + idx))
+    );
 
-      const ruleA = a.score?.score ?? 0;
-      const ruleB = b.score?.score ?? 0;
-      const llmA = typeof a.llmScore === "number" ? a.llmScore : ruleA;
-      const llmB = typeof a.llmScore === "number" ? a.llmScore : ruleB;
-      const finalA = ruleA * 0.6 + llmA * 0.4;
-      const finalB = ruleB * 0.6 + llmB * 0.4;
+    debug.attempted += batchResults.length;
 
-      // Keep any pre-set disqualify finalScore
-      if (typeof a.finalScore !== "number") a.finalScore = Math.round(finalA);
-      if (typeof b.finalScore !== "number") b.finalScore = Math.round(finalB);
+    for (const c of batchResults) {
+      candidates.push(c);
+    }
 
-      return finalB - finalA;
+    // Judge each candidate (if enabled) and collect passing
+    for (const c of batchResults) {
+      // If no image, disqualify
+      if (!c.imageUrl) {
+        c.disqualified = true;
+        c.disqualifyReason = { type: "no_image" };
+        c.finalScore = -999;
+        debug.disqualified += 1;
+        continue;
+      }
+
+      await judgeAndTag(c);
+
+      if (!c.disqualified) {
+        const ruleScore = c.score?.score ?? 0;
+        const llmScore = typeof c.llmScore === "number" ? c.llmScore : ruleScore;
+        const final = ruleScore * 0.6 + llmScore * 0.4;
+        c.finalScore = Math.round(final);
+        passing.push(c);
+        debug.pass += 1;
+      }
+
+      if (passing.length >= topN) break;
+    }
+  }
+
+  debug.stoppedBecause = passing.length >= topN ? "enough_passing" : "max_attempts";
+
+  // Ranking: passing first (by finalScore), then everything else (rule score)
+  const rankedPassing = [...passing].sort((a, b) => (b.finalScore ?? -999) - (a.finalScore ?? -999));
+  const rankedAll = [...candidates].sort((a, b) => {
+    const da = a.disqualified ? 1 : 0;
+    const db = b.disqualified ? 1 : 0;
+    if (da !== db) return da - db;
+
+    const fa = typeof a.finalScore === "number" ? a.finalScore : (a.score?.score ?? -1);
+    const fb = typeof b.finalScore === "number" ? b.finalScore : (b.score?.score ?? -1);
+    return fb - fa;
+  });
+
+  // If LLM judge is off, keep old rule-only behavior (but still deterministic)
+  let rankingMethod = "rule_only";
+  let top = [];
+
+  if (!openaiCfg) {
+    const ruleRanked = [...candidates].sort((a, b) => {
+      const sa = a.score?.score ?? -1;
+      const sb = b.score?.score ?? -1;
+      return sb - sa;
     });
-
-    rankingMethod = "rule_plus_llm";
+    top = ruleRanked.slice(0, topN);
+    rankingMethod = "rule_only";
+  } else {
+    top = rankedPassing.slice(0, topN);
+    rankingMethod = "rule_plus_llm_hard_gate";
   }
 
   return {
@@ -295,12 +386,12 @@ async function runLogoPipeline(mapped, options = {}) {
     meta: {
       llmEnabled: Boolean(openaiCfg),
       pipelineMaxParallel: maxParallel,
+      debug,
     },
     requestedCount,
     topN,
-    candidates,
-    // Keep top aligned to requestedCount/topN and skip disqualified ones first
-    top: ranked.filter((c) => !c.disqualified).slice(0, topN),
+    candidates: rankedAll,
+    top,
     rankingMethod,
   };
 }
