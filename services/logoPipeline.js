@@ -6,16 +6,34 @@ const { maybeGenerateMagicPrompt, shouldUseMagicPrompt } = require("./promptMagi
 const fetch = require("node-fetch");
 const sharp = require("sharp");
 
-const STYLE_VARIANTS = [
-  "pure wordmark, clean kerning, no icon",
-  "monogram / lettermark, interlocking letters, no icon",
-  "minimal geometric mark, single symbol, no illustration",
-  "flat vector badge, minimal, no characters",
-  "negative space logo, simple cutouts, no illustration",
-  "tech geometric, grid-based, sharp lines, no illustration",
-  "luxury minimal, elegant spacing, no illustration",
-  "ultra-minimal flat vector, single mark, no illustration",
-];
+const STYLE_VARIANTS_BY_TYPE = {
+  wordmark: [
+    "pure wordmark, typography-only, clean kerning, no icon",
+    "wordmark-only, modern sans, balanced spacing, no icon",
+    "wordmark-only, geometric sans, clean ligatures, no icon",
+    "wordmark-only, minimal, high legibility, no icon",
+  ],
+  lettermark: [
+    "monogram / lettermark, interlocking letters, no icon",
+    "lettermark, fused strokes, shared stems, no icon",
+    "monogram, negative space overlap, no icon",
+    "lettermark, grid-based, sharp lines, no icon",
+  ],
+  icon: [
+    "minimal geometric mark, single abstract symbol, no illustration",
+    "negative space logo, simple cutouts, no illustration",
+    "tech geometric, grid-based, sharp lines, no illustration",
+    "ultra-minimal flat vector, single mark, no illustration",
+  ],
+  auto: [
+    "pure wordmark, clean kerning, no icon",
+    "monogram / lettermark, interlocking letters, no icon",
+    "minimal geometric mark, single symbol, no illustration",
+    "negative space logo, simple cutouts, no illustration",
+    "tech geometric, grid-based, sharp lines, no illustration",
+    "luxury minimal, elegant spacing, no illustration",
+  ],
+};
 
 const LOGO_RULE_BLOCK = `
 LOGO RULES (STRICT, MUST FOLLOW):
@@ -37,17 +55,33 @@ TEXT RULES:
 - Prefer: wordmark-only or lettermark/monogram when brand name is short.
 `;
 
-function buildPromptVariants(basePrompt, count) {
+function buildPromptVariants(basePrompt, count, logoType = "auto") {
   const variants = [];
+  const key = ["wordmark", "lettermark", "icon"].includes(String(logoType))
+    ? String(logoType)
+    : "auto";
+  const styles = STYLE_VARIANTS_BY_TYPE[key] || STYLE_VARIANTS_BY_TYPE.auto;
+
   for (let i = 0; i < count; i += 1) {
-    const style = STYLE_VARIANTS[i % STYLE_VARIANTS.length];
+    const style = styles[i % styles.length];
     variants.push(`${basePrompt}, style: ${style}`);
   }
   return variants;
 }
 
 async function generateCandidate(mapped, prompt, index) {
-  const result = await generateLogoMock({ ...mapped, promptOverride: prompt });
+  const inputImageUrl =
+    mapped?.inputImageUrl ||
+    mapped?.uploadImageUrl ||
+    mapped?.referenceImageUrl ||
+    null;
+
+  const result = await generateLogoMock({
+    ...mapped,
+    promptOverride: prompt,
+    inputImageUrl,
+    mode: inputImageUrl ? "img2img" : "text2img",
+  });
   const imageUrl = result?.imageUrl || null;
 
   let score = null;
@@ -122,8 +156,19 @@ async function runLogoPipeline(mapped, options = {}) {
   const maxParallelEnv = Number.parseInt(process.env.PIPELINE_MAX_PARALLEL, 10);
   const maxParallel = Number.isFinite(maxParallelEnv) ? maxParallelEnv : 2;
 
+  const logoTypeRaw = options.logoType ?? mapped?.logoType ?? "auto";
+  const logoType = ["wordmark", "lettermark", "icon"].includes(String(logoTypeRaw))
+    ? String(logoTypeRaw)
+    : "auto";
+
+  const inputImageUrl =
+    mapped?.inputImageUrl ||
+    mapped?.uploadImageUrl ||
+    mapped?.referenceImageUrl ||
+    null;
+
   const basePrompt = mapped?.promptOverride || buildPromptFromBody(mapped);
-  const seedPrompt = `${basePrompt}\n\n${LOGO_RULE_BLOCK}\n\nNEGATIVE (HARD AVOID):\npeople, person, human, character, mascot, animal, cartoon, illustration, scene, background elements, hands, tools, ladders, workers, builders, sticker, clipart, sketch, outline drawing`;
+  const seedPrompt = `${basePrompt}\n\nLOGO TYPE: ${logoType}\n\n${LOGO_RULE_BLOCK}\n\nNEGATIVE (HARD AVOID):\npeople, person, human, character, mascot, animal, cartoon, illustration, scene, background elements, hands, tools, ladders, workers, builders, sticker, clipart, sketch, outline drawing`;
 
   let finalSeedPrompt = seedPrompt;
 
@@ -136,7 +181,7 @@ async function runLogoPipeline(mapped, options = {}) {
     }
   }
 
-  const promptVariants = buildPromptVariants(finalSeedPrompt, count);
+  const promptVariants = buildPromptVariants(finalSeedPrompt, count, logoType);
 
   const candidates = [];
   for (let i = 0; i < promptVariants.length; i += maxParallel) {
@@ -228,6 +273,14 @@ async function runLogoPipeline(mapped, options = {}) {
   }
 
   return {
+    input: {
+      hasImage: Boolean(inputImageUrl),
+      logoType,
+    },
+    meta: {
+      llmEnabled: Boolean(openaiCfg),
+      pipelineMaxParallel: maxParallel,
+    },
     requestedCount,
     topN,
     candidates,
