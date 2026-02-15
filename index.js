@@ -177,6 +177,7 @@ app.post("/generate__legacy", async (req, res) => {
 
     const input = { prompt: String(prompt) };
     const output = await replicate.run(model, { input });
+    console.log("[replicate output]", output)
 
     return res.status(200).json({
       ok: true,
