@@ -5,6 +5,15 @@ const { uploadLogoImageToR2, uploadLogoSvgTextToR2 } = require('../services/r2Up
 
 const router = express.Router();
 
+/** Safe preview for logging: never log full SVG or long strings. Returns { preview, length }. */
+function safePreview(str, max = 120) {
+  if (str == null) return { preview: '', length: 0 };
+  const s = String(str);
+  const len = s.length;
+  const preview = len <= max ? s : s.slice(0, max) + '…';
+  return { preview, length: len };
+}
+
 // --- Elementor → AI 字段映射器（兼容 body.fields / 直接 body / curl） ---
 function mapElementorToAI(body) {
   // Elementor webhook 常见结构：{ form: {...}, fields: {...} }
@@ -48,27 +57,29 @@ router.post('/test-generate-logo', (req, res) => {
 
 // POST /generate-logo  (Elementor -> backend)
 router.post('/generate-logo', async (req, res) => {
-  console.log('[HIT] /generate-logo -> routes/logoApiRoutes.js')
-  console.log('[BODY]', req.body)
   const requestStart = Date.now();
-  console.log('[perf][generate-logo] request start at', new Date(requestStart).toISOString());
+  const requestId = String(Date.now()) + Math.random().toString(16).slice(2);
+
+  // 2) 字段映射：Elementor -> AI 输入（early for HIT/BODY logs）
+  const mapped = mapElementorToAI(req.body);
+  const mode = mapped.uploadImage ? 'img2img' : 'text2img';
+
+  console.log(
+    '[HIT] /generate-logo',
+    'timestamp=', new Date(requestStart).toISOString(),
+    'requestId=', requestId,
+    'brandName=', safePreview(mapped.brandName).preview,
+    'mode=', mode
+  );
+  console.log(
+    '[BODY]',
+    'brandNameLen=', safePreview(mapped.brandName).length,
+    'keywordsLen=', safePreview(mapped.keywords).length,
+    'hasUploadImage=', Boolean(mapped.uploadImage),
+    'colorThemeCount=', Array.isArray(mapped.colorTheme) ? mapped.colorTheme.length : 0
+  );
+
   try {
-    // 1) 把 Elementor 原始 body 显示出来（保留，方便排错）
-    console.log('[generate-logo] body keys =', Object.keys(req.body || {}));
-    const safe = JSON.parse(JSON.stringify(req.body || {}));
-
-    // 常见“炸弹字段”兜底：如果有就用占位符替换
-    if (safe?.fields?.uploadLogo) safe.fields.uploadLogo = "[uploadLogo present]";
-    if (safe?.fields?.uploadImage) safe.fields.uploadImage = "[uploadImage present]";
-    if (safe?.form?.fields?.uploadLogo) safe.form.fields.uploadLogo = "[uploadLogo present]";
-    if (safe?.form?.fields?.uploadImage) safe.form.fields.uploadImage = "[uploadImage present]";
-
-    console.log("[generate-logo] body preview =", JSON.stringify(safe, null, 2));
-
-    // 2) 字段映射：Elementor -> AI 输入
-    const mapped = mapElementorToAI(req.body);
-    console.log('[generate-logo] mapped fields:', mapped);
-
     // 3) 轻量校验（注意：为了不让 Elementor 报 “Webhook error”，这里不返回 4xx，统一返回 200）
     const hasText = (mapped.brandName && mapped.brandName.trim()) || (mapped.keywords && mapped.keywords.trim());
     if (!hasText) {
@@ -117,19 +128,24 @@ router.post('/generate-logo', async (req, res) => {
     ) {
       try {
         const uploadedSvg = await uploadLogoSvgTextToR2(svgText);
-        console.log('[generate-logo] SVG uploaded to R2:', uploadedSvg.svgUrl);
+        const svgUrl = uploadedSvg.svgUrl;
+        console.log('[generate-logo] SVG uploaded to R2:', svgUrl);
         const tEnd = Date.now();
         console.log('[perf][generate-logo] total request time ms =', tEnd - requestStart);
+        console.log(
+          '[RESULT]', 'success=true', 'model=', result?.model || 'mock', 'mode=', result?.mode || mode,
+          'r2Key=', uploadedSvg.r2Key || null, 'imageUrl=present', 'svgUrl=present'
+        );
         return res.status(200).json({
           success: true,
           data: {
-            svgUrl: uploadedSvg.svgUrl,
-            imageUrl: null,
+            svgUrl,
+            imageUrl: svgUrl,
             prompt: result?.prompt || null,
             model: result?.model || 'mock',
-            mode: result?.mode || (mapped.uploadImage ? 'img2img' : 'text2img'),
+            mode: result?.mode || mode,
             r2Key: uploadedSvg.r2Key,
-            mapped, // ✅ 先一起回传，方便你肉眼确认字段没丢。等稳定后我们再删掉
+            mapped,
           },
           error: null,
         });
@@ -152,18 +168,41 @@ router.post('/generate-logo', async (req, res) => {
       }
     }
 
-    // 7) 统一返回格式（给 Elementor/前端用）
     const tEnd = Date.now();
     console.log('[perf][generate-logo] total request time ms =', tEnd - requestStart);
+    const hasImageUrl = Boolean(finalImageUrl);
+    console.log(
+      '[RESULT]', 'success=', hasImageUrl, 'model=', result?.model || 'mock', 'mode=', result?.mode || mode,
+      'r2Key=', r2Key || null, 'imageUrl=', hasImageUrl ? 'present' : 'missing', 'svgUrl=missing'
+    );
+
+    // 7) 统一返回格式（给 Elementor/前端用）
+    if (!finalImageUrl) {
+      return res.status(200).json({
+        success: false,
+        data: {
+          imageUrl: null,
+          svgUrl: null,
+          prompt: result?.prompt || null,
+          model: result?.model || 'mock',
+          mode: result?.mode || mode,
+          r2Key: null,
+          mapped,
+          debug: 'No image or SVG was produced.',
+        },
+        error: 'No image or SVG was produced.',
+      });
+    }
+
     return res.status(200).json({
       success: true,
       data: {
         imageUrl: finalImageUrl,
         prompt: result?.prompt || null,
         model: result?.model || 'mock',
-        mode: result?.mode || (mapped.uploadImage ? 'img2img' : 'text2img'),
+        mode: result?.mode || mode,
         r2Key,
-        mapped, // ✅ 先一起回传，方便你肉眼确认字段没丢。等稳定后我们再删掉
+        mapped,
       },
       error: null,
     });
