@@ -1,6 +1,40 @@
 // routes/aiRoutes.js
 const express = require("express");
 const router = express.Router();
+// ===== Brand Plan (safe fallback) =====
+router.post("/brand-plan", (req, res) => {
+  console.log("[brand-plan] hit");
+
+  return res.json({
+    ok: true,
+    data: {
+      oneLiner: "This brand should focus on clarity, simplicity, and strong visual contrast.",
+      keywords: ["clean", "distinct", "scalable"],
+      palette: [
+        { name: "Primary", hex: "#3B82F6" },
+        { name: "Secondary", hex: "#FFFFFF" },
+        { name: "Accent", hex: "#111827" }
+      ],
+      typeStyle: {
+        logoFont: "Bold sans-serif for readability",
+        taglineFont: "Lighter sans-serif for hierarchy"
+      },
+      doDont: {
+        do: [
+          "Keep it simple",
+          "Maintain strong contrast",
+          "Ensure legibility at small sizes"
+        ],
+        dont: [
+          "Overly complex shapes",
+          "Too many gradients",
+          "Tiny decorative details"
+        ]
+      },
+      promptSeed: "minimal clean scalable high-contrast brand logo"
+    }
+  });
+});
 
 const { buildPrompts } = require("../utils/promptEngine");
 const { generateSvgFromPrompt, svgToPngBuffer } = require("../services/aiGenerateService");
@@ -49,6 +83,69 @@ router.post("/generate__ai", async (req, res) => {
       error: err?.message || String(err),
     });
   }
+});
+
+// ===== Brand Plan (mock) =====
+router.post("/brand-plan", (req, res) => {
+  const {
+    brandName = "",
+    tagline = "",
+    keywords = "",
+    style = "",
+    iconStyle = "",
+    detailLevel = "",
+    colorTheme = "",
+    customColors = "",
+    industry = "",
+    brandFontVibe = "",
+    taglineFontVibe = "",
+    otherNotes = "",
+  } = req.body || {};
+
+  const kwList = String(keywords)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  return res.json({
+    ok: true,
+    data: {
+      oneLiner: `${brandName || "Your brand"}${
+        industry ? ` (${industry})` : ""
+      } should use a ${style || "modern"} ${
+        iconStyle || ""
+      } approach, focusing on clarity and scalability.`,
+      keywords: (kwList.length ? kwList : ["clean", "distinct", "trustworthy"]).slice(0, 3),
+      palette: [
+        { name: "Primary", hex: "#3B82F6" },
+        { name: "Secondary", hex: "#FFFFFF" },
+        { name: "Accent", hex: "#111827" },
+      ],
+      typeStyle: {
+        logoFont: brandFontVibe
+          ? `Logo font vibe: ${brandFontVibe}`
+          : "Bold sans-serif for readability",
+        taglineFont: taglineFontVibe
+          ? `Tagline font vibe: ${taglineFontVibe}`
+          : "Lighter weight for hierarchy",
+      },
+      doDont: {
+        do: ["Keep it simple", "Ensure legibility at small sizes", "Use strong contrast"],
+        dont: ["Overly complex shapes", "Too many gradients", "Tiny details"],
+      },
+      promptSeed: [
+        style,
+        iconStyle,
+        detailLevel,
+        kwList.join(", "),
+        colorTheme || customColors,
+        otherNotes,
+      ]
+        .filter(Boolean)
+        .join(" | ")
+        .slice(0, 220),
+    },
+  });
 });
 
 module.exports = router;

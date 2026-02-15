@@ -238,9 +238,9 @@ function formatReplicateError(err) {
 }
 
 function getReplicateModel() {
-  // Default to Recraft SVG for more logo-like vector results.
-  // You can override via REPLICATE_MODEL (e.g. stability-ai/sdxl).
-  return process.env.REPLICATE_MODEL || "recraft-ai/recraft-v3-svg";
+  // Default to SDXL text-to-image for versatile logo generation.
+  // You can override via REPLICATE_MODEL (e.g. recraft-ai/recraft-v3-svg).
+  return process.env.REPLICATE_MODEL || "stability-ai/sdxl";
 }
 
 async function replicateTextToImage(prompt) {
@@ -262,6 +262,18 @@ async function replicateTextToImage(prompt) {
             style: process.env.RECRAFT_STYLE || "any",
           },
         });
+        console.log("[Replicate][recraft-v3-svg] raw output =", output);
+
+        // If streaming SVG (ReadableStream), read to text via Response
+        if (output && typeof output.getReader === "function") {
+          const svgText = await new Response(output).text();
+          return svgText;
+        }
+
+        // Array or string URL: keep behavior as before
+        if (Array.isArray(output)) {
+          return output[0];
+        }
         return output;
       }
 
@@ -335,11 +347,24 @@ async function generateLogoMock(body) {
     try {
       console.log(`[Replicate] text-to-image model=${getReplicateModel()}`);
       const output = await replicateTextToImage(prompt);
+      const modelName = getReplicateModel();
+      const isRecraft = String(modelName).includes("recraft-ai/recraft-v3-svg");
+
+      // If Recraft and we got SVG text, surface it as rawSvgText
+      if (isRecraft && typeof output === "string" && (output.trim().startsWith("<svg") || output.includes("<svg"))) {
+        return {
+          imageUrl: null,
+          rawSvgText: output,
+          prompt,
+          model: "replicate-recraft-v3-svg",
+          mode: "text-to-image",
+        };
+      }
 
       return {
         imageUrl: Array.isArray(output) ? output[0] : output,
         prompt,
-        model: String(getReplicateModel()).includes("recraft-ai/recraft-v3-svg") ? "replicate-recraft-v3-svg" : "replicate-sdxl",
+        model: isRecraft ? "replicate-recraft-v3-svg" : "replicate-sdxl",
         mode: "text-to-image",
       };
     } catch (replicateErr) {

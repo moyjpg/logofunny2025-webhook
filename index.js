@@ -170,7 +170,7 @@ app.get("/debug", (req, res) => {
 });
 app.post("/generate__legacy", async (req, res) => {
   try {
-    const model = process.env.REPLICATE_MODEL || "recraft-ai/recraft-v3-svg";
+    const model = process.env.REPLICATE_MODEL || "stability-ai/sdxl";
     const prompt =
       (req.body && (req.body.prompt || req.body.text)) ||
       "minimal vector logo, clean, modern, flat design, no gradients";
@@ -193,7 +193,7 @@ app.post("/generate__legacy", async (req, res) => {
 });
 app.post("/generate-svg", async (req, res) => {
   try {
-    const model = process.env.REPLICATE_MODEL || "recraft-ai/recraft-v3-svg";
+    const model = process.env.REPLICATE_MODEL || "stability-ai/sdxl";
     const brandName = req.body?.brandName || "Brand";
     const keywords = req.body?.keywords || "modern, minimal, saas";
     const prompt = buildLogoPrompt({ brandName, keywords });
@@ -230,7 +230,7 @@ app.post("/generate-svg", async (req, res) => {
 });
 app.post("/generate-png", async (req, res) => {
   try {
-    const model = process.env.REPLICATE_MODEL || "recraft-ai/recraft-v3-svg";
+    const model = process.env.REPLICATE_MODEL || "stability-ai/sdxl";
     const brandName = req.body?.brandName || "Brand";
     const keywords = req.body?.keywords || "modern, minimal, saas";
     const prompt = buildLogoPrompt({ brandName, keywords });

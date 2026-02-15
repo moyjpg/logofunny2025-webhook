@@ -11,7 +11,7 @@ function getReplicate() {
 
 async function generateSvgFromPrompt(prompt, model = null) {
   const replicate = getReplicate();
-  const m = model || process.env.REPLICATE_MODEL || "recraft-ai/recraft-v3-svg";
+  const m = model || process.env.REPLICATE_MODEL || "stability-ai/sdxl";
 
   const output = await replicate.run(m, {
     input: { prompt: String(prompt) }

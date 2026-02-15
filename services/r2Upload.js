@@ -132,8 +132,17 @@ async function uploadBufferToR2(buffer, contentType, opts = {}) {
   return { key, publicUrl: buildPublicUrl(key) };
 }
 
+async function uploadLogoSvgTextToR2(svgText, opts = {}) {
+  const buffer = Buffer.from(svgText || "", "utf8");
+  const { key, publicUrl } = await uploadBufferToR2(buffer, "image/svg+xml", {
+    prefix: opts.prefix || "logos",
+  });
+  return { svgUrl: publicUrl, r2Key: key };
+}
+
 module.exports = {
   uploadLogoImageToR2,
   getR2ObjectBuffer,
   uploadBufferToR2,
+  uploadLogoSvgTextToR2,
 };
