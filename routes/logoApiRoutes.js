@@ -1,6 +1,7 @@
 const express = require('express');
-const { generateLogoMock } = require('../services/logoGenerateMock');
+const { generateLogoMock, buildPromptFromBody } = require('../services/logoGenerateMock');
 const { uploadLogoImageToR2, uploadLogoSvgTextToR2 } = require('../services/r2Upload');
+const { generateDesignDecision, buildPromptFromDesignDecision, generateBrandInsight } = require('../services/designDecision');
 // const { runLogoPipeline } = require('../services/logoPipeline'); // temporarily disabled: single-candidate mode
 
 const router = express.Router();
@@ -12,6 +13,88 @@ function safePreview(str, max = 120) {
   const len = s.length;
   const preview = len <= max ? s : s.slice(0, max) + '…';
   return { preview, length: len };
+}
+
+/**
+ * Normalize one generateLogoMock result to a dual-track item (imageUrl, svgUrl, prompt, model, mode, r2Key).
+ * Uploads to R2 when needed. Never logs raw SVG.
+ */
+async function normalizeResultToItem(result) {
+  let imageUrl = null;
+  let svgUrl = null;
+  let r2Key = null;
+  const prompt = result?.prompt ?? null;
+  const model = result?.model ?? 'mock';
+  const mode = result?.mode ?? 'text2img';
+
+  if (result && typeof result.rawSvgText === 'string' && result.rawSvgText.includes('<svg')) {
+    try {
+      const uploaded = await uploadLogoSvgTextToR2(result.rawSvgText);
+      svgUrl = uploaded.svgUrl;
+      imageUrl = uploaded.svgUrl;
+      r2Key = uploaded.r2Key;
+    } catch (e) {
+      console.error('[dual-track] SVG R2 upload failed:', e?.message);
+    }
+  } else if (typeof result === 'string' && result.includes('<svg')) {
+    try {
+      const uploaded = await uploadLogoSvgTextToR2(result);
+      svgUrl = uploaded.svgUrl;
+      imageUrl = uploaded.svgUrl;
+      r2Key = uploaded.r2Key;
+    } catch (e) {
+      console.error('[dual-track] SVG R2 upload failed:', e?.message);
+    }
+  } else {
+    const raw = typeof result === 'string' ? result : (result?.imageUrl ?? null);
+    if (raw) {
+      try {
+        const uploaded = await uploadLogoImageToR2(raw);
+        imageUrl = uploaded.publicUrl;
+        r2Key = uploaded.key;
+      } catch (e) {
+        console.error('[dual-track] R2 upload failed:', e?.message);
+      }
+    }
+  }
+
+  return { imageUrl, svgUrl, prompt, model, mode, r2Key };
+}
+
+/**
+ * Shared dual-track pipeline: 2 user-driven + 2 system-recommended logos.
+ * @param {Object} mapped - mapped user input
+ * @returns {Promise<{ basedOnUser: Array, recommended: Array, designDecision: Object, brandInsight: string }>}
+ */
+async function runDualTrackPipeline(mapped) {
+  const designDecision = generateDesignDecision(mapped);
+  const brandInsight = generateBrandInsight(designDecision);
+
+  const userPromptBase = buildPromptFromBody(mapped);
+  const userResult1 = await generateLogoMock(mapped);
+  const userResult2 = await generateLogoMock({
+    ...mapped,
+    promptOverride: userPromptBase + " Alternative take: emphasis on icon clarity and negative space.",
+  });
+
+  const sysPromptBase = buildPromptFromDesignDecision(designDecision, mapped.brandName);
+  const sysInput = { ...mapped, promptOverride: sysPromptBase };
+  const sysResult1 = await generateLogoMock(sysInput);
+  const sysResult2 = await generateLogoMock({
+    ...mapped,
+    promptOverride: sysPromptBase + " Slight variation: balanced proportions.",
+  });
+
+  const basedOnUser = await Promise.all([
+    normalizeResultToItem(userResult1),
+    normalizeResultToItem(userResult2),
+  ]);
+  const recommended = await Promise.all([
+    normalizeResultToItem(sysResult1),
+    normalizeResultToItem(sysResult2),
+  ]);
+
+  return { basedOnUser, recommended, designDecision, brandInsight };
 }
 
 // --- Elementor → AI 字段映射器（兼容 body.fields / 直接 body / curl） ---
@@ -55,36 +138,20 @@ router.post('/test-generate-logo', (req, res) => {
   });
 });
 
-// POST /generate-logo  (Elementor -> backend)
+// POST /generate-logo  (Elementor -> backend; returns dual-track shape, same as /generate-logo-dual)
 router.post('/generate-logo', async (req, res) => {
   const requestStart = Date.now();
   const requestId = String(Date.now()) + Math.random().toString(16).slice(2);
-
-  // 2) 字段映射：Elementor -> AI 输入（early for HIT/BODY logs）
   const mapped = mapElementorToAI(req.body);
   const mode = mapped.uploadImage ? 'img2img' : 'text2img';
 
-  console.log(
-    '[HIT] /generate-logo',
-    'timestamp=', new Date(requestStart).toISOString(),
-    'requestId=', requestId,
-    'brandName=', safePreview(mapped.brandName).preview,
-    'mode=', mode
-  );
-  console.log(
-    '[BODY]',
-    'brandNameLen=', safePreview(mapped.brandName).length,
-    'keywordsLen=', safePreview(mapped.keywords).length,
-    'hasUploadImage=', Boolean(mapped.uploadImage),
-    'colorThemeCount=', Array.isArray(mapped.colorTheme) ? mapped.colorTheme.length : 0
-  );
+  console.log('[HIT] /generate-logo route=generate-logo', 'timestamp=', new Date(requestStart).toISOString(), 'requestId=', requestId, 'brandName=', safePreview(mapped.brandName).preview, 'mode=', mode);
+  console.log('[BODY]', 'brandNameLen=', safePreview(mapped.brandName).length, 'keywordsLen=', safePreview(mapped.keywords).length, 'hasUploadImage=', Boolean(mapped.uploadImage), 'colorThemeCount=', Array.isArray(mapped.colorTheme) ? mapped.colorTheme.length : 0);
 
   try {
-    // 3) 轻量校验（注意：为了不让 Elementor 报 “Webhook error”，这里不返回 4xx，统一返回 200）
     const hasText = (mapped.brandName && mapped.brandName.trim()) || (mapped.keywords && mapped.keywords.trim());
     if (!hasText) {
-      const tEnd = Date.now();
-      console.log('[perf][generate-logo] total request time (validation failed) ms =', tEnd - requestStart);
+      console.log('[perf][generate-logo] total request time (validation failed) ms =', Date.now() - requestStart);
       return res.status(200).json({
         success: false,
         data: null,
@@ -92,126 +159,22 @@ router.post('/generate-logo', async (req, res) => {
       });
     }
 
-    // 4) 真正调用生成（先接你现有的 generateLogoMock，让链路先跑通）
-    //    你现在顶部引入的是：const { generateLogoMock } = require('../services/logoGenerateMock');
-    const beforeGeneration = Date.now();
-    console.log('[perf][generate-logo] time before generation msSinceRequestStart =', beforeGeneration - requestStart);
-    const result = await generateLogoMock(mapped);
-    const afterGeneration = Date.now();
-    console.log('[perf][generate-logo] time after image generated ms =', afterGeneration - beforeGeneration);
-
-    // 5) 兼容不同返回结构：提取 imageUrl / SVG
-    let imageUrl = null;
-    if (typeof result === 'string') {
-      imageUrl = result;
-    } else if (result && typeof result.imageUrl === 'string') {
-      imageUrl = result.imageUrl;
-    } else if (result && result.data && typeof result.data.imageUrl === 'string') {
-      imageUrl = result.data.imageUrl;
-    }
-
-    // SVG-first path for Recraft: if no imageUrl but we have raw SVG text
-    let svgText = null;
-    if (!imageUrl) {
-      if (result && typeof result.rawSvgText === 'string' && result.rawSvgText.includes('<svg')) {
-        svgText = result.rawSvgText;
-      } else if (typeof result === 'string' && result.includes('<svg')) {
-        svgText = result;
-      }
-    }
-
-    if (
-      svgText &&
-      result &&
-      typeof result.model === 'string' &&
-      result.model.toLowerCase().includes('recraft')
-    ) {
-      try {
-        const uploadedSvg = await uploadLogoSvgTextToR2(svgText);
-        const svgUrl = uploadedSvg.svgUrl;
-        console.log('[generate-logo] SVG uploaded to R2:', svgUrl);
-        const tEnd = Date.now();
-        console.log('[perf][generate-logo] total request time ms =', tEnd - requestStart);
-        console.log(
-          '[RESULT]', 'success=true', 'model=', result?.model || 'mock', 'mode=', result?.mode || mode,
-          'r2Key=', uploadedSvg.r2Key || null, 'imageUrl=present', 'svgUrl=present'
-        );
-        return res.status(200).json({
-          success: true,
-          data: {
-            svgUrl,
-            imageUrl: svgUrl,
-            prompt: result?.prompt || null,
-            model: result?.model || 'mock',
-            mode: result?.mode || mode,
-            r2Key: uploadedSvg.r2Key,
-            mapped,
-          },
-          error: null,
-        });
-      } catch (svgUploadErr) {
-        console.error('[generate-logo] SVG R2 upload failed:', svgUploadErr);
-        // fall through to image upload path (if any)
-      }
-    }
-
-    // 6) 上传到 R2，拿可访问 URL
-    let finalImageUrl = imageUrl;
-    let r2Key = null;
-    if (imageUrl) {
-      try {
-        const uploaded = await uploadLogoImageToR2(imageUrl);
-        finalImageUrl = uploaded.publicUrl;
-        r2Key = uploaded.key;
-      } catch (uploadErr) {
-        console.error('[generate-logo] R2 upload failed:', uploadErr);
-      }
-    }
-
+    const data = await runDualTrackPipeline(mapped);
+    const firstUserUrl = data.basedOnUser[0]?.imageUrl ?? data.basedOnUser[0]?.svgUrl ?? null;
     const tEnd = Date.now();
-    console.log('[perf][generate-logo] total request time ms =', tEnd - requestStart);
-    const hasImageUrl = Boolean(finalImageUrl);
-    console.log(
-      '[RESULT]', 'success=', hasImageUrl, 'model=', result?.model || 'mock', 'mode=', result?.mode || mode,
-      'r2Key=', r2Key || null, 'imageUrl=', hasImageUrl ? 'present' : 'missing', 'svgUrl=missing'
-    );
-
-    // 7) 统一返回格式（给 Elementor/前端用）
-    if (!finalImageUrl) {
-      return res.status(200).json({
-        success: false,
-        data: {
-          imageUrl: null,
-          svgUrl: null,
-          prompt: result?.prompt || null,
-          model: result?.model || 'mock',
-          mode: result?.mode || mode,
-          r2Key: null,
-          mapped,
-          debug: 'No image or SVG was produced.',
-        },
-        error: 'No image or SVG was produced.',
-      });
-    }
+    console.log('[RESULT] /generate-logo success=true', 'requestId=', requestId, 'ms=', tEnd - requestStart);
 
     return res.status(200).json({
       success: true,
       data: {
-        imageUrl: finalImageUrl,
-        prompt: result?.prompt || null,
-        model: result?.model || 'mock',
-        mode: result?.mode || mode,
-        r2Key,
-        mapped,
+        ...data,
+        imageUrl: firstUserUrl,
       },
       error: null,
     });
   } catch (err) {
     console.error('[generate-logo] error:', err);
-    const tEnd = Date.now();
-    console.log('[perf][generate-logo] total request time (error) ms =', tEnd - requestStart);
-
-    // 仍然返回 200，避免 Elementor 直接报 Webhook error（先保证链路不断）
+    console.log('[perf][generate-logo] total request time (error) ms =', Date.now() - requestStart);
     return res.status(200).json({
       success: false,
       data: null,
@@ -219,6 +182,46 @@ router.post('/generate-logo', async (req, res) => {
     });
   }
 });
+
+// POST /generate-logo-dual — dual-track: 2 user-driven + 2 system-recommended
+router.post('/generate-logo-dual', async (req, res) => {
+  const requestStart = Date.now();
+  const requestId = String(Date.now()) + Math.random().toString(16).slice(2);
+  const mapped = mapElementorToAI(req.body);
+  const mode = mapped.uploadImage ? 'img2img' : 'text2img';
+
+  console.log('[HIT] /generate-logo-dual route=generate-logo-dual', 'timestamp=', new Date(requestStart).toISOString(), 'requestId=', requestId, 'brandName=', safePreview(mapped.brandName).preview, 'mode=', mode);
+  console.log('[BODY]', 'brandNameLen=', safePreview(mapped.brandName).length, 'keywordsLen=', safePreview(mapped.keywords).length, 'hasUploadImage=', Boolean(mapped.uploadImage), 'colorThemeCount=', Array.isArray(mapped.colorTheme) ? mapped.colorTheme.length : 0);
+
+  try {
+    const hasText = (mapped.brandName && mapped.brandName.trim()) || (mapped.keywords && mapped.keywords.trim());
+    if (!hasText) {
+      return res.status(200).json({
+        success: false,
+        data: null,
+        error: 'Missing required fields: please provide Brand Name or Keywords.',
+      });
+    }
+
+    const data = await runDualTrackPipeline(mapped);
+    const tEnd = Date.now();
+    console.log('[RESULT] /generate-logo-dual success=true', 'requestId=', requestId, 'ms=', tEnd - requestStart);
+
+    return res.status(200).json({
+      success: true,
+      data,
+      error: null,
+    });
+  } catch (err) {
+    console.error('[generate-logo-dual] error:', err);
+    return res.status(200).json({
+      success: false,
+      data: null,
+      error: err?.message || 'Internal error',
+    });
+  }
+});
+
 router.post("/generate-logo-direct", async (req, res) => {
   try {
     const result = await generateLogoMock(req.body);
