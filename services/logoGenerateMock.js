@@ -107,7 +107,7 @@ function buildPromptFromBody(body) {
 
   // 3) Visual concept
   if (keywords) {
-    baseParts.push(`symbolic icon based on: ${keywords}`);
+    baseParts.push("abstract geometric brand mark expressing the overall brand tone, not the literal meaning of the keywords");
   }
   // Overall logo layout preference
   baseParts.push(
@@ -135,6 +135,18 @@ function buildPromptFromBody(body) {
     "no fine details, no thin lines, no intricate patterns",
     "must be recognizable at favicon size",
     "avoid abstract complexity, prefer simple geometric forms",
+    "do not depict keywords as literal objects",
+    "no humans, no body parts, no workers, no people silhouettes",
+    "no gears, no tools, no machinery, no industrial symbols",
+    "no clouds, no buildings, no devices, no objects from the keyword list",
+    "prefer an abstract geometric brand mark over a literal symbol",
+    "logo should feel like a modern SaaS or technology brand identity",
+    "only one dominant brand mark, no secondary symbols",
+    "do not use the keywords as visual objects",
+    "do not represent the industry with literal symbols",
+    "prefer a neutral abstract geometric mark",
+    "avoid any human figure, mascot, worker, gear, tool, or cloud shape",
+    "logo should resemble a modern software or SaaS brand mark, not a conceptual illustration",
   );
   const cleanColor = normalizeColorTheme(colorTheme);
   if (cleanColor) {
