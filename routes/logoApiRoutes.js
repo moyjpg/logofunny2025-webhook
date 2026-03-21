@@ -71,28 +71,31 @@ async function runDualTrackPipeline(mapped) {
   const brandInsight = generateBrandInsight(designDecision);
 
   const userPromptBase = buildPromptFromBody(mapped);
-  const userResult1 = await generateLogoMock(mapped);
-  const userResult2 = await generateLogoMock({
+  const userResultAltPrompt = userPromptBase + " Alternative take: emphasis on icon clarity and negative space.";
+  const userResult1Promise = generateLogoMock(mapped);
+  const userResult2Promise = generateLogoMock({
     ...mapped,
-    promptOverride: userPromptBase + " Alternative take: emphasis on icon clarity and negative space.",
+    promptOverride: userResultAltPrompt,
   });
 
   const sysPromptBase = buildPromptFromDesignDecision(designDecision, mapped.brandName);
   const sysInput = { ...mapped, promptOverride: sysPromptBase };
-  const sysResult1 = await generateLogoMock(sysInput);
-  const sysResult2 = await generateLogoMock({
+  const sysResult2AltPrompt = sysPromptBase + " Slight variation: balanced proportions.";
+  const sysResult1Promise = generateLogoMock(sysInput);
+  const sysResult2Promise = generateLogoMock({
     ...mapped,
-    promptOverride: sysPromptBase + " Slight variation: balanced proportions.",
+    promptOverride: sysResult2AltPrompt,
   });
 
-  const basedOnUser = await Promise.all([
-    normalizeResultToItem(userResult1),
-    normalizeResultToItem(userResult2),
+  const [userResult1, userResult2, sysResult1, sysResult2] = await Promise.all([
+    userResult1Promise,
+    userResult2Promise,
+    sysResult1Promise,
+    sysResult2Promise,
   ]);
-  const recommended = await Promise.all([
-    normalizeResultToItem(sysResult1),
-    normalizeResultToItem(sysResult2),
-  ]);
+
+  const basedOnUser = await Promise.all([normalizeResultToItem(userResult1), normalizeResultToItem(userResult2)]);
+  const recommended = await Promise.all([normalizeResultToItem(sysResult1), normalizeResultToItem(sysResult2)]);
 
   return { basedOnUser, recommended, designDecision, brandInsight };
 }
@@ -175,6 +178,37 @@ router.post('/generate-logo', async (req, res) => {
   } catch (err) {
     console.error('[generate-logo] error:', err);
     console.log('[perf][generate-logo] total request time (error) ms =', Date.now() - requestStart);
+    return res.status(200).json({
+      success: false,
+      data: null,
+      error: err?.message || 'Internal error',
+    });
+  }
+});
+
+// POST /generate-logo-fast — single generation quick test
+router.post('/generate-logo-fast', async (req, res) => {
+  try {
+    const mapped = mapElementorToAI(req.body);
+
+    if (!mapped.brandName || !mapped.brandName.trim()) {
+      return res.status(200).json({
+        success: false,
+        data: null,
+        error: 'Missing Brand Name',
+      });
+    }
+
+    const result = await generateLogoMock(mapped);
+    const item = await normalizeResultToItem(result);
+
+    return res.status(200).json({
+      success: true,
+      data: item,
+      error: null,
+    });
+  } catch (err) {
+    console.error('[generate-logo-fast] error:', err);
     return res.status(200).json({
       success: false,
       data: null,

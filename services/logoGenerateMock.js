@@ -262,11 +262,20 @@ async function replicateTextToImage(prompt) {
             style: process.env.RECRAFT_STYLE || "any",
           },
         });
-        console.log("[Replicate][recraft-v3-svg] raw output =", output);
+        console.log('[Replicate][recraft] output type:', typeof output);
 
         // If streaming SVG (ReadableStream), read to text via Response
         if (output && typeof output.getReader === "function") {
           const svgText = await new Response(output).text();
+          if (!svgText || typeof svgText !== "string") {
+            throw new Error("Recraft returned empty SVG stream");
+          }
+          if (!svgText.includes("<svg")) {
+            throw new Error("Invalid SVG content from Recraft");
+          }
+          if (svgText.length < 100) {
+            throw new Error("SVG content too short, likely invalid");
+          }
           return svgText;
         }
 
