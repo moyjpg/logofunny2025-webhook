@@ -85,7 +85,7 @@ function buildPromptFromBody(body) {
     const industryLower = industry.toLowerCase();
 
     if (industryLower.includes("tech") || industryLower.includes("technology")) {
-      baseParts.push("modern, geometric, clean, innovative look");
+      baseParts.push("software-first, abstract, minimal, calm geometric identity");
     } else if (industryLower.includes("food") || industryLower.includes("beverage") || industryLower.includes("coffee")) {
       baseParts.push("warm, inviting, slightly vintage cafe-style look");
     } else if (industryLower.includes("beauty") || industryLower.includes("fashion")) {
@@ -105,49 +105,43 @@ function buildPromptFromBody(body) {
     }
   }
 
-  // 3) Visual concept
-  if (keywords) {
-    baseParts.push("abstract geometric brand mark expressing the overall brand tone, not the literal meaning of the keywords");
-  }
-  // Overall logo layout preference
-  baseParts.push(
-    "logo design must follow strict brand identity principles",
-    "one single icon only, no multiple objects",
-    "no scene, no environment, no storytelling elements",
-    "no perspective, no depth, no realism",
-    "pure flat vector mark",
-    "icon must be simple, centered or aligned with text",
-    "no decorative elements",
-    "no extra shapes unrelated to brand meaning",
-    "clear silhouette recognizable at small size",
-    "brand name must be clearly readable",
-    "no distorted or artistic lettering",
-    "use clean sans-serif or geometric font style",
-    "text must not be merged into illustration",
-    "no illustration style",
-    "no cartoon",
-    "no complex drawing",
-    "no multiple icons",
-    "no objects like tools, buildings, landscapes, characters",
-    "no gradients, no shadows, no lighting effects",
-    "this is a clean, minimal, professional logo suitable for real company branding, not an illustration",
-    "icon must be extremely simple, no more than 2-3 basic shapes",
-    "no fine details, no thin lines, no intricate patterns",
-    "must be recognizable at favicon size",
-    "avoid abstract complexity, prefer simple geometric forms",
-    "do not depict keywords as literal objects",
-    "no humans, no body parts, no workers, no people silhouettes",
-    "no gears, no tools, no machinery, no industrial symbols",
-    "no clouds, no buildings, no devices, no objects from the keyword list",
-    "prefer an abstract geometric brand mark over a literal symbol",
-    "logo should feel like a modern SaaS or technology brand identity",
-    "only one dominant brand mark, no secondary symbols",
-    "do not use the keywords as visual objects",
-    "do not represent the industry with literal symbols",
-    "prefer a neutral abstract geometric mark",
-    "avoid any human figure, mascot, worker, gear, tool, or cloud shape",
-    "logo should resemble a modern software or SaaS brand mark, not a conceptual illustration",
-  );
+  // 3) Visual concept + strict commercial logo rules (Recraft-friendly, concise)
+baseParts.push(
+  "design a real commercial logo, not an illustration",
+  "modern SaaS brand identity",
+  "one abstract geometric brand mark only",
+  "one clean readable wordmark",
+  "flat vector SVG",
+  "simple geometric forms",
+  "maximum 2 to 3 basic shapes",
+  "high contrast",
+  "centered or clean horizontal composition",
+  "recognizable at favicon size",
+  "brand name clearly readable",
+  "clean sans-serif or geometric typography",
+  "no literal objects",
+  "no people",
+  "no workers",
+  "no human silhouettes",
+  "no gears",
+  "no tools",
+  "no machinery",
+  "no clouds",
+  "no buildings",
+  "no devices",
+  "no mascots",
+  "no scenes",
+  "no storytelling",
+  "no decorative extra symbols",
+  "no gradients",
+  "no shadows",
+  "no lighting effects",
+  "not conceptual art"
+);
+
+if (keywords) {
+  baseParts.push(`brand tone references: ${keywords}`);
+}
   const cleanColor = normalizeColorTheme(colorTheme);
   if (cleanColor) {
   baseParts.push(`color palette: ${cleanColor}`);
