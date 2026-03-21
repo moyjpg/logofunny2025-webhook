@@ -105,7 +105,7 @@ function buildPromptFromBody(body) {
     }
   }
 
-// 3) Visual concept + strict commercial logo rules (previous better version)
+// 3) Visual concept + strict commercial logo rules (Recraft-friendly, concise)
 baseParts.push(
   "design a real commercial logo, not an illustration",
   "modern SaaS brand identity",
@@ -140,7 +140,7 @@ baseParts.push(
 );
 
 if (keywords) {
-  baseParts.push(`brand tone references: ${keywords}, but do not depict them as objects`);
+  baseParts.push(`brand tone references: ${keywords}`);
 }
   const cleanColor = normalizeColorTheme(colorTheme);
   if (cleanColor) {
