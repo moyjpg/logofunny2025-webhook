@@ -111,7 +111,30 @@ function buildPromptFromBody(body) {
   }
   // Overall logo layout preference
   baseParts.push(
-    "logo layout: clear central icon with brand name in clean typography, no slogan wall of text"
+    "logo design must follow strict brand identity principles",
+    "one single icon only, no multiple objects",
+    "no scene, no environment, no storytelling elements",
+    "no perspective, no depth, no realism",
+    "pure flat vector mark",
+    "icon must be simple, centered or aligned with text",
+    "no decorative elements",
+    "no extra shapes unrelated to brand meaning",
+    "clear silhouette recognizable at small size",
+    "brand name must be clearly readable",
+    "no distorted or artistic lettering",
+    "use clean sans-serif or geometric font style",
+    "text must not be merged into illustration",
+    "no illustration style",
+    "no cartoon",
+    "no complex drawing",
+    "no multiple icons",
+    "no objects like tools, buildings, landscapes, characters",
+    "no gradients, no shadows, no lighting effects",
+    "this is a clean, minimal, professional logo suitable for real company branding, not an illustration",
+    "icon must be extremely simple, no more than 2-3 basic shapes",
+    "no fine details, no thin lines, no intricate patterns",
+    "must be recognizable at favicon size",
+    "avoid abstract complexity, prefer simple geometric forms",
   );
   const cleanColor = normalizeColorTheme(colorTheme);
   if (cleanColor) {
@@ -132,19 +155,7 @@ function buildPromptFromBody(body) {
   }
 
   // 6) Logo-specific style constraints + layout
-  baseParts.push(
-  // 核心：要的是“商标级别”的简洁 logo，而不是插画
-  "minimalist flat vector logo, clean geometric shapes, strong silhouette, high contrast",
-  "no photo, no 3d render, no realistic lighting, no complex illustration",
-
-  // 版式倾向：像真实 logo 的构图
-  "single clear icon with simple negative space, balanced composition",
-  "brand name and optional tagline placed clearly next to or below the icon",
-
-  // 可注册、可印刷
-  "suitable for professional brand trademark, scalable, works well in black and white",
-  "no detailed background scene, no busy composition, no tiny unreadable elements"
-  );
+  // (intentionally left concise; strictness is enforced above and by provider-side negative constraints)
 
   return baseParts.join(", ");
 }
