@@ -25,10 +25,10 @@ async function generateIdeogramLogos(input = {}) {
 
   const prompt = buildIdeogramPrompt(input);
 
-  const response = await fetch("https://api.ideogram.ai/generate", {
+  const response = await fetch("https://api.ideogram.ai/v1/ideogram-v3/generate", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      "Api-Key": apiKey,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
