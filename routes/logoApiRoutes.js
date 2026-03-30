@@ -2,6 +2,7 @@ const express = require('express');
 const { generateLogoMock, buildPromptFromBody } = require('../services/logoGenerateMock');
 const { uploadLogoImageToR2, uploadLogoSvgTextToR2 } = require('../services/r2Upload');
 const { generateDesignDecision, buildPromptFromDesignDecision, generateBrandInsight } = require('../services/designDecision');
+const { generateIdeogramLogos } = require('../services/ideogramService');
 // const { runLogoPipeline } = require('../services/logoPipeline'); // temporarily disabled: single-candidate mode
 
 const router = express.Router();
@@ -281,6 +282,38 @@ router.post("/generate-logo-direct", async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /generate-logo-ideogram-test
+router.post('/generate-logo-ideogram-test', async (req, res) => {
+  try {
+    const mapped = mapElementorToAI(req.body);
+    if (!mapped.brandName || !mapped.brandName.trim()) {
+      return res.status(200).json({
+        success: false,
+        data: null,
+        error: 'Missing Brand Name',
+      });
+    }
+
+    const results = await generateIdeogramLogos(mapped);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        results,
+        prompt: results[0]?.prompt || null,
+        model: 'ideogram',
+      },
+      error: null,
+    });
+  } catch (err) {
+    return res.status(200).json({
+      success: false,
+      data: null,
+      error: err?.message || 'Internal error',
+    });
   }
 });
 
