@@ -15,64 +15,80 @@ function buildIdeogramPrompt(input = {}) {
   const brandFontStyle = String(input?.brandFontStyle || "").trim();
   const otherNotes = String(input?.otherNotes || input?.notes || "").trim();
 
-  // 1) Core structure (LogoFunny constitution: logo must look like a real logo)
-  let structureTag = "one standalone abstract geometric brand mark and one readable wordmark";
-  let layoutTag = "centered or horizontal logo lockup";
-  let toneTag = "minimal, clean, geometric, professional, scalable, favicon recognizable, flat vector style";
-  let typographyTag = "clean modern sans-serif, highly legible";
-  let colorTag = "";
-  let brandMoodTag = "";
-  let notesTag = "";
-
-  // 2) Industry mapping (short, tag-like, no long explanations)
-  if (industry.includes("tech") || industry.includes("technology") || industry.includes("software") || industry.includes("saas")) {
-    toneTag = "minimal, clean, geometric, software-first, calm, professional, scalable, favicon recognizable, flat vector style";
-  } else if (industry.includes("finance") || industry.includes("legal")) {
-    toneTag = "minimal, structured, trustworthy, serious, professional, scalable, favicon recognizable, flat vector style";
-  } else if (industry.includes("beauty") || industry.includes("fashion") || industry.includes("jewelry") || industry.includes("luxury")) {
-    toneTag = "minimal, refined, elegant, premium, professional, scalable, favicon recognizable, flat vector style";
-  } else if (industry.includes("fitness") || industry.includes("sport")) {
-    toneTag = "minimal, bold, geometric, energetic, professional, scalable, favicon recognizable, flat vector style";
-  } else if (industry.includes("real estate") || industry.includes("architecture")) {
-    toneTag = "minimal, structured, stable, architectural, professional, scalable, favicon recognizable, flat vector style";
-  } else if (industry.includes("food") || industry.includes("coffee") || industry.includes("restaurant")) {
-    toneTag = "minimal, warm, approachable, clean, professional, scalable, favicon recognizable, flat vector style";
+  // Route selection for LogoFunny V1
+  let route = "tech_saas";
+  if (
+    industry.includes("beauty") ||
+    industry.includes("skincare") ||
+    industry.includes("fashion") ||
+    industry.includes("jewelry") ||
+    industry.includes("luxury") ||
+    industry.includes("cosmetics")
+  ) {
+    route = "beauty_premium";
+  } else if (
+    industry.includes("studio") ||
+    industry.includes("creative") ||
+    industry.includes("design") ||
+    industry.includes("agency") ||
+    industry.includes("branding") ||
+    industry.includes("art")
+  ) {
+    route = "studio_creative";
+  } else if (
+    industry.includes("tech") ||
+    industry.includes("technology") ||
+    industry.includes("software") ||
+    industry.includes("saas") ||
+    industry.includes("startup") ||
+    industry.includes("app")
+  ) {
+    route = "tech_saas";
   }
 
-  // 3) Optional structure mapping by brand name length or style hints
-  if (brandName.length <= 3) {
-    structureTag = "one clean geometric monogram mark and one readable wordmark";
+  let structureTag = "one abstract geometric mark and one readable wordmark";
+  let layoutTag = "horizontal or centered lockup";
+  let toneTag = "modern software brand, clean app icon feel, professional SaaS identity, distinctive but simple";
+  let typographyTag = "clean sans-serif or geometric typography, strong wordmark readability";
+  let colorTag = colorTheme
+    ? `Color palette: ${colorTheme}.`
+    : "Color palette: restrained cool tones or black-and-white-first.";
+
+  if (route === "beauty_premium") {
+    structureTag = "one abstract soft geometric mark and one clean luxury wordmark";
+    layoutTag = "centered composition or elegant lockup";
+    toneTag = "premium beauty identity, refined minimal luxury logo, soft geometric elegance";
+    typographyTag = "refined clean sans-serif typography with graceful spacing";
+    colorTag = colorTheme
+      ? `Color palette: ${colorTheme}.`
+      : "Color palette: restrained premium tones with soft contrast.";
+  } else if (route === "studio_creative") {
+    structureTag = "one distinctive geometric mark and one readable editorial wordmark";
+    layoutTag = "strong centered or horizontal composition";
+    toneTag = "creative studio identity, editorial geometric logo, design-forward but clean";
+    typographyTag = "editorial-inspired clean typography, highly readable";
+    colorTag = colorTheme
+      ? `Color palette: ${colorTheme}.`
+      : "Color palette: restrained neutral tones with one controlled accent.";
   }
 
   if (brandFontStyle) {
-    typographyTag = `clean ${brandFontStyle} typography, highly legible`;
+    typographyTag = `${typographyTag}; font preference: ${brandFontStyle}`;
   }
 
-  if (colorTheme) {
-    colorTag = `Color palette: ${colorTheme}.`;
-  }
-
-  if (keywords) {
-    brandMoodTag = `Brand mood references: ${keywords}.`;
-  }
-
-  if (otherNotes) {
-    notesTag = `Art direction notes: ${otherNotes}.`;
-  }
-
-  // 4) Short constitution-style exclusions
-  // Keep this short. Ideogram handles positive structure better than long negative lists.
-  const exclusionTag =
-    "No people, no scenes, no mascots, no extra decorative symbols.";
+  const keywordsTag = keywords ? `Brand cues: ${keywords}.` : "";
+  const notesTag = otherNotes ? `Art direction notes: ${otherNotes}.` : "";
+  const exclusionTag = "No people, no scenes, no mascots, no extra decorative symbols.";
 
   return [
     `Commercial logo for "${brandName}".`,
+    `Route: ${route}.`,
     `${structureTag}.`,
     `${layoutTag}.`,
     `${toneTag}.`,
     `Typography: ${typographyTag}.`,
     colorTag,
-    brandMoodTag,
+    keywordsTag,
     notesTag,
     exclusionTag
   ]
