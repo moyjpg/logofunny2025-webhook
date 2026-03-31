@@ -46,26 +46,29 @@ function buildIdeogramPrompt(input = {}) {
     route = "tech_saas";
   }
 
-  let structureTag = "one abstract geometric mark and one readable wordmark";
-  let layoutTag = "horizontal or centered lockup";
+  let structureTag = "one compact abstract geometric mark and one readable wordmark";
+  let layoutTag = "balanced horizontal or centered enterprise-grade lockup";
   let toneTag = "modern software brand, clean app icon feel, professional SaaS identity, distinctive but simple";
+  let disciplineTag = "product-brand ready logo system, app-icon readability, strong small-size recognition, usable in monochrome";
   let typographyTag = "clean sans-serif or geometric typography, strong wordmark readability";
   let colorTag = colorTheme
     ? `Color palette: ${colorTheme}.`
     : "Color palette: restrained cool tones or black-and-white-first.";
 
   if (route === "beauty_premium") {
-    structureTag = "one abstract soft geometric mark and one clean luxury wordmark";
-    layoutTag = "centered composition or elegant lockup";
+    structureTag = "one refined standalone soft geometric symbol and one clean luxury wordmark";
+    layoutTag = "elegant balanced centered composition or premium lockup";
     toneTag = "premium beauty identity, refined minimal luxury logo, soft geometric elegance";
+    disciplineTag = "luxury brand system ready, clear premium spacing, usable in black and white, distinctive but restrained, high-end packaging friendly";
     typographyTag = "refined clean sans-serif typography with graceful spacing";
     colorTag = colorTheme
       ? `Color palette: ${colorTheme}.`
       : "Color palette: restrained premium tones with soft contrast.";
   } else if (route === "studio_creative") {
-    structureTag = "one distinctive geometric mark and one readable editorial wordmark";
-    layoutTag = "strong centered or horizontal composition";
+    structureTag = "one compact distinctive geometric visual mark and one readable editorial wordmark";
+    layoutTag = "clear centered or horizontal composition with editorial hierarchy";
     toneTag = "creative studio identity, editorial geometric logo, design-forward but clean";
+    disciplineTag = "design studio identity system, signature but usable logo, scalable brand mark, portfolio-ready identity, distinctive geometric structure";
     typographyTag = "editorial-inspired clean typography, highly readable";
     colorTag = colorTheme
       ? `Color palette: ${colorTheme}.`
@@ -82,10 +85,10 @@ function buildIdeogramPrompt(input = {}) {
 
   return [
     `Commercial logo for "${brandName}".`,
-    `Route: ${route}.`,
     `${structureTag}.`,
     `${layoutTag}.`,
     `${toneTag}.`,
+    `${disciplineTag}.`,
     `Typography: ${typographyTag}.`,
     colorTag,
     keywordsTag,
