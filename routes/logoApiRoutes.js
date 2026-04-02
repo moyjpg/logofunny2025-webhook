@@ -71,6 +71,22 @@ async function runDualTrackPipeline(mapped) {
   const designDecision = generateDesignDecision(mapped);
   const brandInsight = generateBrandInsight(designDecision);
 
+  // Ideogram-first primary path (4 outputs), keep old generation as fallback.
+  try {
+    console.log('[Ideogram] main generate-logo route hit');
+    const ideogramResults = await generateIdeogramLogos(mapped);
+    console.log(`[Ideogram] generated count=${ideogramResults.length}`);
+
+    const normalized = await Promise.all(ideogramResults.slice(0, 4).map((item) => normalizeResultToItem(item)));
+    const basedOnUser = normalized.slice(0, 2);
+    const recommended = normalized.slice(2, 4);
+    const results = normalized;
+
+    return { basedOnUser, recommended, designDecision, brandInsight, results };
+  } catch (ideogramErr) {
+    console.error('[Ideogram] error:', ideogramErr?.message || ideogramErr);
+  }
+
   const userPromptBase = buildPromptFromBody(mapped);
   const userResultAltPrompt = userPromptBase + " Alternative take: emphasis on icon clarity and negative space.";
   const userResult1Promise = generateLogoMock(mapped);
@@ -97,8 +113,9 @@ async function runDualTrackPipeline(mapped) {
 
   const basedOnUser = await Promise.all([normalizeResultToItem(userResult1), normalizeResultToItem(userResult2)]);
   const recommended = await Promise.all([normalizeResultToItem(sysResult1), normalizeResultToItem(sysResult2)]);
+  const results = [...basedOnUser, ...recommended];
 
-  return { basedOnUser, recommended, designDecision, brandInsight };
+  return { basedOnUser, recommended, designDecision, brandInsight, results };
 }
 
 // --- Elementor → AI 字段映射器（兼容 body.fields / 直接 body / curl） ---
@@ -127,6 +144,15 @@ function mapElementorToAI(body) {
     industry: pickStr("industry"),
     colorTheme: pickArr("colorTheme"),
     notes: pickStr("notes"),
+    otherNotes: pickStr("otherNotes") || pickStr("notes"),
+    brandFontStyle: pickStr("brandFontStyle"),
+    logoStructure: pickStr("logoStructure"),
+    brandStyleRoute: pickStr("brandStyleRoute"),
+    visualMood: f["visualMood"] || null,
+    colorDirection: pickStr("colorDirection"),
+    typographyDirection: pickStr("typographyDirection"),
+    styleCues: pickStr("styleCues"),
+    promptOverride: pickStr("promptOverride") || pickStr("prompt"),
     uploadImage: f["uploadLogo"] || null,
   };
 }
