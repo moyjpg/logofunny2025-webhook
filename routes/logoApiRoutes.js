@@ -2,7 +2,7 @@ const express = require('express');
 const { generateLogoMock, buildPromptFromBody } = require('../services/logoGenerateMock');
 const { uploadLogoImageToR2, uploadLogoSvgTextToR2 } = require('../services/r2Upload');
 const { generateDesignDecision, buildPromptFromDesignDecision, generateBrandInsight } = require('../services/designDecision');
-const { generateIdeogramLogos } = require('../services/ideogramService');
+const { generateIdeogramLogos, ideogramAllowed } = require('../services/ideogramService');
 // const { runLogoPipeline } = require('../services/logoPipeline'); // temporarily disabled: single-candidate mode
 
 const router = express.Router();
@@ -71,20 +71,24 @@ async function runDualTrackPipeline(mapped) {
   const designDecision = generateDesignDecision(mapped);
   const brandInsight = generateBrandInsight(designDecision);
 
-  // Ideogram-first primary path (4 outputs), keep old generation as fallback.
-  try {
-    console.log('[Ideogram] main generate-logo route hit');
-    const ideogramResults = await generateIdeogramLogos(mapped);
-    console.log(`[Ideogram] generated count=${ideogramResults.length}`);
+  // Ideogram-first primary path (4 outputs) — strict opt-in only; else mock/Replicate/HF path.
+  if (ideogramAllowed()) {
+    try {
+      console.log('[Ideogram] main generate-logo route hit');
+      const ideogramResults = await generateIdeogramLogos(mapped);
+      console.log(`[Ideogram] generated count=${ideogramResults.length}`);
 
-    const normalized = await Promise.all(ideogramResults.slice(0, 4).map((item) => normalizeResultToItem(item)));
-    const basedOnUser = normalized.slice(0, 2);
-    const recommended = normalized.slice(2, 4);
-    const results = normalized;
+      const normalized = await Promise.all(ideogramResults.slice(0, 4).map((item) => normalizeResultToItem(item)));
+      const basedOnUser = normalized.slice(0, 2);
+      const recommended = normalized.slice(2, 4);
+      const results = normalized;
 
-    return { basedOnUser, recommended, designDecision, brandInsight, results };
-  } catch (ideogramErr) {
-    console.error('[Ideogram] error:', ideogramErr?.message || ideogramErr);
+      return { basedOnUser, recommended, designDecision, brandInsight, results };
+    } catch (ideogramErr) {
+      console.error('[Ideogram] error:', ideogramErr?.message || ideogramErr);
+    }
+  } else {
+    console.log('[image-provider] ideogram disabled');
   }
 
   const userPromptBase = buildPromptFromBody(mapped);
@@ -320,6 +324,15 @@ router.post('/generate-logo-ideogram-test', async (req, res) => {
         success: false,
         data: null,
         error: 'Missing Brand Name',
+      });
+    }
+
+    if (!ideogramAllowed()) {
+      console.log('[image-provider] ideogram disabled');
+      return res.status(200).json({
+        success: false,
+        data: null,
+        error: '[image-provider] ideogram disabled or missing key',
       });
     }
 

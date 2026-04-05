@@ -230,12 +230,35 @@ async function callHuggingFaceTextToImage(prompt) {
   };
 }
 
-// ====== Logo generator (Replicate first, HF fallback, then dummy) ======
-function isProviderEnabled(name) {
-  const envKey = `USE_${name.toUpperCase()}`;
-  const raw = process.env[envKey];
-  if (raw == null) return true;
-  return String(raw).toLowerCase() !== "false";
+// ====== Logo generator (strict opt-in per provider; no paid fallthrough) ======
+const MOCK_IMAGE_URL =
+  "https://dummyimage.com/1024x1024/eeeeee/000000.png&text=Mock+Logo";
+
+function replicateAllowed() {
+  return (
+    String(process.env.USE_REPLICATE || "").toLowerCase() === "true" &&
+    Boolean(String(process.env.REPLICATE_API_TOKEN || "").trim())
+  );
+}
+
+function hfAllowed() {
+  return (
+    String(process.env.USE_HF || "").toLowerCase() === "true" &&
+    Boolean(String(process.env.HF_API_TOKEN || "").trim())
+  );
+}
+
+/** Non-billing placeholder when no provider is enabled or a paid call failed. */
+function buildNonBillingMock(prompt, mode, reason) {
+  if (reason === "no-provider") {
+    console.log("[image-provider] no provider enabled -> mock");
+  }
+  return {
+    imageUrl: MOCK_IMAGE_URL,
+    prompt,
+    model: reason === "no-provider" ? "mock-no-provider" : "mock-non-billing",
+    mode,
+  };
 }
 
 function sleep(ms) {
@@ -333,99 +356,100 @@ async function generateLogoMock(body) {
   const prompt = body?.promptOverride || buildPromptFromBody(body);
 
   try {
-  // ===============================
-  // 优先：有图 → Replicate 图生图
-  // ===============================
-  if (uploadImage) {
-    console.log("[Replicate] image-to-image");
-
-    const output = await replicate.run(
-      "stability-ai/sdxl-controlnet",
-      {
-        input: {
-          image: uploadImage,
-          prompt,
-          guidance_scale: 7,
-        },
+    // ===============================
+    // 有图 → Replicate 图生图（严格 opt-in）
+    // ===============================
+    if (uploadImage) {
+      if (!replicateAllowed()) {
+        console.log("[image-provider] replicate disabled");
+        return buildNonBillingMock(prompt, "image-to-image", "no-provider");
       }
-    );
+      console.log("[Replicate] image-to-image");
 
-    return {
-      imageUrl: Array.isArray(output) ? output[0] : output,
-      prompt,
-      model: "replicate-sdxl-controlnet",
-      mode: "image-to-image",
-    };
-  }
-
-  // ===============================
-  // 没图：优先 Replicate（可开关），HF 作为备选（可开关）
-  // ===============================
-  if (isProviderEnabled("ideogram")) {
-    console.warn("[Ideogram] enabled but not implemented yet");
-  }
-
-  const replicateEnabled = isProviderEnabled("replicate");
-  const hfEnabled = isProviderEnabled("hf");
-
-  let replicateError = null;
-  if (replicateEnabled) {
-    try {
-      console.log(`[Replicate] text-to-image model=${getReplicateModel()}`);
-      const output = await replicateTextToImage(prompt);
-      const modelName = getReplicateModel();
-      const isRecraft = String(modelName).includes("recraft-ai/recraft-v3-svg");
-
-      // If Recraft and we got SVG text, surface it as rawSvgText
-      if (isRecraft && typeof output === "string" && (output.trim().startsWith("<svg") || output.includes("<svg"))) {
-        return {
-          imageUrl: null,
-          rawSvgText: output,
-          prompt,
-          model: "replicate-recraft-v3-svg",
-          mode: "text-to-image",
-        };
-      }
+      const output = await replicate.run(
+        "stability-ai/sdxl-controlnet",
+        {
+          input: {
+            image: uploadImage,
+            prompt,
+            guidance_scale: 7,
+          },
+        }
+      );
 
       return {
         imageUrl: Array.isArray(output) ? output[0] : output,
         prompt,
-        model: isRecraft ? "replicate-recraft-v3-svg" : "replicate-sdxl",
-        mode: "text-to-image",
+        model: "replicate-sdxl-controlnet",
+        mode: "image-to-image",
       };
-    } catch (replicateErr) {
-      replicateError = replicateErr;
-      console.error("[Replicate] text-to-image failed, fallback to HF:", formatReplicateError(replicateErr));
     }
-  }
 
-  if (hfEnabled) {
-    console.log("[HF] text-to-image");
-    const hf = await callHuggingFaceTextToImage(prompt);
+    // ===============================
+    // 文生图：Replicate 与 HF 各自 opt-in；禁止 Replicate 失败后静默换 HF
+    // ===============================
+    if (!replicateAllowed()) {
+      console.log("[image-provider] replicate disabled");
+    }
+    if (!hfAllowed()) {
+      console.log("[image-provider] hf disabled");
+    }
 
-    return {
-      imageUrl: hf.imageUrl,
-      prompt,
-      model: hf.model,
-      mode: "text-to-image",
-    };
-  }
+    if (replicateAllowed()) {
+      try {
+        console.log(`[Replicate] text-to-image model=${getReplicateModel()}`);
+        const output = await replicateTextToImage(prompt);
+        const modelName = getReplicateModel();
+        const isRecraft = String(modelName).includes("recraft-ai/recraft-v3-svg");
 
-  if (replicateEnabled && !hfEnabled) {
-    throw new Error(
-      `Replicate failed and HF disabled (USE_REPLICATE=${process.env.USE_REPLICATE}, USE_HF=${process.env.USE_HF}): ${formatReplicateError(replicateError)}`
-    );
-  }
+        if (isRecraft && typeof output === "string" && (output.trim().startsWith("<svg") || output.includes("<svg"))) {
+          return {
+            imageUrl: null,
+            rawSvgText: output,
+            prompt,
+            model: "replicate-recraft-v3-svg",
+            mode: "text-to-image",
+          };
+        }
 
-  throw new Error(
-    `No text-to-image providers enabled (USE_REPLICATE=${process.env.USE_REPLICATE}, USE_HF=${process.env.USE_HF})`
-  );
+        return {
+          imageUrl: Array.isArray(output) ? output[0] : output,
+          prompt,
+          model: isRecraft ? "replicate-recraft-v3-svg" : "replicate-sdxl",
+          mode: "text-to-image",
+        };
+      } catch (replicateErr) {
+        console.error(
+          "[image-provider] replicate failed (no HF fallback):",
+          formatReplicateError(replicateErr)
+        );
+        return buildNonBillingMock(prompt, "text-to-image", "after-error");
+      }
+    }
 
-} catch (err) {
+    if (hfAllowed()) {
+      try {
+        console.log("[HF] text-to-image");
+        const hf = await callHuggingFaceTextToImage(prompt);
+
+        return {
+          imageUrl: hf.imageUrl,
+          prompt,
+          model: hf.model,
+          mode: "text-to-image",
+        };
+      } catch (hfErr) {
+        console.error("[image-provider] hf failed:", hfErr?.message || hfErr);
+        return buildNonBillingMock(prompt, "text-to-image", "after-error");
+      }
+    }
+
+    return buildNonBillingMock(prompt, "text-to-image", "no-provider");
+  } catch (err) {
     console.error("[AI] generate failed, fallback dummy:", err);
 
     return {
-      imageUrl: "https://dummyimage.com/1024x1024/eeeeee/000000.png&text=Mock+Logo",
+      imageUrl: MOCK_IMAGE_URL,
       prompt,
       model: "mock-fallback",
       mode: "fallback",

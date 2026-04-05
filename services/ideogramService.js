@@ -225,12 +225,18 @@ function buildIdeogramPrompt(input = {}) {
     .join(" ");
 }
 
+function ideogramAllowed() {
+  const on = String(process.env.USE_IDEOGRAM || "").toLowerCase() === "true";
+  const key = String(process.env.IDEOGRAM_API_KEY || "").trim();
+  return on && Boolean(key);
+}
+
 async function generateIdeogramLogos(input = {}) {
-  const apiKey = process.env.IDEOGRAM_API_KEY;
-  if (!apiKey) {
-    throw new Error("Missing IDEOGRAM_API_KEY in env");
+  if (!ideogramAllowed()) {
+    throw new Error("[image-provider] ideogram disabled or missing key");
   }
 
+  const apiKey = String(process.env.IDEOGRAM_API_KEY || "").trim();
   const prompt = buildIdeogramPrompt(input);
 
   const response = await fetch("https://api.ideogram.ai/v1/ideogram-v3/generate", {
@@ -274,6 +280,7 @@ async function generateIdeogramLogos(input = {}) {
 }
 
 module.exports = {
+  ideogramAllowed,
   generateIdeogramLogos,
 };
 
