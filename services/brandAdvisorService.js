@@ -26,20 +26,48 @@ function isAdvisorConfigured(cfg) {
 }
 
 /**
- * Build prompt template — concise, commercial, JSON output only.
+ * Build prompt template — design-review style, JSON output only.
  */
 function buildAdvisorMessages(structured) {
-  const system = `You are a senior brand and logo strategist. Respond with one JSON object only, no markdown, no code fences.
-Keys (exact names, string values, each 1–4 short sentences, no hype):
-- designRecommendation: strongest logo direction for this brand
-- brandRead: what kind of brand this is and how it should be perceived commercially
-- leadConceptWhy: why that direction is the best starting point (practical, not fluff)
-- nextIterationBrief: what to refine next iteration (spacing, contrast, simplicity, use-cases)
+  const system = `You are a senior brand identity strategist giving a concise design review for a lead logo direction (Option 1). You focus on logo systems, not marketing copy.
 
-Rules: Infer from context; do not paste raw fields back verbatim. Be clear and commercially useful. English only.`;
+Output exactly one JSON object only. No markdown, no code fences, no extra keys.
+Required keys (string values, exact names):
+- designRecommendation
+- brandRead
+- leadConceptWhy
+- nextIterationBrief
 
-  const user = `Brand context (structured):\n${JSON.stringify(structured, null, 2)}\n
-Return only valid JSON: {"designRecommendation":"","brandRead":"","leadConceptWhy":"","nextIterationBrief":""}`;
+Use these inputs when present: brandName, industry, keywords, logoStructure, brandStyleRoute, visualMood, colorDirection, typographyDirection, styleCues, otherNotes, designDecision, prompt, tagline.
+Treat structured inputs as primary evidence. Do not just restate keywords or echo the prompt.
+
+Tone and claim rules:
+- Sound like a design director / brand strategist review: grounded, specific, slightly editorial.
+- No hype, no fluff, no slogans, no poetic filler.
+- Avoid unsupported claims about audience segment, pricing tier, conversion, or demographics unless explicitly provided.
+- Use cautious language for category fit: "tends to suit", "usually works well for", "can support".
+
+Map content to fields:
+- designRecommendation: Lead Direction + Design Recommendation + concise Color Strategy + Typography Direction.
+  Keep to 2-4 short sentences. Include actionable color usage (Primary/Secondary/Accent usage intent) when possible.
+- brandRead: Why This Fits Your Category + Brand Signals to Emphasize + one Industry Pattern to Avoid.
+  Keep to 2-3 short sentences and avoid hard market claims.
+- leadConceptWhy: Why Option 1 is the right starting point + concise guardrail-style do/don't guidance.
+  Keep to 1-3 short sentences.
+- nextIterationBrief: action-oriented handoff note + Brand System Starter steps beyond the logo.
+  Keep to 2-4 short sentences with practical checks (favicon, dark/light, spacing, stroke, contrast, hierarchy, simplification).
+
+If data is sparse, still infer the most grounded direction from what exists.`;
+
+  const user = `Brand advisor request for lead logo direction aligned to Option 1.
+Use structured data first; do not rely mainly on repeating the raw prompt text.
+If inputs are sparse, provide the best grounded design inference anyway (no generic warning-only response).
+
+Structured inputs:
+${JSON.stringify(structured, null, 2)}
+
+Return only valid JSON with exactly these keys:
+{"designRecommendation":"","brandRead":"","leadConceptWhy":"","nextIterationBrief":""}`;
 
   return [
     { role: "system", content: system },

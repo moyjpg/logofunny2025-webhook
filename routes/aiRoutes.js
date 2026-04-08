@@ -73,14 +73,13 @@ function buildFallbackBrandPlan(body = {}) {
 function buildStaticAdvisorTextLayer(base) {
   return {
     designRecommendation:
-      "Prioritize a clean symbol-and-wordmark or wordmark-led system that stays legible and scales.",
+      "Lead direction: use a restrained symbol-plus-wordmark system that signals clarity before decoration. Keep the symbol simple enough for favicon scale, pair it with a clean sans wordmark, and avoid adding extra motifs too early. Color strategy: Primary carries the core mark emphasis, Secondary holds neutral contrast, and Accent is reserved for small highlights only.",
     brandRead:
-      base.oneLiner ||
-      "Position the brand for clarity, trust, and recall in its market.",
+      "This direction tends to suit categories that need quick recognition and reliable usability across web and product touchpoints. Prioritize clarity, trust, and restraint; avoid overabstracted geometry or heavy gradients that reduce distinctiveness at small sizes.",
     leadConceptWhy:
-      "Starting with a restrained lockup reveals hierarchy and contrast before adding detail.",
+      "Option 1 is a strong starting point because it establishes hierarchy, readability, and scalable structure before stylistic detail. Do keep visual weight balanced and forms intentional; don't let decorative complexity outrun legibility.",
     nextIterationBrief:
-      "Refine spacing and monochrome use; validate at favicon and small UI sizes next.",
+      "Next pass: tighten spacing, normalize stroke/weight contrast, and validate monochrome performance at favicon and social-avatar sizes. Then define dark/light usage rules and align product headline typography with the wordmark rhythm before expanding palette complexity.",
   };
 }
 
