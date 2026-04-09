@@ -5,7 +5,7 @@ const router = express.Router();
 const {
   getAdvisorConfig,
   isAdvisorConfigured,
-  generateBrandAdvisorCopy,
+  attemptBrandAdvisorLLM,
 } = require("../services/brandAdvisorService");
 
 function buildFallbackBrandPlan(body = {}) {
@@ -87,38 +87,49 @@ function buildStaticAdvisorTextLayer(base) {
 router.post("/brand-plan", async (req, res) => {
   console.log("[brand-plan] hit");
 
+  const body = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+
+  const finish = (data) => res.status(200).json({ ok: true, data });
+
   try {
-    const base = buildFallbackBrandPlan(req.body || {});
+    const base = buildFallbackBrandPlan(body);
     let textLayer = buildStaticAdvisorTextLayer(base);
     let advisorAiOk = false;
 
     const cfg = getAdvisorConfig();
     if (cfg.enabled && isAdvisorConfigured(cfg)) {
-      try {
-        textLayer = await generateBrandAdvisorCopy({
-          brandName: req.body?.brandName,
-          industry: req.body?.industry,
-          keywords: req.body?.keywords,
-          logoStructure: req.body?.logoStructure,
-          brandStyleRoute: req.body?.brandStyleRoute,
-          visualMood: req.body?.visualMood,
-          colorDirection: req.body?.colorDirection,
-          typographyDirection: req.body?.typographyDirection,
-          styleCues: req.body?.styleCues,
-          otherNotes: req.body?.otherNotes || req.body?.notes,
-          designDecision: req.body?.designDecision,
-          prompt: req.body?.prompt,
-          tagline: req.body?.tagline,
-        });
+      const ai = await attemptBrandAdvisorLLM({
+        brandName: body.brandName,
+        industry: body.industry,
+        keywords: body.keywords,
+        logoStructure: body.logoStructure,
+        brandStyleRoute: body.brandStyleRoute,
+        visualMood: body.visualMood,
+        colorDirection: body.colorDirection,
+        typographyDirection: body.typographyDirection,
+        styleCues: body.styleCues,
+        otherNotes: body.otherNotes || body.notes,
+        designDecision: body.designDecision,
+        prompt: body.prompt,
+        tagline: body.tagline,
+      });
+
+      if (ai.ok) {
+        textLayer = ai.textLayer;
         advisorAiOk = true;
-        console.log(`[brand-advisor] success provider=${cfg.provider}`);
-      } catch (e) {
-        console.log(
-          `[brand-advisor] fallback provider=${cfg.provider} reason=${e?.message || e}`
-        );
+        console.log("[brand-advisor] ai_success");
+      } else if (ai.failure === "timeout") {
+        console.log("[brand-advisor] ai_timeout");
+        console.log("[brand-advisor] static_fallback_used");
+      } else if (ai.failure === "parse") {
+        console.log("[brand-advisor] ai_parse_fail");
+        console.log("[brand-advisor] static_fallback_used");
+      } else {
+        console.log("[brand-advisor] ai_error_fallback_used");
+        console.log("[brand-advisor] static_fallback_used");
       }
-    } else if (cfg.enabled) {
-      console.log("[brand-advisor] fallback misconfigured (missing key/baseUrl/model)");
+    } else {
+      console.log("[brand-advisor] static_fallback_used");
     }
 
     const data = { ...base, ...textLayer };
@@ -135,15 +146,22 @@ router.post("/brand-plan", async (req, res) => {
       data.promptSeed = (brief || base.promptSeed || "").slice(0, 220);
     }
 
-    return res.json({
-      ok: true,
-      data,
-    });
+    return finish(data);
   } catch (err) {
-    return res.status(500).json({
-      ok: false,
-      error: err?.message || String(err),
-    });
+    console.error("[brand-advisor] brand-plan handler error:", err?.message || err);
+    try {
+      const base = buildFallbackBrandPlan(body);
+      const data = { ...base, ...buildStaticAdvisorTextLayer(base) };
+      console.log("[brand-advisor] ai_error_fallback_used");
+      console.log("[brand-advisor] static_fallback_used");
+      return finish(data);
+    } catch (_) {
+      const base = buildFallbackBrandPlan({});
+      const data = { ...base, ...buildStaticAdvisorTextLayer(base) };
+      console.log("[brand-advisor] ai_error_fallback_used");
+      console.log("[brand-advisor] static_fallback_used");
+      return finish(data);
+    }
   }
 });
 

@@ -9,6 +9,14 @@ const REQUIRED_JSON_KEYS = [
   "nextIterationBrief",
 ];
 
+/** Default LLM HTTP timeout (ms). Override with BRAND_ADVISOR_FETCH_TIMEOUT_MS if set. */
+const DEFAULT_FETCH_TIMEOUT_MS = 35_000;
+
+function getFetchTimeoutMs() {
+  const n = Number.parseInt(process.env.BRAND_ADVISOR_FETCH_TIMEOUT_MS || "", 10);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_FETCH_TIMEOUT_MS;
+}
+
 function getAdvisorConfig() {
   const enabled = String(process.env.BRAND_ADVISOR_ENABLED || "").toLowerCase() === "true";
   const provider = String(process.env.BRAND_ADVISOR_PROVIDER || "qwen").toLowerCase();
@@ -99,16 +107,16 @@ function normalizeAdvisorOutput(parsed) {
 }
 
 /**
- * @param {Record<string, unknown>} input — brandName, industry, keywords, etc.
- * @returns {Promise<{ designRecommendation: string, brandRead: string, leadConceptWhy: string, nextIterationBrief: string }>}
+ * Calls the LLM without throwing. Used by /api/brand-plan for reliable fallbacks.
+ * @returns {Promise<{ ok: true, textLayer: object } | { ok: false, failure: 'timeout'|'http'|'fetch_json'|'empty'|'parse'|'disabled'|'misconfigured'|'network', detail?: string }>}
  */
-async function generateBrandAdvisorCopy(input = {}) {
+async function attemptBrandAdvisorLLM(input = {}) {
   const cfg = getAdvisorConfig();
   if (!cfg.enabled) {
-    throw new Error("Brand advisor disabled");
+    return { ok: false, failure: "disabled" };
   }
   if (!isAdvisorConfigured(cfg)) {
-    throw new Error("Brand advisor missing API configuration");
+    return { ok: false, failure: "misconfigured" };
   }
 
   const structured = {
@@ -128,42 +136,84 @@ async function generateBrandAdvisorCopy(input = {}) {
   };
 
   const url = `${cfg.baseUrl}/chat/completions`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${cfg.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: cfg.model,
-      messages: buildAdvisorMessages(structured),
-      temperature: 0.45,
-      max_tokens: 700,
-    }),
-  });
+  const timeoutMs = getFetchTimeoutMs();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  let res;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cfg.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: buildAdvisorMessages(structured),
+        temperature: 0.45,
+        max_tokens: 700,
+      }),
+    });
+  } catch (e) {
+    const name = e && e.name;
+    const msg = e?.message || String(e);
+    if (name === "AbortError") {
+      return { ok: false, failure: "timeout", detail: `${timeoutMs}ms` };
+    }
+    return { ok: false, failure: "network", detail: msg.slice(0, 200) };
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Brand advisor HTTP ${res.status}: ${body.slice(0, 200)}`);
+    return {
+      ok: false,
+      failure: "http",
+      detail: `${res.status} ${body.slice(0, 200)}`,
+    };
   }
 
-  const data = await res.json();
+  let data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    return { ok: false, failure: "fetch_json", detail: e?.message || String(e) };
+  }
+
   const content = data?.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error("Brand advisor empty response");
+  if (content == null || !String(content).trim()) {
+    return { ok: false, failure: "empty" };
   }
 
   const parsed = extractJsonObject(content);
   const normalized = normalizeAdvisorOutput(parsed);
   if (!normalized) {
-    throw new Error("Brand advisor invalid JSON");
+    return { ok: false, failure: "parse" };
   }
 
-  return normalized;
+  return { ok: true, textLayer: normalized };
+}
+
+/**
+ * @param {Record<string, unknown>} input — brandName, industry, keywords, etc.
+ * @returns {Promise<{ designRecommendation: string, brandRead: string, leadConceptWhy: string, nextIterationBrief: string }>}
+ */
+async function generateBrandAdvisorCopy(input = {}) {
+  const result = await attemptBrandAdvisorLLM(input);
+  if (!result.ok) {
+    const d = result.detail ? `: ${result.detail}` : "";
+    throw new Error(`Brand advisor failed (${result.failure})${d}`);
+  }
+
+  return result.textLayer;
 }
 
 module.exports = {
   getAdvisorConfig,
   isAdvisorConfigured,
   generateBrandAdvisorCopy,
+  attemptBrandAdvisorLLM,
 };
