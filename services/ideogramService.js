@@ -7,13 +7,16 @@ function buildIdeogramPrompt(input = {}) {
   // If override is present, preserve user intent but enforce strict logo constraints.
   // Never return raw override text — it bypasses all logo framing and causes scene/photo output.
   if (typeof promptOverride === "string" && promptOverride.trim()) {
-    return [
-      `Flat vector logo design for "${brandName}".`,
-      `Brand direction: ${promptOverride.trim()}.`,
-      "Centered standalone logo mark on plain white background.",
-      "Vector-style, clean brand identity, flat graphic design.",
-      "Plain white background only. No photo, no scene, no lifestyle, no mockup, no product placement, no table, no cup, no environment, no hands, no people, no background texture, no gradient backdrop.",
-    ].join(" ");
+    return {
+      prompt: [
+        `Flat vector logo design for "${brandName}".`,
+        `Brand direction: ${promptOverride.trim()}.`,
+        "Centered standalone logo mark on plain white background.",
+        "Vector-style, clean brand identity, flat graphic design.",
+        "Plain white background only. No photo, no scene, no lifestyle, no mockup, no product placement, no table, no cup, no environment, no hands, no people, no background texture, no gradient backdrop.",
+      ].join(" "),
+      style_name: "custom",
+    };
   }
   const industryRaw = String(input?.industry || "").trim();
   const industry = industryRaw.toLowerCase();
@@ -220,7 +223,7 @@ function buildIdeogramPrompt(input = {}) {
 
   const backgroundTag = "Centered composition on plain white background. Vector-style flat graphic design.";
 
-  return [
+  const prompt = [
     `Flat vector logo design for "${brandName}".`,
     industryBaseTag,
     `${structureTag}.`,
@@ -237,6 +240,8 @@ function buildIdeogramPrompt(input = {}) {
   ]
     .filter(Boolean)
     .join(" ");
+
+  return { prompt, style_name: route };
 }
 
 async function generateIdeogramLogos(input = {}) {
@@ -245,7 +250,7 @@ async function generateIdeogramLogos(input = {}) {
     throw new Error("Missing IDEOGRAM_API_KEY in env");
   }
 
-  const prompt = buildIdeogramPrompt(input);
+  const { prompt, style_name } = buildIdeogramPrompt(input);
 
   const response = await fetch("https://api.ideogram.ai/v1/ideogram-v3/generate", {
     method: "POST",
@@ -284,6 +289,7 @@ async function generateIdeogramLogos(input = {}) {
   return imageUrls.slice(0, 4).map((imageUrl) => ({
     imageUrl,
     prompt,
+    style_name,
     model: "ideogram",
     mode: "text-to-image",
   }));
