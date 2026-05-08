@@ -2,11 +2,19 @@ const fetch = require("node-fetch");
 
 function buildIdeogramPrompt(input = {}) {
   const promptOverride = input?.promptOverride;
-  if (typeof promptOverride === "string" && promptOverride.trim()) {
-    return promptOverride.trim();
-  }
-
   const brandName = String(input?.brandName || "Brand").trim();
+
+  // If override is present, preserve user intent but enforce strict logo constraints.
+  // Never return raw override text — it bypasses all logo framing and causes scene/photo output.
+  if (typeof promptOverride === "string" && promptOverride.trim()) {
+    return [
+      `Flat vector logo design for "${brandName}".`,
+      `Brand direction: ${promptOverride.trim()}.`,
+      "Centered standalone logo mark on plain white background.",
+      "Vector-style, clean brand identity, flat graphic design.",
+      "Plain white background only. No photo, no scene, no lifestyle, no mockup, no product placement, no table, no cup, no environment, no hands, no people, no background texture, no gradient backdrop.",
+    ].join(" ");
+  }
   const industryRaw = String(input?.industry || "").trim();
   const industry = industryRaw.toLowerCase();
   const keywords = String(input?.keywords || "").trim();
@@ -205,10 +213,15 @@ function buildIdeogramPrompt(input = {}) {
   const styleCuesText = styleCues || keywords;
   const styleCuesTag = styleCuesText ? `Style cues: ${styleCuesText}.` : "";
   const notesTag = otherNotes ? `Art direction notes: ${otherNotes}.` : "";
-  const exclusionTag = "No people, no scenes, no mascots, no extra decorative symbols.";
+  const exclusionTag =
+    "Plain white background only. Standalone logo mark on white. " +
+    "No photo scene, no lifestyle imagery, no mockup, no product shot, no table, no cup, " +
+    "no environment, no background texture, no gradient backdrop, no people, no hands, no mascots.";
+
+  const backgroundTag = "Centered composition on plain white background. Vector-style flat graphic design.";
 
   return [
-    `Commercial logo for "${brandName}".`,
+    `Flat vector logo design for "${brandName}".`,
     industryBaseTag,
     `${structureTag}.`,
     `${layoutTag}.`,
@@ -219,6 +232,7 @@ function buildIdeogramPrompt(input = {}) {
     colorTag,
     styleCuesTag,
     notesTag,
+    backgroundTag,
     exclusionTag,
   ]
     .filter(Boolean)
@@ -243,6 +257,8 @@ async function generateIdeogramLogos(input = {}) {
       prompt,
       // Request 4 concepts to match the required normalization contract.
       num_images: 4,
+      // Disable Ideogram magic prompt enhancement — prevents scene context being added to logo prompts.
+      magic_prompt: "OFF",
     }),
   });
 
