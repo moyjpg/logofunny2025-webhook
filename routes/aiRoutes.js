@@ -8,6 +8,19 @@ const {
   attemptBrandAdvisorLLM,
 } = require("../services/brandAdvisorService");
 
+function requireInternalKey(req, res, next) {
+  const serverKey = process.env.LOGOFUNNY_INTERNAL_API_KEY;
+  if (!serverKey) {
+    console.warn('[security] LOGOFUNNY_INTERNAL_API_KEY is not configured');
+    return res.status(500).json({ success: false, error: 'Server security key is not configured.' });
+  }
+  const clientKey = req.headers['x-logofunny-internal-key'];
+  if (!clientKey || clientKey !== serverKey) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  next();
+}
+
 function buildFallbackBrandPlan(body = {}) {
   const {
     brandName = "",
@@ -84,7 +97,7 @@ function buildStaticAdvisorTextLayer(base) {
 }
 
 // ===== Brand Plan (fallback + optional AI text layer) =====
-router.post("/brand-plan", async (req, res) => {
+router.post("/brand-plan", requireInternalKey, async (req, res) => {
   console.log("[brand-plan] hit");
 
   const body = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};

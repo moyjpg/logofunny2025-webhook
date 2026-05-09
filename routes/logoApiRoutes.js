@@ -157,6 +157,19 @@ function mapElementorToAI(body) {
     uploadImage: f["uploadLogo"] || null,
   };
 }
+function requireInternalKey(req, res, next) {
+  const serverKey = process.env.LOGOFUNNY_INTERNAL_API_KEY;
+  if (!serverKey) {
+    console.warn('[security] LOGOFUNNY_INTERNAL_API_KEY is not configured');
+    return res.status(500).json({ success: false, error: 'Server security key is not configured.' });
+  }
+  const clientKey = req.headers['x-logofunny-internal-key'];
+  if (!clientKey || clientKey !== serverKey) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  next();
+}
+
 // 简单测试路由：不调模型，只验证 Webhook 是否通畅
 router.post('/test-generate-logo', (req, res) => {
   console.log('[/test-generate-logo] incoming body:');
@@ -170,7 +183,7 @@ router.post('/test-generate-logo', (req, res) => {
 });
 
 // POST /generate-logo  (Elementor -> backend; returns dual-track shape, same as /generate-logo-dual)
-router.post('/generate-logo', async (req, res) => {
+router.post('/generate-logo', requireInternalKey, async (req, res) => {
   const requestStart = Date.now();
   const requestId = String(Date.now()) + Math.random().toString(16).slice(2);
   const mapped = mapElementorToAI(req.body);
