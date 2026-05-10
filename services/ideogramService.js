@@ -4,6 +4,11 @@ function buildIdeogramPrompt(input = {}) {
   const promptOverride = input?.promptOverride;
   const brandName = String(input?.brandName || "Brand").trim();
 
+  const textConstraintTag =
+    `Include only the exact brand name text. Do not add subtitles, taglines, slogans, ` +
+    `category labels, descriptor text, industry words, small text, dates, locations, or extra words ` +
+    `unless explicitly provided by the user. Do not write the industry context inside the logo.`;
+
   // If override is present, preserve user intent but enforce strict logo constraints.
   // Never return raw override text — it bypasses all logo framing and causes scene/photo output.
   if (typeof promptOverride === "string" && promptOverride.trim()) {
@@ -13,6 +18,7 @@ function buildIdeogramPrompt(input = {}) {
         `Brand direction: ${promptOverride.trim()}.`,
         "Centered standalone logo mark on plain white background.",
         "Vector-style, clean brand identity, flat graphic design.",
+        textConstraintTag,
         "Plain white background only. No photo, no scene, no lifestyle, no mockup, no product placement, no table, no cup, no environment, no hands, no people, no background texture, no gradient backdrop.",
       ].join(" "),
       style_name: "custom",
@@ -235,6 +241,7 @@ function buildIdeogramPrompt(input = {}) {
     colorTag,
     styleCuesTag,
     notesTag,
+    textConstraintTag,
     backgroundTag,
     exclusionTag,
   ]
