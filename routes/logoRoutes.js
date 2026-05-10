@@ -10,6 +10,19 @@ const {
   generateLogoFromText,
 } = require('../services/logoService');
 
+function requireInternalKey(req, res, next) {
+  const serverKey = process.env.LOGOFUNNY_INTERNAL_API_KEY;
+  if (!serverKey) {
+    console.warn('[security] LOGOFUNNY_INTERNAL_API_KEY is not configured');
+    return res.status(500).json({ success: false, error: 'Server security key is not configured.' });
+  }
+  const clientKey = req.headers['x-logofunny-internal-key'];
+  if (!clientKey || clientKey !== serverKey) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  next();
+}
+
 // 把原始 body 转成内部统一格式
 function normalizePayload(body = {}) {
   return {
@@ -27,7 +40,7 @@ function normalizePayload(body = {}) {
 
 // POST /test-generate-logo
 // Accepts a JSON body and returns a mock logo preview response.
-router.post('/test-generate-logo', async (req, res) => {
+router.post('/test-generate-logo', requireInternalKey, async (req, res) => {
   try {
     const result = await generateMockLogo(req.body);
     const status = result.success ? 200 : 400;
@@ -40,7 +53,7 @@ router.post('/test-generate-logo', async (req, res) => {
 
 // 正式的生成接口（以后给 WordPress webhook 用）
 // 根据占位字段 hasImage 决定调用不同的生成逻辑（当前均为 mock）
-router.post('/generate-logo', async (req, res) => {
+router.post('/generate-logo', requireInternalKey, async (req, res) => {
   try {
     const payload = normalizePayload(req.body);
     const hasImage = Boolean(payload.logoUrl);

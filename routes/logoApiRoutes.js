@@ -171,7 +171,7 @@ function requireInternalKey(req, res, next) {
 }
 
 // 简单测试路由：不调模型，只验证 Webhook 是否通畅
-router.post('/test-generate-logo', (req, res) => {
+router.post('/test-generate-logo', requireInternalKey, (req, res) => {
   console.log('[/test-generate-logo] incoming body:');
   console.log(JSON.stringify(req.body, null, 2));
 
@@ -228,7 +228,7 @@ router.post('/generate-logo', requireInternalKey, async (req, res) => {
 });
 
 // POST /generate-logo-fast — single generation quick test
-router.post('/generate-logo-fast', async (req, res) => {
+router.post('/generate-logo-fast', requireInternalKey, async (req, res) => {
   try {
     const mapped = mapElementorToAI(req.body);
 
@@ -259,7 +259,7 @@ router.post('/generate-logo-fast', async (req, res) => {
 });
 
 // POST /generate-logo-dual — dual-track: 2 user-driven + 2 system-recommended
-router.post('/generate-logo-dual', async (req, res) => {
+router.post('/generate-logo-dual', requireInternalKey, async (req, res) => {
   const requestStart = Date.now();
   const requestId = String(Date.now()) + Math.random().toString(16).slice(2);
   const mapped = mapElementorToAI(req.body);
@@ -297,7 +297,7 @@ router.post('/generate-logo-dual', async (req, res) => {
   }
 });
 
-router.post("/generate-logo-direct", async (req, res) => {
+router.post("/generate-logo-direct", requireInternalKey, async (req, res) => {
   try {
     const result = await generateLogoMock(req.body);
     const imageUrl = result?.imageUrl || null;
@@ -326,7 +326,7 @@ router.post("/generate-logo-direct", async (req, res) => {
 });
 
 // POST /generate-logo-ideogram-test
-router.post('/generate-logo-ideogram-test', async (req, res) => {
+router.post('/generate-logo-ideogram-test', requireInternalKey, async (req, res) => {
   try {
     const mapped = mapElementorToAI(req.body);
     if (!mapped.brandName || !mapped.brandName.trim()) {
@@ -358,7 +358,7 @@ router.post('/generate-logo-ideogram-test', async (req, res) => {
 });
 
 // POST /generate-logo-pipeline  (temporarily: single-candidate, no multi-model pipeline)
-router.post('/generate-logo-pipeline', async (req, res) => {
+router.post('/generate-logo-pipeline', requireInternalKey, async (req, res) => {
   try {
     const mapped = mapElementorToAI(req.body);
     const hasText = (mapped.brandName && mapped.brandName.trim()) || (mapped.keywords && mapped.keywords.trim());
