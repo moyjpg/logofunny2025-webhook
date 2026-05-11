@@ -28,11 +28,11 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
   const brandName = String(input?.brandName || "Brand").trim();
 
   const textConstraintTag =
-    `The brand name must appear as plain brand text only — absolutely no ® registration mark, no ™ trademark symbol, no © copyright symbol, ` +
-    `no superscript marks, no tiny legal marks, no small decorative dots near the brand name that resemble legal symbols, no registration circles, ` +
-    `no micro text, no slogans, no taglines, no random letters, no badges. ` +
-    `Do not add subtitles, category labels, descriptor text, industry words, small text, dates, locations, or extra words ` +
-    `unless explicitly provided by the user. Do not write the industry context inside the logo.`;
+    `The only text in this image is the exact brand name "${brandName}" rendered in clean letterforms. ` +
+    `Allowed visual elements: brand name letters and one optional simple abstract mark only. ` +
+    `Nothing else should appear in the image — no additional characters, extra letters, small symbols, annotations, badges, labels, seals, dots near the wordmark, or micro details. ` +
+    `Do not add subtitles, category labels, descriptor text, industry words, dates, locations, or extra words. ` +
+    `Do not write the industry context inside the logo.`;
 
   // If override is present, preserve user intent but enforce strict logo constraints.
   // Never return raw override text — it bypasses all logo framing and causes scene/photo output.
@@ -118,7 +118,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
   let toneTag =
     "modern software brand, clean app icon feel, professional SaaS identity, distinctive but simple";
   let disciplineTag =
-    "product-brand ready logo system, app-icon readability, strong small-size recognition, usable in monochrome";
+    "scalable clean vector identity, clear at small sizes, strong recognition, reproducible in monochrome";
   let typographyTag = "clean sans-serif or geometric typography, strong wordmark readability";
 
   if (route === "beauty_premium") {
@@ -126,7 +126,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     layoutTag = "elegant balanced centered composition or premium lockup";
     toneTag = "premium beauty identity, refined minimal luxury logo, soft geometric elegance";
     disciplineTag =
-      "luxury brand system ready, clear premium spacing, usable in black and white, distinctive but restrained, high-end packaging friendly";
+      "scalable premium identity, clear premium spacing, clean at small sizes, distinctive but restrained, packaging-scale legible";
     typographyTag = "refined clean sans-serif typography with graceful spacing";
   } else if (route === "studio_creative") {
     structureTag =
@@ -141,7 +141,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     layoutTag = "balanced horizontal or centered calm lockup";
     toneTag = "minimal neutral brand identity, calm restrained clarity, professional and simple";
     disciplineTag =
-      "brand-ready system, small-size clarity, monochrome friendly, scalable compact mark";
+      "clean production-ready vector, small-size clarity, monochrome friendly, scalable compact mark";
     typographyTag = "clean minimal sans-serif typography, highly legible";
   } else if (route === "bold_modern") {
     structureTag = "one bold geometric mark and one strong readable wordmark";
@@ -257,8 +257,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
   const exclusionTag =
     "Plain white background only. Standalone logo mark on white. " +
     "No photo scene, no lifestyle imagery, no mockup, no product shot, no table, no cup, " +
-    "no environment, no background texture, no gradient backdrop, no people, no hands, no mascots. " +
-    "No ® ™ © trademark symbols, registration marks, copyright symbols, superscript legal marks, or any tiny symbols near the brand name.";
+    "no environment, no background texture, no gradient backdrop, no people, no hands, no mascots.";
 
   const backgroundTag = "Centered composition on plain white background. Vector-style flat graphic design.";
 
