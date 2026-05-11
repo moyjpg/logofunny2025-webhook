@@ -1,6 +1,29 @@
 const fetch = require("node-fetch");
 
-function buildIdeogramPrompt(input = {}) {
+// Two group art directions — each group generates 2 sibling outputs (2+2 = 4 total).
+// Group 0: typography-forward (wordmark + symbol). Group 1: mark-led (icon or monogram).
+const GROUP_DIRECTIONS = [
+  {
+    label: "wordmark_symbol",
+    structureOverride:
+      "one clean wordmark paired with a simple geometric symbol mark, symbol positioned beside or above wordmark, typography is the hero element",
+    layoutOverride:
+      "balanced horizontal or centered lockup with clear wordmark dominance and generous whitespace",
+    artNote:
+      "Typography-forward identity. Wordmark clarity is the primary goal. Geometric mark is subtle and secondary. The 2 outputs in this group should be siblings — sharing this horizontal wordmark-led composition but each offering distinct variation in mark geometry or visual weight. Not duplicates.",
+  },
+  {
+    label: "icon_monogram",
+    structureOverride:
+      "one bold standalone abstract icon, geometric mark, or stylized monogram letterform as the dominant visual element, full brand name wordmark as a smaller secondary element below",
+    layoutOverride:
+      "stacked vertical composition or centered mark-over-wordmark arrangement, the standalone mark occupies dominant visual weight",
+    artNote:
+      "Mark-led identity. The standalone icon or letterform is the primary focal point. Wordmark is clean and supporting. The 2 outputs in this group should be siblings — sharing this mark-dominant stacked composition but each offering distinct variation in abstract form or letterform approach. Not duplicates.",
+  },
+];
+
+function buildIdeogramPrompt(input = {}, groupIndex = 0) {
   const promptOverride = input?.promptOverride;
   const brandName = String(input?.brandName || "Brand").trim();
 
@@ -142,6 +165,13 @@ function buildIdeogramPrompt(input = {}) {
     }
   }
 
+  // Apply group art direction — overrides route defaults so the two request groups
+  // produce clearly different composition, mark concept, and layout.
+  const group = GROUP_DIRECTIONS[groupIndex] ?? GROUP_DIRECTIONS[0];
+  structureTag = group.structureOverride;
+  layoutTag = group.layoutOverride;
+  const variationNote = group.artNote;
+
   /** @type {Record<string, string>} */
   const TYPO_MAP = {
     clean_sans: "clean sans-serif wordmark typography, strong readability",
@@ -241,6 +271,7 @@ function buildIdeogramPrompt(input = {}) {
     colorTag,
     styleCuesTag,
     notesTag,
+    variationNote,
     textConstraintTag,
     backgroundTag,
     exclusionTag,
@@ -257,52 +288,60 @@ async function generateIdeogramLogos(input = {}) {
     throw new Error("Missing IDEOGRAM_API_KEY in env");
   }
 
-  const { prompt, style_name } = buildIdeogramPrompt(input);
+  // Two requests in parallel, each asking for num_images:2 — 4 total images.
+  // Group 0 (wordmark+symbol) and Group 1 (icon/monogram) are clearly different directions;
+  // the 2 images within each group are siblings that share the same composition approach.
+  const groups = await Promise.all(
+    [0, 1].map(async (groupIndex) => {
+      const { prompt, style_name } = buildIdeogramPrompt(input, groupIndex);
 
-  const response = await fetch("https://api.ideogram.ai/v1/ideogram-v3/generate", {
-    method: "POST",
-    headers: {
-      "Api-Key": apiKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      prompt,
-      // Request 4 concepts to match the required normalization contract.
-      num_images: 4,
-      // Disable Ideogram magic prompt enhancement — prevents scene context being added to logo prompts.
-      magic_prompt: "OFF",
-    }),
-  });
+      const response = await fetch("https://api.ideogram.ai/v1/ideogram-v3/generate", {
+        method: "POST",
+        headers: {
+          "Api-Key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+          num_images: 2,
+          // Disable Ideogram magic prompt enhancement — prevents scene context being added to logo prompts.
+          magic_prompt: "OFF",
+        }),
+      });
 
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(`Ideogram API error ${response.status}: ${detail || "no details"}`);
-  }
+      if (!response.ok) {
+        const detail = await response.text().catch(() => "");
+        throw new Error(`Ideogram API error ${response.status}: ${detail || "no details"}`);
+      }
 
-  const data = await response.json();
-  const raw =
-    (Array.isArray(data?.data) && data.data) ||
-    (Array.isArray(data?.results) && data.results) ||
-    [];
+      const data = await response.json();
+      const raw =
+        (Array.isArray(data?.data) && data.data) ||
+        (Array.isArray(data?.results) && data.results) ||
+        [];
 
-  const imageUrls = raw
-    .map((item) => item?.url || item?.image_url || item?.imageUrl || item?.image?.url)
-    .filter((u) => typeof u === "string" && u.trim());
+      const imageUrls = raw
+        .map((item) => item?.url || item?.image_url || item?.imageUrl || item?.image?.url)
+        .filter((u) => typeof u === "string" && u.trim())
+        .slice(0, 2);
 
-  if (imageUrls.length < 4) {
-    throw new Error(`Ideogram returned ${imageUrls.length} images, expected 4`);
-  }
+      if (imageUrls.length < 2) {
+        throw new Error(`Ideogram returned ${imageUrls.length} images for group ${groupIndex}, expected 2`);
+      }
 
-  return imageUrls.slice(0, 4).map((imageUrl) => ({
-    imageUrl,
-    prompt,
-    style_name,
-    model: "ideogram",
-    mode: "text-to-image",
-  }));
+      return imageUrls.map((imageUrl) => ({
+        imageUrl,
+        prompt,
+        style_name,
+        model: "ideogram",
+        mode: "text-to-image",
+      }));
+    })
+  );
+
+  return groups.flat();
 }
 
 module.exports = {
   generateIdeogramLogos,
 };
-
