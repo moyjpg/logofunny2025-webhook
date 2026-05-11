@@ -15,11 +15,11 @@ const GROUP_DIRECTIONS = [
   {
     label: "icon_monogram",
     structureOverride:
-      "one bold standalone abstract icon, geometric mark, or stylized monogram letterform as the dominant visual element, full brand name wordmark as a smaller secondary element below",
+      "one bold distinct standalone icon or monogram mark as the dominant visual element — completely separate from the wordmark, not embedded in it, not a letter-replacement inside the wordmark — paired with the full brand name wordmark as a smaller supporting element beneath",
     layoutOverride:
-      "stacked vertical composition or centered mark-over-wordmark arrangement, the standalone mark occupies dominant visual weight",
+      "stacked vertical composition: standalone icon or monogram mark centered prominently on top, clean brand name wordmark centered below with clear visual separation — icon-over-text hierarchy, not a horizontal wordmark arrangement",
     artNote:
-      "Mark-led identity. The standalone icon or letterform is the primary focal point. Wordmark is clean and supporting. The 2 outputs in this group should be siblings — sharing this mark-dominant stacked composition but each offering distinct variation in abstract form or letterform approach. Not duplicates.",
+      "Icon-led identity. The mark must be a fully independent graphic element — an abstract icon, geometric symbol, or bold monogram — that exists above the wordmark, not inside it. Do not replace a letter in the wordmark with an icon or shape. The icon and wordmark are two distinct separate elements in a stacked layout. The 2 outputs in this group should be siblings — sharing this icon-over-wordmark stacked composition but each exploring a distinct mark concept or abstract form. Not duplicates. This direction must feel clearly different from a horizontal wordmark layout.",
   },
 ];
 
@@ -28,8 +28,10 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
   const brandName = String(input?.brandName || "Brand").trim();
 
   const textConstraintTag =
-    `Include only the exact brand name text. Do not add subtitles, taglines, slogans, ` +
-    `category labels, descriptor text, industry words, small text, dates, locations, or extra words ` +
+    `The brand name must appear as plain brand text only — absolutely no ® registration mark, no ™ trademark symbol, no © copyright symbol, ` +
+    `no superscript marks, no tiny legal marks, no small decorative dots near the brand name that resemble legal symbols, no registration circles, ` +
+    `no micro text, no slogans, no taglines, no random letters, no badges. ` +
+    `Do not add subtitles, category labels, descriptor text, industry words, small text, dates, locations, or extra words ` +
     `unless explicitly provided by the user. Do not write the industry context inside the logo.`;
 
   // If override is present, preserve user intent but enforce strict logo constraints.
@@ -255,7 +257,8 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
   const exclusionTag =
     "Plain white background only. Standalone logo mark on white. " +
     "No photo scene, no lifestyle imagery, no mockup, no product shot, no table, no cup, " +
-    "no environment, no background texture, no gradient backdrop, no people, no hands, no mascots.";
+    "no environment, no background texture, no gradient backdrop, no people, no hands, no mascots. " +
+    "No ® ™ © trademark symbols, registration marks, copyright symbols, superscript legal marks, or any tiny symbols near the brand name.";
 
   const backgroundTag = "Centered composition on plain white background. Vector-style flat graphic design.";
 
