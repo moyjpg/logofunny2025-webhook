@@ -308,6 +308,10 @@ async function generateIdeogramLogos(input = {}) {
           num_images: 2,
           // Disable Ideogram magic prompt enhancement — prevents scene context being added to logo prompts.
           magic_prompt: "OFF",
+          // Confirmed Ideogram v3 quality parameters.
+          style_type: "DESIGN",
+          aspect_ratio: "1x1",
+          rendering_speed: "QUALITY",
         }),
       });
 
