@@ -15,7 +15,7 @@ const GROUP_DIRECTIONS = [
   {
     label: "icon_monogram",
     structureOverride:
-      "one bold distinct standalone icon or monogram mark as the dominant visual element — completely separate from the wordmark, not embedded in it, not a letter-replacement inside the wordmark — paired with the full brand name wordmark as a smaller supporting element beneath",
+      "Prefer a distinct abstract or concept-driven symbol derived from the brand idea. Avoid defaulting to a plain initial, generic letter mark, or simple monogram unless the user's selected logo structure, icon direction, industry context, or brief clearly asks for a lettermark, initials, monogram, portrait/avatar, mascot, or animal form. Keep the mark paired with a readable wordmark.",
     layoutOverride:
       "stacked vertical composition: standalone icon or monogram mark centered prominently on top, clean brand name wordmark centered below with clear visual separation — icon-over-text hierarchy, not a horizontal wordmark arrangement",
     artNote:
@@ -32,7 +32,8 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     `Allowed visual elements: brand name letters and one optional simple abstract mark only. ` +
     `Nothing else should appear in the image — no additional characters, extra letters, small symbols, annotations, badges, labels, seals, dots near the wordmark, or micro details. ` +
     `Do not add subtitles, category labels, descriptor text, industry words, dates, locations, or extra words. ` +
-    `Do not write the industry context inside the logo.`;
+    `Do not write the industry context inside the logo. ` +
+    `Preserve the exact letter case of the brand name as typed — do not change it to all-caps, all-lowercase, or title case.`;
 
   // If override is present, preserve user intent but enforce strict logo constraints.
   // Never return raw override text — it bypasses all logo framing and causes scene/photo output.
@@ -263,6 +264,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
 
   const prompt = [
     `Flat vector logo design for "${brandName}".`,
+    variationNote,
     industryBaseTag,
     `${structureTag}.`,
     `${layoutTag}.`,
@@ -273,7 +275,6 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     colorTag,
     styleCuesTag,
     notesTag,
-    variationNote,
     textConstraintTag,
     backgroundTag,
     exclusionTag,
