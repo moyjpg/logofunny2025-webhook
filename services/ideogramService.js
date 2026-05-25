@@ -220,7 +220,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
   })();
 
   const COOL_TECH_BLUE =
-    "Use a clear modern tech blue as the primary accent color, especially in the symbol or key letterform, paired with dark navy or charcoal text. Do not generate an all-black or monochrome-only logo unless the user explicitly selected black/monochrome.";
+    "Two-color logo. The symbol or one key letterform must use a bright saturated modern tech blue (vivid electric blue, not dark navy, not steel, not indigo). The wordmark uses dark charcoal or dark navy. Do not create a fully black, fully charcoal, or monochrome-only logo. Tech blue must be clearly visible as a distinct color in the final image.";
 
   /** @type {Record<string, string>} */
   const CD_MAP = {
@@ -255,6 +255,12 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
         : "Color palette: restrained cool tones or black-and-white-first.");
   }
 
+  if (colorTag && colorTag !== CD_MAP["black_white_first"]) {
+    disciplineTag = disciplineTag
+      .replace("reproducible in monochrome", "scalable and production-ready")
+      .replace("monochrome friendly", "scalable");
+  }
+
   const industryBaseTag =
     industryRaw && !industryRaw.match(/^[,.\s]+$/)
       ? `Industry context: ${industryRaw}.`
@@ -272,6 +278,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
 
   const prompt = [
     `Flat vector logo design for "${brandName}".`,
+    colorTag,
     variationNote,
     industryBaseTag,
     `${structureTag}.`,
@@ -280,7 +287,6 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     `${disciplineTag}.`,
     `Typography: ${typographyTag}.`,
     moodTag,
-    colorTag,
     styleCuesTag,
     notesTag,
     textConstraintTag,
