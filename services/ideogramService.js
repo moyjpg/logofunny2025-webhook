@@ -421,6 +421,10 @@ async function generateIdeogramLogos(input = {}) {
     throw new Error("Missing IDEOGRAM_API_KEY in env");
   }
 
+  const VALID_MAGIC_PROMPT = new Set(["OFF", "ON", "AUTO"]);
+  const magicPromptRaw = String(process.env.LOGOFUNNY_IDEOGRAM_MAGIC_PROMPT || "").toUpperCase();
+  const magicPrompt = VALID_MAGIC_PROMPT.has(magicPromptRaw) ? magicPromptRaw : "OFF";
+
   // SaaS: 4 independent concept prompts × 1 image each (Lead, Custom wordmark, App icon, Modular mark).
   // Non-SaaS: 2 group prompts × 2 sibling images each (unchanged GROUP_DIRECTIONS behavior).
   const saasSearchableText = [
@@ -440,8 +444,8 @@ async function generateIdeogramLogos(input = {}) {
       const { prompt, style_name, conceptLabel } = buildIdeogramPrompt(input, conceptIndex);
 
       if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
-        console.log("[ideogram-request] conceptIndex=%d num_images=%d magic_prompt=OFF style_type=DESIGN aspect_ratio=1x1 rendering_speed=QUALITY promptPreview=%j",
-          conceptIndex, numImages, dbgSlice(prompt, 300));
+        console.log("[ideogram-request] conceptIndex=%d num_images=%d magic_prompt=%s style_type=DESIGN aspect_ratio=1x1 rendering_speed=QUALITY promptPreview=%j",
+          conceptIndex, numImages, magicPrompt, dbgSlice(prompt, 300));
       }
 
       const response = await fetch("https://api.ideogram.ai/v1/ideogram-v3/generate", {
@@ -453,8 +457,7 @@ async function generateIdeogramLogos(input = {}) {
         body: JSON.stringify({
           prompt,
           num_images: numImages,
-          // Disable Ideogram magic prompt enhancement — prevents scene context being added to logo prompts.
-          magic_prompt: "OFF",
+          magic_prompt: magicPrompt,
           // Confirmed Ideogram v3 quality parameters.
           style_type: "DESIGN",
           aspect_ratio: "1x1",
