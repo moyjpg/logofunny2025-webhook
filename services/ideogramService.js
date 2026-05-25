@@ -219,21 +219,29 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     return picked.length ? `Mood: ${picked.join(", ")}.` : "";
   })();
 
+  const COOL_TECH_BLUE =
+    "Use a clear modern tech blue as the primary accent color, especially in the symbol or key letterform, paired with dark navy or charcoal text. Do not generate an all-black or monochrome-only logo unless the user explicitly selected black/monochrome.";
+
+  /** @type {Record<string, string>} */
+  const CD_MAP = {
+    black_white_first: "Color palette: monochrome-first, black and white friendly.",
+    cool_tech: COOL_TECH_BLUE,
+    tech_blue: COOL_TECH_BLUE,
+    blue: COOL_TECH_BLUE,
+    "cool blue": COOL_TECH_BLUE,
+    "Cool Tech Blue": COOL_TECH_BLUE,
+    warm_neutral: "Color palette: warm neutral balance.",
+    soft_premium: "Color palette: soft premium restraint.",
+    bold_contrast: "Color palette: bold clean contrast.",
+    earthy_natural: "Color palette: earthy natural warmth.",
+  };
+
   let colorTag = "";
   if (colorTheme) {
-    colorTag = `Color palette: ${colorTheme}.`;
+    colorTag = CD_MAP[colorTheme] || `Color palette: ${colorTheme}.`;
   } else if (colorDirection === "custom") {
     colorTag = "Color direction: custom brand-appropriate palette.";
   } else {
-    /** @type {Record<string, string>} */
-    const CD_MAP = {
-      black_white_first: "Color palette: monochrome-first, black and white friendly.",
-      cool_tech: "Color palette: restrained cool tech tones.",
-      warm_neutral: "Color palette: warm neutral balance.",
-      soft_premium: "Color palette: soft premium restraint.",
-      bold_contrast: "Color palette: bold clean contrast.",
-      earthy_natural: "Color palette: earthy natural warmth.",
-    };
     colorTag =
       CD_MAP[colorDirection] ||
       (route === "beauty_premium"
