@@ -23,6 +23,81 @@ const GROUP_DIRECTIONS = [
   },
 ];
 
+function isSaasLikeIndustry(searchableText, brandStyleRoute) {
+  if (brandStyleRoute === "tech_saas") return true;
+  if (!searchableText || !searchableText.trim()) return false;
+
+  // Longer terms — substring matching is safe, false positives are unlikely.
+  const PHRASE_KEYWORDS = [
+    "artificial intelligence", "machine learning",
+    "software", "saas", "paas", "iaas",
+    "tech", "technology",
+    "application",
+    "startup",
+    "productivity",
+    "developer", "devtool", "dev tool",
+    "automation",
+    "digital product",
+    "b2b",
+    "platform",
+    "data", "analytics", "dashboard",
+    "cloud", "infrastructure",
+    "api", "integration",
+    "cybersecurity", "security software",
+    "fintech", "edtech", "healthtech", "proptech",
+    "no-code", "low-code",
+    "workflow",
+  ];
+
+  // Short terms that appear as substrings in unrelated words — require whole-word match.
+  // "ai" appears in "email", "paid", "train"; "app" appears in "appetizer", "happy".
+  const WORD_KEYWORDS = ["ai", "app"];
+
+  if (PHRASE_KEYWORDS.some((kw) => searchableText.includes(kw))) return true;
+  return WORD_KEYWORDS.some((kw) => new RegExp(`\\b${kw}\\b`).test(searchableText));
+}
+
+function getConceptDirections(route, industry, input) {
+  const brandStyleRoute = String(input?.brandStyleRoute || "").trim();
+  const searchableText = [
+    input?.industry   || "",
+    input?.keywords   || "",
+    input?.otherNotes || "",
+    input?.notes      || "",
+    input?.styleCues  || "",
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  if (route === "tech_saas" && isSaasLikeIndustry(searchableText, brandStyleRoute)) {
+    return [
+      {
+        label: "saas_wordmark",
+        structureOverride:
+          "custom-designed wordmark as the primary identity element. One output should be a pure typographic wordmark with no separate icon mark. The other output should pair a custom wordmark with one small minimalist abstract geometric accent.",
+        layoutOverride:
+          "clean horizontal wordmark composition with generous professional whitespace, wordmark-dominant lockup",
+        artNote:
+          "Custom wordmark direction for a tech or software brand. The 2 outputs in this group must look clearly different from each other: one should be a pure typographic wordmark identity with no separate symbol (typography only), and the other should be a custom wordmark paired with one small minimalist abstract accent mark beside or above the wordmark. Both should use deliberately crafted letterforms — not a generic system font or default bold sans. Do not create a badge, shield, emblem, or enclosed mark unless a badge structure was explicitly requested. This direction should feel typography-forward and professional.",
+        toneOverride:
+          "professional software brand identity, custom typography-first design, distinctive modern wordmark, deliberate letterform craft",
+      },
+      {
+        label: "saas_symbol",
+        structureOverride:
+          "one abstract concept-driven symbol mark paired with a clean wordmark below. The symbol must be an original abstract shape derived from the brand concept — not a plain letter initial of the brand name, not a generic circle or blob, not a rounded-square app icon with a letter inside.",
+        layoutOverride:
+          "stacked vertical composition: abstract symbol mark centered prominently on top, clean brand name wordmark centered below with clear visual separation — mark-over-wordmark hierarchy",
+        artNote:
+          "Abstract symbol mark direction for a tech or software brand. The 2 outputs in this group must look clearly different from each other: one should explore an abstract concept mark derived from what the brand does or represents (its domain, function, or idea), and the other should explore a modular, geometric, or negative-space mark — shapes that interlock, align, or use space meaningfully to suggest structure, connectivity, or intelligence. Do not create a badge, shield, emblem, or enclosed mark unless a badge structure was explicitly requested. Do not use a plain letter initial of the brand name as the mark unless a monogram or lettermark was explicitly requested.",
+        toneOverride:
+          "concept-driven tech software brand, abstract symbol with visual meaning, distinctive mark-led identity, modern and recognizable",
+      },
+    ];
+  }
+  return GROUP_DIRECTIONS;
+}
+
 function buildIdeogramPrompt(input = {}, groupIndex = 0) {
   const promptOverride = input?.promptOverride;
   const brandName = String(input?.brandName || "Brand").trim();
@@ -172,10 +247,17 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
 
   // Apply group art direction — overrides route defaults so the two request groups
   // produce clearly different composition, mark concept, and layout.
-  const group = GROUP_DIRECTIONS[groupIndex] ?? GROUP_DIRECTIONS[0];
-  structureTag = group.structureOverride;
-  layoutTag = group.layoutOverride;
+  const conceptDirections = getConceptDirections(route, industry, input);
+  const group = conceptDirections[groupIndex] ?? conceptDirections[0];
+
+  if (!logoStructure) {
+    structureTag = group.structureOverride;
+    layoutTag = group.layoutOverride;
+  }
   const variationNote = group.artNote;
+  if (group.toneOverride) {
+    toneTag = group.toneOverride;
+  }
 
   /** @type {Record<string, string>} */
   const TYPO_MAP = {
