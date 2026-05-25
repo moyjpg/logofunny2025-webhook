@@ -98,6 +98,10 @@ function getConceptDirections(route, industry, input) {
   return GROUP_DIRECTIONS;
 }
 
+function dbgSlice(v, n) {
+  return String(v == null ? "" : v).slice(0, n);
+}
+
 function buildIdeogramPrompt(input = {}, groupIndex = 0) {
   const promptOverride = input?.promptOverride;
   const brandName = String(input?.brandName || "Brand").trim();
@@ -345,6 +349,16 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
       .replace("monochrome friendly", "scalable");
   }
 
+  if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
+    console.log("[prompt-debug] groupIndex=%d brand=%j route=%s industry=%j brandStyleRoute=%j",
+      groupIndex, brandName, route, dbgSlice(industryRaw, 80), dbgSlice(brandStyleRoute, 40));
+    console.log("[prompt-debug] colorDirection=%j colorTheme=%j colorTag=%j",
+      colorDirection, dbgSlice(colorTheme, 60), dbgSlice(colorTag, 150));
+    const saasDirections = Boolean(group.toneOverride);
+    console.log("[prompt-debug] conceptLabel=%j saasDirections=%s toneOverride=%j",
+      group.label || "none", saasDirections, dbgSlice(group.toneOverride, 80));
+  }
+
   const industryBaseTag =
     industryRaw && !industryRaw.match(/^[,.\s]+$/)
       ? `Industry context: ${industryRaw}.`
@@ -380,6 +394,10 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     .filter(Boolean)
     .join(" ");
 
+  if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
+    console.log("[prompt-debug] promptPreview=%j", dbgSlice(prompt, 1200));
+  }
+
   return { prompt, style_name: route };
 }
 
@@ -395,6 +413,11 @@ async function generateIdeogramLogos(input = {}) {
   const groups = await Promise.all(
     [0, 1].map(async (groupIndex) => {
       const { prompt, style_name } = buildIdeogramPrompt(input, groupIndex);
+
+      if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
+        console.log("[ideogram-request] groupIndex=%d num_images=2 magic_prompt=OFF style_type=DESIGN aspect_ratio=1x1 rendering_speed=QUALITY promptPreview=%j",
+          groupIndex, dbgSlice(prompt, 300));
+      }
 
       const response = await fetch("https://api.ideogram.ai/v1/ideogram-v3/generate", {
         method: "POST",

@@ -74,6 +74,20 @@ async function runDualTrackPipeline(mapped) {
 
   // Ideogram-first primary path (4 outputs), keep old generation as fallback.
   try {
+    if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
+      console.log("[map-debug] brandName=%j industry=%j brandStyleRoute=%j colorDirection=%j colorTheme=%j logoStructure=%j styleCues=%j keywords=%j hasOtherNotes=%s hasPromptOverride=%s",
+        mapped.brandName,
+        mapped.industry,
+        mapped.brandStyleRoute || "",
+        mapped.colorDirection,
+        mapped.colorTheme,
+        mapped.logoStructure,
+        mapped.styleCues,
+        mapped.keywords,
+        Boolean(mapped.otherNotes || mapped.notes),
+        Boolean(mapped.promptOverride)
+      );
+    }
     console.log('[Ideogram] main generate-logo route hit');
     const ideogramResults = await generateIdeogramLogos(mapped);
     console.log(`[Ideogram] generated count=${ideogramResults.length}`);
