@@ -30,49 +30,49 @@ const SAAS_CONCEPT_DIRECTIONS = [
     label: "saas_lead",
     conceptLabel: "Lead concept",
     structureOverride:
-      "one polished brand symbol and one wordmark, integrated as a unified horizontal logo — symbol and wordmark feel designed together as one system, not assembled from separate parts",
+      "concept-driven symbol left, clean wordmark right, integrated as one horizontal logo system",
     layoutOverride:
-      "balanced horizontal lockup: symbol left of wordmark, generous professional whitespace, enterprise-grade proportions",
+      "balanced horizontal lockup, symbol and wordmark as one unified composition, generous professional whitespace",
     artNote:
-      "Lead logo direction for a tech or software brand. This is the primary commercial brand identity — a polished symbol paired with the wordmark as one integrated horizontal system. The symbol should feel purposefully derived from the brand concept, not generic or decorative. Both elements should read as a unified design with consistent visual weight and spacing. This is the most production-ready, commercially complete direction.",
+      "Polished horizontal brand identity: a concept-driven symbol on the left, clean wordmark on the right, both feeling designed together as one complete system. The symbol has real visual presence — derived from the brand idea, with weight and finish. Proportions and spacing feel intentional and premium.",
     toneOverride:
-      "primary brand identity, polished integrated symbol and wordmark system, commercial-ready, enterprise-grade quality",
+      "polished commercial-grade tech brand identity, complete and intentional",
   },
   {
     label: "saas_wordmark",
     conceptLabel: "Custom wordmark",
     structureOverride:
-      "a custom-designed wordmark as the sole primary identity element — typography-led design with no separate standalone icon or symbol outside the letterforms",
+      "custom wordmark as the complete identity — typography-led, no separate symbol",
     layoutOverride:
-      "centered or horizontal wordmark-only composition with generous professional whitespace, typography-led lockup",
+      "centered or horizontal wordmark, generous whitespace, typography-led composition",
     artNote:
-      "Custom wordmark direction for a tech or software brand. The entire identity is the typography itself — deliberate letterform design with distinctive tracking, purposeful spacing, or subtle modifications that make the wordmark feel crafted rather than typed. No standalone icon or symbol that is separate from the letterforms. If any mark exists, it must be integrated directly into a letter or between letterforms. Do not use plain default bold sans text — this wordmark should have clear typographic personality.",
+      "Typography-first identity — the wordmark is the complete logo. Any visual detail should be integrated into the letterforms, not placed as a separate standalone icon. Distinctive letterform design: deliberate tracking, purposeful spacing, or a subtle letter modification that makes the name feel crafted and drawn, not typed in a default font.",
     toneOverride:
-      "custom typography identity, distinctive letterform craft, typographically distinctive wordmark, no generic bold sans",
+      "distinctive letterform craft, typographically distinctive wordmark, custom type identity",
   },
   {
     label: "saas_app_icon",
     conceptLabel: "App icon system",
     structureOverride:
-      "one strong bold standalone symbol mark paired with a clean wordmark below — the symbol must be bold and clear enough to function as an app icon or social avatar on its own",
+      "large bold concept-driven symbol mark above, clean wordmark below — stacked vertical system",
     layoutOverride:
-      "stacked vertical composition: bold standalone symbol mark centered prominently on top, clean wordmark centered below with clear visual separation — mark-over-wordmark hierarchy",
+      "stacked vertical composition: bold symbol centered on top with strong visual weight, wordmark centered below with clear spacing",
     artNote:
-      "App icon system direction for a tech or software brand. The symbol is the hero — it must be bold, clear, and recognizable as a standalone app icon in a square frame or social avatar. The mark should be concept-driven and derived from what the brand does or represents, not just a small decorative version of an initial letter and not a plain rounded-square letter icon. The wordmark appears below as a secondary element. This direction prioritizes icon-scale standalone recognition.",
+      "Bold symbol-first identity: a strong, concept-driven icon mark that stands alone as an app icon or social avatar — full visual weight, complete and finished. The symbol is derived from what the brand does, not just a letter shape. Wordmark sits cleanly below as a secondary element.",
     toneOverride:
-      "app-icon-ready symbol system, bold concept-driven mark, icon-scale recognition, symbol-led identity",
+      "bold concept-driven symbol system, app-icon-ready mark, complete and recognizable",
   },
   {
     label: "saas_modular",
     conceptLabel: "Modular mark",
     structureOverride:
-      "one modular or geometric system mark paired with a clean wordmark — the mark uses structural, modular, or negative-space logic: interlocking forms, connected geometric pieces, flow paths, or meaningful spatial relationships",
+      "modular geometric system mark with wordmark — mark uses interlocking forms, grid logic, or meaningful negative space",
     layoutOverride:
-      "stacked vertical or compact horizontal composition featuring the modular mark prominently, clean wordmark below or beside with clear visual separation",
+      "stacked or compact horizontal: modular mark prominent, clean wordmark below or beside",
     artNote:
-      "Modular mark direction for a tech or software brand. The symbol should be built from a structural or geometric logic — interlocking shapes, modular grid units, connected path pieces, flow structures, or purposeful negative space. The form should suggest structure, connectivity, data flow, or systematic thinking in an abstract and elegant way. Not a badge, not an enclosed emblem or shield shape, not a generic rounded-square letter icon. The geometry should feel intentional, precise, and scalable.",
+      "Geometric system mark built from structural logic: interlocking shapes, modular grid units, connected path pieces, or purposeful negative space that suggests connectivity, data flow, or systematic thinking. The mark feels engineered — precise, architecturally satisfying, and complete as a standalone graphic. Paired with a clean wordmark. Not an enclosed badge or shield.",
     toneOverride:
-      "modular geometric system mark, structural interlocking forms, negative-space logic, systematic and scalable design",
+      "modular geometric system mark, structural and precise, engineered aesthetic",
   },
 ];
 
