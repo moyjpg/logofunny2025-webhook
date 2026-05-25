@@ -103,7 +103,6 @@ function dbgSlice(v, n) {
 }
 
 function buildIdeogramPrompt(input = {}, groupIndex = 0) {
-  const promptOverride = input?.promptOverride;
   const brandName = String(input?.brandName || "Brand").trim();
 
   const textConstraintTag =
@@ -115,21 +114,6 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     `Preserve the exact letter case of the brand name as typed — do not change it to all-caps, all-lowercase, or title case. ` +
     `Do not include trademark symbols (®), registered mark symbols, trademark superscripts (™), copyright symbols (©), or any superscript characters anywhere in the image.`;
 
-  // If override is present, preserve user intent but enforce strict logo constraints.
-  // Never return raw override text — it bypasses all logo framing and causes scene/photo output.
-  if (typeof promptOverride === "string" && promptOverride.trim()) {
-    return {
-      prompt: [
-        `Flat vector logo design for "${brandName}".`,
-        `Brand direction: ${promptOverride.trim()}.`,
-        "Centered standalone logo mark on plain white background.",
-        "Vector-style, clean brand identity, flat graphic design.",
-        textConstraintTag,
-        "Plain white background only. No photo, no scene, no lifestyle, no mockup, no product placement, no table, no cup, no environment, no hands, no people, no background texture, no gradient backdrop.",
-      ].join(" "),
-      style_name: "custom",
-    };
-  }
   const industryRaw = String(input?.industry || "").trim();
   const industry = industryRaw.toLowerCase();
   const keywords = String(input?.keywords || "").trim();
