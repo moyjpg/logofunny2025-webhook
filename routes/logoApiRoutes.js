@@ -28,6 +28,7 @@ async function normalizeResultToItem(result) {
   const model = result?.model ?? 'mock';
   const mode = result?.mode ?? 'text2img';
   const style_name = result?.style_name ?? result?.styleName ?? null;
+  const label = result?.conceptLabel ?? result?.label ?? null;
 
   if (result && typeof result.rawSvgText === 'string' && result.rawSvgText.includes('<svg')) {
     try {
@@ -60,7 +61,7 @@ async function normalizeResultToItem(result) {
     }
   }
 
-  return { imageUrl, svgUrl, prompt, model, mode, r2Key, style_name };
+  return { imageUrl, svgUrl, prompt, model, mode, r2Key, style_name, label };
 }
 
 /**

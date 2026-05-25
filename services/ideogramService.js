@@ -23,6 +23,59 @@ const GROUP_DIRECTIONS = [
   },
 ];
 
+// Four independent SaaS concept directions — one prompt per concept, one image each.
+// Used only when isSaasLikeIndustry returns true.
+const SAAS_CONCEPT_DIRECTIONS = [
+  {
+    label: "saas_lead",
+    conceptLabel: "Lead concept",
+    structureOverride:
+      "one polished brand symbol and one wordmark, integrated as a unified horizontal logo — symbol and wordmark feel designed together as one system, not assembled from separate parts",
+    layoutOverride:
+      "balanced horizontal lockup: symbol left of wordmark, generous professional whitespace, enterprise-grade proportions",
+    artNote:
+      "Lead logo direction for a tech or software brand. This is the primary commercial brand identity — a polished symbol paired with the wordmark as one integrated horizontal system. The symbol should feel purposefully derived from the brand concept, not generic or decorative. Both elements should read as a unified design with consistent visual weight and spacing. This is the most production-ready, commercially complete direction.",
+    toneOverride:
+      "primary brand identity, polished integrated symbol and wordmark system, commercial-ready, enterprise-grade quality",
+  },
+  {
+    label: "saas_wordmark",
+    conceptLabel: "Custom wordmark",
+    structureOverride:
+      "a custom-designed wordmark as the sole primary identity element — typography-led design with no separate standalone icon or symbol outside the letterforms",
+    layoutOverride:
+      "centered or horizontal wordmark-only composition with generous professional whitespace, typography-led lockup",
+    artNote:
+      "Custom wordmark direction for a tech or software brand. The entire identity is the typography itself — deliberate letterform design with distinctive tracking, purposeful spacing, or subtle modifications that make the wordmark feel crafted rather than typed. No standalone icon or symbol that is separate from the letterforms. If any mark exists, it must be integrated directly into a letter or between letterforms. Do not use plain default bold sans text — this wordmark should have clear typographic personality.",
+    toneOverride:
+      "custom typography identity, distinctive letterform craft, typographically distinctive wordmark, no generic bold sans",
+  },
+  {
+    label: "saas_app_icon",
+    conceptLabel: "App icon system",
+    structureOverride:
+      "one strong bold standalone symbol mark paired with a clean wordmark below — the symbol must be bold and clear enough to function as an app icon or social avatar on its own",
+    layoutOverride:
+      "stacked vertical composition: bold standalone symbol mark centered prominently on top, clean wordmark centered below with clear visual separation — mark-over-wordmark hierarchy",
+    artNote:
+      "App icon system direction for a tech or software brand. The symbol is the hero — it must be bold, clear, and recognizable as a standalone app icon in a square frame or social avatar. The mark should be concept-driven and derived from what the brand does or represents, not just a small decorative version of an initial letter and not a plain rounded-square letter icon. The wordmark appears below as a secondary element. This direction prioritizes icon-scale standalone recognition.",
+    toneOverride:
+      "app-icon-ready symbol system, bold concept-driven mark, icon-scale recognition, symbol-led identity",
+  },
+  {
+    label: "saas_modular",
+    conceptLabel: "Modular mark",
+    structureOverride:
+      "one modular or geometric system mark paired with a clean wordmark — the mark uses structural, modular, or negative-space logic: interlocking forms, connected geometric pieces, flow paths, or meaningful spatial relationships",
+    layoutOverride:
+      "stacked vertical or compact horizontal composition featuring the modular mark prominently, clean wordmark below or beside with clear visual separation",
+    artNote:
+      "Modular mark direction for a tech or software brand. The symbol should be built from a structural or geometric logic — interlocking shapes, modular grid units, connected path pieces, flow structures, or purposeful negative space. The form should suggest structure, connectivity, data flow, or systematic thinking in an abstract and elegant way. Not a badge, not an enclosed emblem or shield shape, not a generic rounded-square letter icon. The geometry should feel intentional, precise, and scalable.",
+    toneOverride:
+      "modular geometric system mark, structural interlocking forms, negative-space logic, systematic and scalable design",
+  },
+];
+
 function isSaasLikeIndustry(searchableText, brandStyleRoute) {
   if (brandStyleRoute === "tech_saas") return true;
   if (!searchableText || !searchableText.trim()) return false;
@@ -70,30 +123,7 @@ function getConceptDirections(route, industry, input) {
     .toLowerCase();
 
   if (route === "tech_saas" && isSaasLikeIndustry(searchableText, brandStyleRoute)) {
-    return [
-      {
-        label: "saas_wordmark",
-        structureOverride:
-          "custom-designed wordmark as the primary identity element. One output should be a pure typographic wordmark with no separate icon mark. The other output should pair a custom wordmark with one small minimalist abstract geometric accent.",
-        layoutOverride:
-          "clean horizontal wordmark composition with generous professional whitespace, wordmark-dominant lockup",
-        artNote:
-          "Custom wordmark direction for a tech or software brand. The 2 outputs in this group must look clearly different from each other: one should be a pure typographic wordmark identity with no separate symbol (typography only), and the other should be a custom wordmark paired with one small minimalist abstract accent mark beside or above the wordmark. Both should use deliberately crafted letterforms — not a generic system font or default bold sans. Do not create a badge, shield, emblem, or enclosed mark unless a badge structure was explicitly requested. This direction should feel typography-forward and professional.",
-        toneOverride:
-          "professional software brand identity, custom typography-first design, distinctive modern wordmark, deliberate letterform craft",
-      },
-      {
-        label: "saas_symbol",
-        structureOverride:
-          "one abstract concept-driven symbol mark paired with a clean wordmark below. The symbol must be an original abstract shape derived from the brand concept — not a plain letter initial of the brand name, not a generic circle or blob, not a rounded-square app icon with a letter inside.",
-        layoutOverride:
-          "stacked vertical composition: abstract symbol mark centered prominently on top, clean brand name wordmark centered below with clear visual separation — mark-over-wordmark hierarchy",
-        artNote:
-          "Abstract symbol mark direction for a tech or software brand. The 2 outputs in this group must look clearly different from each other: one should explore an abstract concept mark derived from what the brand does or represents (its domain, function, or idea), and the other should explore a modular, geometric, or negative-space mark — shapes that interlock, align, or use space meaningfully to suggest structure, connectivity, or intelligence. Do not create a badge, shield, emblem, or enclosed mark unless a badge structure was explicitly requested. Do not use a plain letter initial of the brand name as the mark unless a monogram or lettermark was explicitly requested.",
-        toneOverride:
-          "concept-driven tech software brand, abstract symbol with visual meaning, distinctive mark-led identity, modern and recognizable",
-      },
-    ];
+    return SAAS_CONCEPT_DIRECTIONS;
   }
   return GROUP_DIRECTIONS;
 }
@@ -382,7 +412,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     console.log("[prompt-debug] promptPreview=%j", dbgSlice(prompt, 1200));
   }
 
-  return { prompt, style_name: route };
+  return { prompt, style_name: route, conceptLabel: group.conceptLabel ?? null };
 }
 
 async function generateIdeogramLogos(input = {}) {
@@ -391,16 +421,27 @@ async function generateIdeogramLogos(input = {}) {
     throw new Error("Missing IDEOGRAM_API_KEY in env");
   }
 
-  // Two requests in parallel, each asking for num_images:2 — 4 total images.
-  // Group 0 (wordmark+symbol) and Group 1 (icon/monogram) are clearly different directions;
-  // the 2 images within each group are siblings that share the same composition approach.
+  // SaaS: 4 independent concept prompts × 1 image each (Lead, Custom wordmark, App icon, Modular mark).
+  // Non-SaaS: 2 group prompts × 2 sibling images each (unchanged GROUP_DIRECTIONS behavior).
+  const saasSearchableText = [
+    input?.industry   || "",
+    input?.keywords   || "",
+    input?.otherNotes || "",
+    input?.notes      || "",
+    input?.styleCues  || "",
+  ].join(" ").toLowerCase();
+  const saasRoute = String(input?.brandStyleRoute || "").trim();
+  const isSaas = isSaasLikeIndustry(saasSearchableText, saasRoute);
+  const conceptCount = isSaas ? 4 : 2;
+  const numImages = isSaas ? 1 : 2;
+
   const groups = await Promise.all(
-    [0, 1].map(async (groupIndex) => {
-      const { prompt, style_name } = buildIdeogramPrompt(input, groupIndex);
+    Array.from({ length: conceptCount }, (_, i) => i).map(async (conceptIndex) => {
+      const { prompt, style_name, conceptLabel } = buildIdeogramPrompt(input, conceptIndex);
 
       if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
-        console.log("[ideogram-request] groupIndex=%d num_images=2 magic_prompt=OFF style_type=DESIGN aspect_ratio=1x1 rendering_speed=QUALITY promptPreview=%j",
-          groupIndex, dbgSlice(prompt, 300));
+        console.log("[ideogram-request] conceptIndex=%d num_images=%d magic_prompt=OFF style_type=DESIGN aspect_ratio=1x1 rendering_speed=QUALITY promptPreview=%j",
+          conceptIndex, numImages, dbgSlice(prompt, 300));
       }
 
       const response = await fetch("https://api.ideogram.ai/v1/ideogram-v3/generate", {
@@ -411,7 +452,7 @@ async function generateIdeogramLogos(input = {}) {
         },
         body: JSON.stringify({
           prompt,
-          num_images: 2,
+          num_images: numImages,
           // Disable Ideogram magic prompt enhancement — prevents scene context being added to logo prompts.
           magic_prompt: "OFF",
           // Confirmed Ideogram v3 quality parameters.
@@ -435,16 +476,17 @@ async function generateIdeogramLogos(input = {}) {
       const imageUrls = raw
         .map((item) => item?.url || item?.image_url || item?.imageUrl || item?.image?.url)
         .filter((u) => typeof u === "string" && u.trim())
-        .slice(0, 2);
+        .slice(0, numImages);
 
-      if (imageUrls.length < 2) {
-        throw new Error(`Ideogram returned ${imageUrls.length} images for group ${groupIndex}, expected 2`);
+      if (imageUrls.length < 1) {
+        throw new Error(`Ideogram returned ${imageUrls.length} images for concept ${conceptIndex}, expected ${numImages}`);
       }
 
       return imageUrls.map((imageUrl) => ({
         imageUrl,
         prompt,
         style_name,
+        conceptLabel: conceptLabel ?? null,
         model: "ideogram",
         mode: "text-to-image",
       }));
