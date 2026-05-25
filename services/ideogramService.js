@@ -33,7 +33,8 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     `Nothing else should appear in the image — no additional characters, extra letters, small symbols, annotations, badges, labels, seals, dots near the wordmark, or micro details. ` +
     `Do not add subtitles, category labels, descriptor text, industry words, dates, locations, or extra words. ` +
     `Do not write the industry context inside the logo. ` +
-    `Preserve the exact letter case of the brand name as typed — do not change it to all-caps, all-lowercase, or title case.`;
+    `Preserve the exact letter case of the brand name as typed — do not change it to all-caps, all-lowercase, or title case. ` +
+    `Do not include trademark symbols (®), registered mark symbols, trademark superscripts (™), copyright symbols (©), or any superscript characters anywhere in the image.`;
 
   // If override is present, preserve user intent but enforce strict logo constraints.
   // Never return raw override text — it bypasses all logo framing and causes scene/photo output.
@@ -120,7 +121,8 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     "modern software brand, clean app icon feel, professional SaaS identity, distinctive but simple";
   let disciplineTag =
     "scalable clean vector identity, clear at small sizes, strong recognition, reproducible in monochrome";
-  let typographyTag = "clean sans-serif or geometric typography, strong wordmark readability";
+  let typographyTag =
+    "custom-designed wordmark typography with distinctive character — not a default system font or generic bold sans, but a wordmark with deliberate letterform personality, unique tracking, or a subtle design detail";
 
   if (route === "beauty_premium") {
     structureTag = "one refined standalone soft geometric symbol and one clean luxury wordmark";
