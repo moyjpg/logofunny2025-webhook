@@ -29,6 +29,7 @@ const SAAS_CONCEPT_DIRECTIONS = [
   {
     label: "saas_lead",
     conceptLabel: "Lead concept",
+    magicPrompt: "AUTO",
     structureOverride:
       "concept-driven symbol left, clean wordmark right, integrated as one horizontal logo system",
     layoutOverride:
@@ -41,6 +42,7 @@ const SAAS_CONCEPT_DIRECTIONS = [
   {
     label: "saas_wordmark",
     conceptLabel: "Custom wordmark",
+    magicPrompt: "OFF",
     structureOverride:
       "custom wordmark as the complete identity — typography-led, no separate symbol",
     layoutOverride:
@@ -53,6 +55,7 @@ const SAAS_CONCEPT_DIRECTIONS = [
   {
     label: "saas_app_icon",
     conceptLabel: "App icon system",
+    magicPrompt: "AUTO",
     structureOverride:
       "large bold concept-driven symbol mark above, clean wordmark below — stacked vertical system",
     layoutOverride:
@@ -65,6 +68,7 @@ const SAAS_CONCEPT_DIRECTIONS = [
   {
     label: "saas_modular",
     conceptLabel: "Modular mark",
+    magicPrompt: "OFF",
     structureOverride:
       "modular geometric system mark with wordmark — mark uses interlocking forms, grid logic, or meaningful negative space",
     layoutOverride:
@@ -412,7 +416,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     console.log("[prompt-debug] promptPreview=%j", dbgSlice(prompt, 1200));
   }
 
-  return { prompt, style_name: route, conceptLabel: group.conceptLabel ?? null };
+  return { prompt, style_name: route, conceptLabel: group.conceptLabel ?? null, magicPromptOverride: group.magicPrompt ?? null };
 }
 
 async function generateIdeogramLogos(input = {}) {
@@ -422,8 +426,8 @@ async function generateIdeogramLogos(input = {}) {
   }
 
   const VALID_MAGIC_PROMPT = new Set(["OFF", "ON", "AUTO"]);
-  const magicPromptRaw = String(process.env.LOGOFUNNY_IDEOGRAM_MAGIC_PROMPT || "").toUpperCase();
-  const magicPrompt = VALID_MAGIC_PROMPT.has(magicPromptRaw) ? magicPromptRaw : "OFF";
+  const magicPromptRaw    = String(process.env.LOGOFUNNY_IDEOGRAM_MAGIC_PROMPT || "").toUpperCase();
+  const globalMagicPrompt = VALID_MAGIC_PROMPT.has(magicPromptRaw) ? magicPromptRaw : "OFF";
 
   // SaaS: 4 independent concept prompts × 1 image each (Lead, Custom wordmark, App icon, Modular mark).
   // Non-SaaS: 2 group prompts × 2 sibling images each (unchanged GROUP_DIRECTIONS behavior).
@@ -441,11 +445,14 @@ async function generateIdeogramLogos(input = {}) {
 
   const groups = await Promise.all(
     Array.from({ length: conceptCount }, (_, i) => i).map(async (conceptIndex) => {
-      const { prompt, style_name, conceptLabel } = buildIdeogramPrompt(input, conceptIndex);
+      const { prompt, style_name, conceptLabel, magicPromptOverride } = buildIdeogramPrompt(input, conceptIndex);
+      const resolvedMagicPrompt = VALID_MAGIC_PROMPT.has(magicPromptOverride ?? "")
+        ? magicPromptOverride
+        : globalMagicPrompt;
 
       if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
         console.log("[ideogram-request] conceptIndex=%d num_images=%d magic_prompt=%s style_type=DESIGN aspect_ratio=1x1 rendering_speed=QUALITY promptPreview=%j",
-          conceptIndex, numImages, magicPrompt, dbgSlice(prompt, 300));
+          conceptIndex, numImages, resolvedMagicPrompt, dbgSlice(prompt, 300));
       }
 
       const response = await fetch("https://api.ideogram.ai/v1/ideogram-v3/generate", {
@@ -457,7 +464,7 @@ async function generateIdeogramLogos(input = {}) {
         body: JSON.stringify({
           prompt,
           num_images: numImages,
-          magic_prompt: magicPrompt,
+          magic_prompt: resolvedMagicPrompt,
           // Confirmed Ideogram v3 quality parameters.
           style_type: "DESIGN",
           aspect_ratio: "1x1",
