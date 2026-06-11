@@ -80,6 +80,15 @@ const SAAS_CONCEPT_DIRECTIONS = [
   },
 ];
 
+// Hard rules appended to every prompt that arrives via the conceptPrompts path.
+const CONCEPT_PROMPTS_SUFFIX =
+  "No ® (registered mark), ™ (trademark), © (copyright), legal marks, superscript symbols, " +
+  "watermarks, signatures, captions, labels, or extra tiny text of any kind. " +
+  "One centered logo only on a plain clean background. " +
+  "Do not create brand boards, color tiles, color swatches, mockups, presentation sheets, " +
+  "multiple logo versions, split background panels, comparison layouts, " +
+  "or any image showing more than one logo composition.";
+
 function isSaasLikeIndustry(searchableText, brandStyleRoute) {
   if (brandStyleRoute === "tech_saas") return true;
   if (!searchableText || !searchableText.trim()) return false;
@@ -146,8 +155,33 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     typeof input.conceptPrompts[conceptKey] === "string" &&
     input.conceptPrompts[conceptKey].trim()
   ) {
+    const industryLower = String(input?.industry || "").toLowerCase();
+    const parts = [input.conceptPrompts[conceptKey].trim()];
+
+    if (conceptKey === "wordmark") {
+      parts.push(
+        "Wordmark only — no separate icon, symbol, animal, paw print, or graphic element outside the letterforms. " +
+        "The brand name itself is the complete logo. Custom readable lettering is the only graphic element."
+      );
+    } else if (conceptKey === "app_icon") {
+      parts.push(
+        "Compact standalone icon only. No full wordmark is required. " +
+        "If text appears, it must be very small and clearly secondary to the icon mark. " +
+        "The icon must work as a single readable element at favicon size."
+      );
+    }
+
+    if (industryLower.includes("pet")) {
+      parts.push(
+        "Pet brand mark: use a simple geometric pet cue — paw print, dog or cat face silhouette, ear, tail, or collar shape. " +
+        "Render it as a clean flat geometric brand mark, not a cartoon mascot or clipart illustration."
+      );
+    }
+
+    parts.push(CONCEPT_PROMPTS_SUFFIX);
+
     return {
-      prompt: input.conceptPrompts[conceptKey].trim(),
+      prompt: parts.join(" "),
       style_name: "logofunny",
       conceptLabel: conceptKey,
       magicPromptOverride: "OFF",
@@ -394,9 +428,13 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
       group.label || "none", saasDirections, dbgSlice(group.toneOverride, 80));
   }
 
+  const INDUSTRY_CONTEXT_OVERRIDES = {
+    pet_brand:
+      "Industry context: pet brand. Use a simple geometric pet cue — paw print, dog or cat face silhouette, ear, tail, or collar shape — as a clean flat brand mark. No cartoon mascot, no clipart illustration, no childish character art.",
+  };
   const industryBaseTag =
     industryRaw && !industryRaw.match(/^[,.\s]+$/)
-      ? `Industry context: ${industryRaw}.`
+      ? (INDUSTRY_CONTEXT_OVERRIDES[industryRaw] || `Industry context: ${industryRaw}.`)
       : "";
 
   const styleCuesText = styleCues || keywords;
