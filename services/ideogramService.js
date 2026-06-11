@@ -137,6 +137,23 @@ function dbgSlice(v, n) {
 }
 
 function buildIdeogramPrompt(input = {}, groupIndex = 0) {
+  const CONCEPT_PROMPT_KEYS = ["recommended", "wordmark", "app_icon", "symbol_mark"];
+  const conceptKey = CONCEPT_PROMPT_KEYS[groupIndex];
+  if (
+    conceptKey &&
+    input?.conceptPrompts != null &&
+    typeof input.conceptPrompts === "object" &&
+    typeof input.conceptPrompts[conceptKey] === "string" &&
+    input.conceptPrompts[conceptKey].trim()
+  ) {
+    return {
+      prompt: input.conceptPrompts[conceptKey].trim(),
+      style_name: "logofunny",
+      conceptLabel: conceptKey,
+      magicPromptOverride: "OFF",
+    };
+  }
+
   const brandName = String(input?.brandName || "Brand").trim();
 
   const textConstraintTag =
@@ -439,9 +456,13 @@ async function generateIdeogramLogos(input = {}) {
     input?.styleCues  || "",
   ].join(" ").toLowerCase();
   const saasRoute = String(input?.brandStyleRoute || "").trim();
-  const isSaas = isSaasLikeIndustry(saasSearchableText, saasRoute);
+  const hasConceptPrompts =
+    input?.conceptPrompts != null &&
+    typeof input.conceptPrompts === "object" &&
+    !Array.isArray(input.conceptPrompts);
+  const isSaas = hasConceptPrompts || isSaasLikeIndustry(saasSearchableText, saasRoute);
   const conceptCount = isSaas ? 4 : 2;
-  const numImages = isSaas ? 1 : 2;
+  const numImages    = isSaas ? 1 : 2;
 
   const groups = await Promise.all(
     Array.from({ length: conceptCount }, (_, i) => i).map(async (conceptIndex) => {

@@ -169,6 +169,7 @@ function mapElementorToAI(body) {
     typographyDirection: pickStr("typographyDirection"),
     styleCues: pickStr("styleCues"),
     promptOverride: pickStr("promptOverride") || pickStr("prompt"),
+    conceptPrompts: f["conceptPrompts"] ?? null,
     uploadImage: f["uploadLogo"] || null,
   };
 }
