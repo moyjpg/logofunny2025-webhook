@@ -82,8 +82,9 @@ const SAAS_CONCEPT_DIRECTIONS = [
 
 // Hard rules appended to every prompt that arrives via the conceptPrompts path.
 const CONCEPT_PROMPTS_SUFFIX =
-  "No ® (registered mark), ™ (trademark), © (copyright), legal marks, superscript symbols, " +
-  "watermarks, signatures, captions, labels, or extra tiny text of any kind. " +
+  "Leave clean empty space around the wordmark. " +
+  "Do not place any small symbols, badges, dots, circles, seals, registration marks, or decorative marks beside or near the brand name letters. " +
+  "Keep the logo area clean with only the intended icon and wordmark visible. " +
   "One centered logo only on a plain clean background. " +
   "Do not create brand boards, color tiles, color swatches, mockups, presentation sheets, " +
   "multiple logo versions, split background panels, comparison layouts, " +
@@ -160,14 +161,17 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
 
     if (conceptKey === "wordmark") {
       parts.push(
-        "Wordmark only — no separate icon, symbol, animal, paw print, or graphic element outside the letterforms. " +
-        "The brand name itself is the complete logo. Custom readable lettering is the only graphic element."
+        "Wordmark concept: the brand name in custom lettering is the entire logo. " +
+        "Use soft, rounded, slightly bouncy letterforms — warm and charming, suitable for a modern pet lifestyle brand, not a stiff corporate sans-serif. " +
+        "No separate icon, paw, animal, or graphic element outside the letterforms. " +
+        "Plain clean background only — no background color fill, color block, or panel behind the text."
       );
     } else if (conceptKey === "app_icon") {
       parts.push(
-        "Compact standalone icon only. No full wordmark is required. " +
-        "If text appears, it must be very small and clearly secondary to the icon mark. " +
-        "The icon must work as a single readable element at favicon size."
+        "App icon concept: one standalone icon mark as the primary element. " +
+        "No full wordmark. " +
+        "If any text appears, it must be a single letter or very short abbreviation, small and clearly secondary to the icon. " +
+        "The icon must be bold, simple, and read clearly at app icon and social profile avatar sizes."
       );
     }
 
