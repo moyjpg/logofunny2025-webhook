@@ -80,12 +80,11 @@ const SAAS_CONCEPT_DIRECTIONS = [
   },
 ];
 
-// Hard rules appended to every prompt that arrives via the conceptPrompts path.
+// Output rules appended to every prompt that arrives via the conceptPrompts path.
 const CONCEPT_PROMPTS_SUFFIX =
-  "Use only the intended icon and the brand letters. " +
-  "Keep all space around the wordmark completely empty, especially near the final letter and upper-right area. " +
-  "No tiny details near the wordmark. " +
   "One centered logo only on a plain clean background. " +
+  "Keep the space around the wordmark clean and intentional. " +
+  "No random stray marks, floating dots, or trademark-style symbols near the brand name. " +
   "Do not create brand boards, color tiles, color swatches, mockups, presentation sheets, " +
   "multiple logo versions, split background panels, comparison layouts, " +
   "or any image showing more than one logo composition.";
@@ -160,6 +159,233 @@ function getPetAnimalCue(animalTarget) {
   );
 }
 
+// --- 5-point creative brief helpers ---
+
+function buildFeelingFromKeywords(keywords, industry) {
+  const kw = (keywords || "").toLowerCase();
+  const matches = [];
+  const SIGNALS = [
+    [["warm", "cozy", "inviting"],                   "warm and inviting"],
+    [["playful", "fun", "bouncy"],                   "playful and energetic"],
+    [["friendly", "approachable", "welcoming"],      "friendly and approachable"],
+    [["premium", "luxury", "luxurious", "high-end"], "premium and refined"],
+    [["elegant", "graceful", "sophisticated"],       "elegant and sophisticated"],
+    [["minimal", "simple", "clean"],                 "minimal and refined"],
+    [["bold", "strong", "impact", "powerful"],       "bold and confident"],
+    [["modern", "contemporary", "fresh"],            "modern and fresh"],
+    [["professional", "corporate", "business"],      "professional and trustworthy"],
+    [["creative", "expressive", "artistic"],         "creative and expressive"],
+    [["natural", "organic", "earthy"],               "natural and grounded"],
+    [["charming", "cute", "sweet"],                  "charming and approachable"],
+    [["trustworthy", "reliable", "secure"],          "trustworthy and dependable"],
+    [["intelligent", "smart", "clever"],             "intelligent and purposeful"],
+    [["energetic", "dynamic", "active"],             "energetic and dynamic"],
+    [["calm", "serene", "gentle", "peaceful"],       "calm and balanced"],
+    [["soft", "delicate", "light"],                  "soft and gentle"],
+    [["cheerful", "joyful", "happy"],                "cheerful and joyful"],
+  ];
+  for (const [signals, feeling] of SIGNALS) {
+    if (signals.some((s) => kw.includes(s))) matches.push(feeling);
+  }
+  if (matches.length > 0) return matches.slice(0, 3).join(", ");
+
+  // Industry defaults when no keyword signals are found
+  if (industry.includes("pet"))                                              return "warm, friendly, and emotionally approachable";
+  if (industry.includes("beauty") || industry.includes("skincare"))         return "premium, soft, and elegant";
+  if (industry.includes("tech") || industry.includes("saas") || industry.includes("software")) return "modern, confident, and trustworthy";
+  if (industry.includes("food") || industry.includes("beverage"))           return "warm, inviting, and appetizing";
+  if (industry.includes("cafe") || industry.includes("restaurant"))         return "warm, friendly, and welcoming";
+  if (industry.includes("home") || industry.includes("decor"))              return "warm, refined, and welcoming";
+  if (industry.includes("creative") || industry.includes("studio"))         return "creative, expressive, and confident";
+  if (industry.includes("health") || industry.includes("wellness"))         return "calm, trustworthy, and balanced";
+  if (industry.includes("fashion") || industry.includes("apparel"))         return "refined, editorial, and confident";
+  if (industry.includes("fitness") || industry.includes("sport"))           return "energetic, bold, and motivating";
+  if (industry.includes("finance") || industry.includes("fintech"))         return "trustworthy, secure, and professional";
+  if (industry.includes("legal") || industry.includes("consulting"))        return "authoritative, trustworthy, and refined";
+  if (industry.includes("education"))                                        return "trustworthy, approachable, and encouraging";
+  return "professional, distinctive, and memorable";
+}
+
+function buildVisualMetaphors(industry, animalTarget, keywords, notes) {
+  if (industry.includes("pet")) {
+    if (animalTarget === "dog")        return "dog companionship, wagging tail energy, paw rhythm, friendly rounded face, collar tag, warm loyalty";
+    if (animalTarget === "cat")        return "cat grace, whisker arc, tail curve, quiet independence, soft silhouette, feline elegance";
+    if (animalTarget === "dog_and_cat") return "paw print, paired pet silhouettes, shared warmth, dual-pet friendliness, approachable animal presence";
+    return "paw, friendly animal face, pet warmth, playful movement, collar tag, soft animal form";
+  }
+  if (industry.includes("home") || industry.includes("decor"))                  return "leaf, bloom, nest, arch, botanical shelter, warm organic form, home as a welcoming refuge";
+  if (industry.includes("tech") || industry.includes("saas") || industry.includes("software")) return "spark, node, cursor, data flow, light beam, window, clarity, abstract motion, clean geometric system";
+  if (industry.includes("beauty") || industry.includes("skincare"))             return "petal, soft bloom, drop, skincare ritual, gentle botanical, smooth and refined form";
+  if (industry.includes("food") || industry.includes("beverage"))               return "warmth, steam, cup, leaf, grain, artisan craft, fresh ingredient, nourishing energy";
+  if (industry.includes("cafe") || industry.includes("restaurant"))             return "warmth, cup, bean, steam, artisan hospitality, storefront comfort, inviting place";
+  if (industry.includes("health") || industry.includes("wellness"))             return "leaf, breath, gentle arc, organic growth, flow, balance, serene natural form";
+  if (industry.includes("fitness") || industry.includes("sport"))               return "motion arc, speed, strength, geometric silhouette, bold movement, kinetic energy";
+  if (industry.includes("fashion") || industry.includes("apparel"))             return "refined line, editorial precision, clean tension, quiet luxury, strong typographic presence";
+  if (industry.includes("creative") || industry.includes("studio"))             return "geometric precision, creative tension, editorial mark, bold visual concept, signature form";
+  if (industry.includes("finance") || industry.includes("fintech"))             return "stable geometry, growth arc, precision, clean balance, structured trusted form";
+  if (industry.includes("legal") || industry.includes("consulting"))            return "measured balance, precision, authority, stable form, clean hierarchy";
+  if (industry.includes("education"))                                            return "open path, spark of learning, clear structure, forward movement, encouraging form";
+  if (industry.includes("real_estate") || industry.includes("real estate"))     return "arch, refined geometry, premium space, architectural form, clean elevation";
+  const allText = (keywords + " " + notes).toLowerCase();
+  if (allText.includes("nature") || allText.includes("plant") || allText.includes("organic") || allText.includes("botanical")) {
+    return "organic form, leaf, botanical shape, natural growth, earth-inspired mark";
+  }
+  return "abstract geometric form, clean brand mark, strong visual concept";
+}
+
+function buildShapeDirection(industry, keywords) {
+  const kw = (keywords || "").toLowerCase();
+  if (kw.includes("rounded") || (kw.includes("soft") && !kw.includes("software"))) return "rounded organic curves, soft approachable forms, warm and balanced";
+  if (kw.includes("geometric") || kw.includes("modular") || kw.includes("grid"))    return "geometric precision, clean modular structure, strong angular or grid-based forms";
+  if (kw.includes("minimal") || kw.includes("simple"))                              return "minimal and airy, generous negative space, refined and restrained";
+  if (kw.includes("bold") || kw.includes("strong") || kw.includes("impact"))        return "bold high-contrast forms, strong geometric silhouette, confident visual weight";
+  if (kw.includes("elegant") || kw.includes("premium") || kw.includes("luxury"))   return "refined elegant proportions, precise deliberate spacing, restrained and polished";
+  if (kw.includes("playful") || kw.includes("fun") || kw.includes("bouncy"))        return "playful rounded forms, bouncy rhythm, energetic but clean silhouette";
+  if (industry.includes("pet"))                                                      return "rounded, organic, and friendly — warm curves and soft approachable shapes";
+  if (industry.includes("home") || industry.includes("decor"))                      return "soft organic curves, botanical rhythm, warm structured balance";
+  if (industry.includes("tech") || industry.includes("saas") || industry.includes("software")) return "geometric, clean, and precise — strong scalable silhouette with intentional negative space";
+  if (industry.includes("beauty") || industry.includes("skincare"))                 return "refined soft geometry, elegant and restrained with premium proportions";
+  if (industry.includes("food") || industry.includes("cafe") || industry.includes("restaurant")) return "warm and rounded, inviting organic forms with natural rhythm";
+  if (industry.includes("fitness") || industry.includes("sport"))                   return "bold angular forms, high-contrast silhouette, strong kinetic energy";
+  if (industry.includes("fashion") || industry.includes("apparel"))                 return "editorial proportions, deliberate minimal structure, refined tension";
+  if (industry.includes("finance") || industry.includes("legal") || industry.includes("consulting")) return "stable geometric structure, authoritative clear proportions, balanced and grounded";
+  if (industry.includes("health") || industry.includes("wellness"))                 return "gentle organic curves, balanced and airy, calm structured form";
+  return "balanced and purposeful — clean structure with a strong one-color silhouette";
+}
+
+function buildTypographyDirection(typographyDir, industry, keywords) {
+  const TYPO_MAP = {
+    clean_sans:             "clean modern sans-serif with strong readability and deliberate spacing",
+    geometric_sans:         "geometric sans-serif, crisp and modern, strong character proportions",
+    bold_modern:            "bold modern sans with confident weight and clear commercial readability",
+    elegant_serif:          "elegant refined serif with premium rhythm and graceful spacing",
+    editorial_sans:         "editorial clean sans with strong typographic hierarchy",
+    luxury_minimal:         "luxury minimal letterforms with refined calm spacing and premium restraint",
+    rounded_friendly:       "soft rounded letterforms with friendly warmth and clear readability",
+    handcrafted_expressive: "expressive custom lettering with handcrafted character and natural rhythm",
+  };
+  if (typographyDir && TYPO_MAP[typographyDir]) return TYPO_MAP[typographyDir];
+
+  const kw = (keywords || "").toLowerCase();
+  if (kw.includes("rounded") || kw.includes("friendly") || kw.includes("playful") || (kw.includes("soft") && !kw.includes("software"))) return "soft rounded letterforms with warm approachable character and clear readability";
+  if (kw.includes("bold") || kw.includes("strong") || kw.includes("impact"))                 return "bold confident letterforms with strong commercial weight and clear readability";
+  if (kw.includes("elegant") || kw.includes("premium") || kw.includes("luxury"))             return "refined elegant letterforms with graceful premium spacing";
+  if (kw.includes("minimal") || kw.includes("clean"))                                         return "clean minimal sans with deliberate spacing and strong readability";
+  if (kw.includes("editorial") || kw.includes("creative") || kw.includes("artistic"))        return "editorial clean letterforms with strong typographic personality";
+  if (industry.includes("pet"))                                                                return "soft rounded letterforms with friendly warmth and clear readable character";
+  if (industry.includes("tech") || industry.includes("saas") || industry.includes("software")) return "clean geometric sans with strong readability and confident modern spacing";
+  if (industry.includes("beauty") || industry.includes("skincare"))                           return "refined elegant letterforms with graceful premium spacing";
+  if (industry.includes("home") || industry.includes("decor"))                                return "warm refined letterforms with organic rhythm and clear readability";
+  if (industry.includes("food") || industry.includes("cafe") || industry.includes("restaurant")) return "warm approachable letterforms with friendly character";
+  if (industry.includes("fashion") || industry.includes("apparel"))                           return "editorial clean letterforms with precise spacing and strong typographic presence";
+  if (industry.includes("fitness") || industry.includes("sport"))                             return "bold confident letterforms with strong silhouette and energetic weight";
+  if (industry.includes("finance") || industry.includes("legal") || industry.includes("consulting")) return "clean professional letterforms with authoritative clarity and strong readability";
+  if (industry.includes("creative") || industry.includes("studio"))                           return "editorial letterforms with distinctive personality and clean commercial finish";
+  return "custom lettering with strong readability, deliberate character, and commercial polish";
+}
+
+function buildAvoidDrift(industry, animalTarget, keywords) {
+  const rules = [];
+  if (industry.includes("pet")) {
+    if (animalTarget === "dog")         rules.push("stay in the dog creative world — unrelated animals like cats, foxes, or bears would pull the brand off course");
+    else if (animalTarget === "cat")    rules.push("stay in the cat creative world — avoid drifting into dogs or other unrelated animals");
+    else if (animalTarget === "dog_and_cat") rules.push("stay within dog and cat territory — other unrelated animals would break the brand world");
+    else                                rules.push("keep the visual world warm and pet-friendly — avoid unrelated animals");
+    rules.push("avoid detailed mascot scenes, cartoon fur textures, clipart animals, and childish illustration styles");
+  } else if (industry.includes("tech") || industry.includes("saas") || industry.includes("software")) {
+    rules.push("avoid robots, circuit boards, hexagon clichés, generic AI sparkle clusters, dashboard mockups, and literal computer hardware illustrations");
+  } else if (industry.includes("home") || industry.includes("decor")) {
+    rules.push("avoid house clipart, real estate for-sale signs, furniture room illustrations, floor plan diagrams, and overly rustic barn aesthetics");
+  } else if (industry.includes("beauty") || industry.includes("skincare")) {
+    rules.push("avoid product bottle illustrations, portrait faces, glitter, spa lifestyle scenes, and fine details that disappear at small sizes");
+  } else if (industry.includes("food") || industry.includes("cafe") || industry.includes("restaurant")) {
+    rules.push("avoid food photo realism, menu-style layouts, complex vintage badge overload, and detailed food scene illustrations");
+  } else if (industry.includes("fitness") || industry.includes("sport")) {
+    rules.push("avoid detailed athlete figure illustrations, gym equipment scene art, aggressive mascot energy, and cluttered trophy-style badge layouts");
+  } else if (industry.includes("finance") || industry.includes("fintech")) {
+    rules.push("avoid dollar signs, coin illustrations, candlestick charts, bank building drawings, and generic corporate swoosh arcs");
+  } else if (industry.includes("legal") || industry.includes("consulting")) {
+    rules.push("avoid scale-of-justice clipart, gavel drawings, courthouse illustrations, and generic authority clichés");
+  } else if (industry.includes("health") || industry.includes("wellness")) {
+    rules.push("avoid medical cross overuse, anatomy diagrams, clinical product illustrations, and lotus or mandala clichés");
+  } else {
+    rules.push("avoid generic clipart, unrelated scene illustrations, and visual styles that conflict with the brand's established feeling");
+  }
+  rules.push("no random floating marks, stray dots, or trademark-style symbols near the brand name");
+  return rules.join("; ");
+}
+
+/**
+ * Builds a 5-point creative brief for one concept direction.
+ * Translates user input into commercial design-direction language without rigid prohibition lists.
+ */
+function buildConceptBriefPrompt(input, conceptKey) {
+  const industryRaw = String(input?.industry || "").toLowerCase();
+  const keywords = [
+    String(input?.keywords  || ""),
+    String(input?.styleCues || ""),
+  ].filter(Boolean).join(" ").trim();
+  const notes        = String(input?.otherNotes || input?.notes || "").trim();
+  const typographyDir = String(input?.typographyDirection || "").trim();
+  const brandName    = String(input?.brandName || "").trim();
+
+  const petSearchText = [brandName, String(input?.industry || ""), keywords, notes].join(" ").toLowerCase();
+  const animalTarget  = industryRaw.includes("pet") ? detectPetAnimal(petSearchText) : "none";
+
+  const feeling    = buildFeelingFromKeywords(keywords, industryRaw);
+  const metaphors  = buildVisualMetaphors(industryRaw, animalTarget, keywords, notes);
+  const shapes     = buildShapeDirection(industryRaw, keywords);
+  const typography = buildTypographyDirection(typographyDir, industryRaw, keywords);
+  const avoid      = buildAvoidDrift(industryRaw, animalTarget, keywords);
+
+  const brief =
+    `Brand feeling: ${feeling}. ` +
+    `Visual direction: ${metaphors}. ` +
+    `Shape language: ${shapes}. ` +
+    `Typography: ${typography}. ` +
+    `Creative boundary: ${avoid}.`;
+
+  switch (conceptKey) {
+    case "recommended":
+      return (
+        "Concept direction: Lead commercial logo — polished, complete, and commercially ready. " +
+        "Balanced symbol icon paired with a readable wordmark, or a strong standalone wordmark if the brand calls for it. " +
+        "Ready for packaging, website, social profile, and favicon use. " +
+        brief
+      );
+    case "wordmark":
+      return (
+        "Concept direction: Lettering-led wordmark — the brand name is the entire logo. " +
+        "Custom lettering carries the brand's personality. " +
+        "Readability comes first — letterforms must be clearly readable at first glance. " +
+        "Subtle integrated brand cues are welcome: a visual idea discovered in the letterforms through negative space, a stroke extension, a modified counter, or one intentional visual cue inside a single letter. " +
+        "The integration should feel designed into the letters, not applied on top of them. " +
+        "No separate icon or graphic element outside the letterforms. " +
+        "Plain clean background. " +
+        brief
+      );
+    case "app_icon":
+      return (
+        "Concept direction: App icon and social avatar — one compact, bold idea. " +
+        "Designed for favicon, app icon, and social avatar sizes. " +
+        "May use a simplified animal face, paw, abstract brand symbol, or one large initial. " +
+        "The icon stands alone — no full horizontal wordmark. " +
+        "Centered, simple, and instantly recognizable at small sizes. " +
+        brief
+      );
+    case "symbol_mark":
+      return (
+        "Concept direction: Symbol exploration — a memorable standalone mark paired with the brand name. " +
+        "The symbol has a strong independent silhouette and is concept-driven, not generic. " +
+        "Derived from the brand's visual direction and metaphors. " +
+        "Works as a standalone mark and as a full lockup with the wordmark below or beside it. " +
+        brief
+      );
+    default:
+      return brief;
+  }
+}
+
 function getConceptDirections(route, industry, input) {
   const brandStyleRoute = String(input?.brandStyleRoute || "").trim();
   const searchableText = [
@@ -192,45 +418,11 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     typeof input.conceptPrompts[conceptKey] === "string" &&
     input.conceptPrompts[conceptKey].trim()
   ) {
-    const industryLower = String(input?.industry || "").toLowerCase();
-    const parts = [input.conceptPrompts[conceptKey].trim()];
-
-    if (conceptKey === "wordmark") {
-      parts.push(
-        "Wordmark concept: the brand name in custom lettering is the entire logo. " +
-        "Letterforms are soft, rounded, slightly bouncy, warm, charming, and clearly readable. " +
-        "No separate icon. " +
-        "No animal face, paw, ear, tail, collar, badge, dot, circle, or tiny decorative detail inside or around the letters. " +
-        "Do not alter any letter into an animal shape or embed an animal silhouette inside a letter. " +
-        "Plain clean white background only — no color fill, color block, or panel."
-      );
-    } else if (conceptKey === "app_icon") {
-      parts.push(
-        "App icon concept: one standalone icon only — no full brand name, no full wordmark. " +
-        "Prefer a simple pet face, paw-inspired abstract shape, animal silhouette, collar tag, or single large initial. " +
-        "Centered, simple, and clear at small sizes. " +
-        "Designed for app icon, favicon, and social avatar use. " +
-        "If any letter appears, use only one large initial — not the full brand name."
-      );
-    }
-
-    if (industryLower.includes("pet")) {
-      const petSearchText = [
-        input?.brandName           || "",
-        input?.industry            || "",
-        input?.keywords            || "",
-        input?.styleCues           || "",
-        input?.promptOverride      || "",
-        input?.colorDirection      || "",
-        input?.typographyDirection || "",
-      ].join(" ").toLowerCase();
-      parts.push(
-        "Pet brand mark: " + getPetAnimalCue(detectPetAnimal(petSearchText)) +
-        " Render as a clean flat geometric brand mark, not a cartoon mascot or clipart illustration."
-      );
-    }
-
-    parts.push(CONCEPT_PROMPTS_SUFFIX);
+    const parts = [
+      input.conceptPrompts[conceptKey].trim(),
+      buildConceptBriefPrompt(input, conceptKey),
+      CONCEPT_PROMPTS_SUFFIX,
+    ];
 
     return {
       prompt: parts.join(" "),
