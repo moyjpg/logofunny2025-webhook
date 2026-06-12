@@ -124,6 +124,42 @@ function isSaasLikeIndustry(searchableText, brandStyleRoute) {
   return WORD_KEYWORDS.some((kw) => new RegExp(`\\b${kw}\\b`).test(searchableText));
 }
 
+function detectPetAnimal(text) {
+  const COMBO_PHRASES = ["dog and cat", "dogs and cats"];
+  if (COMBO_PHRASES.some((p) => text.includes(p))) return "dog_and_cat";
+  const hasDog = ["dog", "dogs", "puppy", "puppies", "canine"].some((s) => text.includes(s));
+  const hasCat = ["cat", "cats", "kitten", "kittens", "feline"].some((s) => text.includes(s));
+  if (hasDog && hasCat) return "dog_and_cat";
+  if (hasDog) return "dog";
+  if (hasCat) return "cat";
+  return "none";
+}
+
+function getPetAnimalCue(animalTarget) {
+  if (animalTarget === "dog") {
+    return (
+      "Use a friendly dog-inspired cue — dog face silhouette, ear, paw, or tail shape — " +
+      "as a clean flat geometric brand mark. Keep this dog-inspired mark consistent across all concepts."
+    );
+  }
+  if (animalTarget === "cat") {
+    return (
+      "Use a friendly cat-inspired cue — cat face silhouette, ear, whisker arc, or tail curve — " +
+      "as a clean flat geometric brand mark. Keep this cat-inspired mark consistent across all concepts."
+    );
+  }
+  if (animalTarget === "dog_and_cat") {
+    return (
+      "Use a shared pet-family cue — a paw print, simple paired pet face, or dog-and-cat-friendly silhouette — " +
+      "as a clean flat geometric brand mark. Keep this pet-family shape consistent across all concepts."
+    );
+  }
+  return (
+    "Use a simple geometric pet cue — paw print or simple pet face silhouette — " +
+    "as a clean flat geometric brand mark."
+  );
+}
+
 function getConceptDirections(route, industry, input) {
   const brandStyleRoute = String(input?.brandStyleRoute || "").trim();
   const searchableText = [
@@ -177,9 +213,18 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     }
 
     if (industryLower.includes("pet")) {
+      const petSearchText = [
+        input?.brandName           || "",
+        input?.industry            || "",
+        input?.keywords            || "",
+        input?.styleCues           || "",
+        input?.promptOverride      || "",
+        input?.colorDirection      || "",
+        input?.typographyDirection || "",
+      ].join(" ").toLowerCase();
       parts.push(
-        "Pet brand mark: use a simple geometric pet cue — paw print, dog or cat face silhouette, ear, tail, or collar shape. " +
-        "Render it as a clean flat geometric brand mark, not a cartoon mascot or clipart illustration."
+        "Pet brand mark: " + getPetAnimalCue(detectPetAnimal(petSearchText)) +
+        " Render as a clean flat geometric brand mark, not a cartoon mascot or clipart illustration."
       );
     }
 
@@ -433,9 +478,20 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
       group.label || "none", saasDirections, dbgSlice(group.toneOverride, 80));
   }
 
+  const petSearchText = [
+    brandName,
+    industryRaw,
+    keywords,
+    styleCues,
+    String(input?.promptOverride || ""),
+    colorDirection,
+    typographyDirection,
+  ].join(" ").toLowerCase();
   const INDUSTRY_CONTEXT_OVERRIDES = {
     pet_brand:
-      "Industry context: pet brand. Use a simple geometric pet cue — paw print, dog or cat face silhouette, ear, tail, or collar shape — as a clean flat brand mark. No cartoon mascot, no clipart illustration, no childish character art.",
+      "Industry context: pet brand. " +
+      getPetAnimalCue(detectPetAnimal(petSearchText)) +
+      " No cartoon mascot, no clipart illustration, no childish character art.",
   };
   const industryBaseTag =
     industryRaw && !industryRaw.match(/^[,.\s]+$/)
