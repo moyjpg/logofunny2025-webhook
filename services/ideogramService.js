@@ -82,9 +82,9 @@ const SAAS_CONCEPT_DIRECTIONS = [
 
 // Hard rules appended to every prompt that arrives via the conceptPrompts path.
 const CONCEPT_PROMPTS_SUFFIX =
-  "Leave clean empty space around the wordmark. " +
-  "Do not place any small symbols, badges, dots, circles, seals, registration marks, or decorative marks beside or near the brand name letters. " +
-  "Keep the logo area clean with only the intended icon and wordmark visible. " +
+  "Use only the intended icon and the brand letters. " +
+  "Keep all space around the wordmark completely empty, especially near the final letter and upper-right area. " +
+  "No tiny details near the wordmark. " +
   "One centered logo only on a plain clean background. " +
   "Do not create brand boards, color tiles, color swatches, mockups, presentation sheets, " +
   "multiple logo versions, split background panels, comparison layouts, " +
@@ -161,17 +161,18 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
 
     if (conceptKey === "wordmark") {
       parts.push(
-        "Wordmark concept: the brand name in custom lettering is the entire logo. " +
-        "Use soft, rounded, slightly bouncy letterforms — warm and charming, suitable for a modern pet lifestyle brand, not a stiff corporate sans-serif. " +
+        "Wordmark concept: the brand name rendered in custom rounded lettering is the entire logo. " +
+        "Use soft, hand-lettered-feeling letterforms with a slightly bouncy rhythm — warm, charming, and inviting, like something drawn with care for a modern pet lifestyle brand. " +
+        "The lettering should feel crafted and personal, not typed in a geometric or corporate sans-serif. " +
         "No separate icon, paw, animal, or graphic element outside the letterforms. " +
-        "Plain clean background only — no background color fill, color block, or panel behind the text."
+        "Plain clean white background only — no background color fill, color block, or panel behind the text."
       );
     } else if (conceptKey === "app_icon") {
       parts.push(
-        "App icon concept: one standalone icon mark as the primary element. " +
-        "No full wordmark. " +
-        "If any text appears, it must be a single letter or very short abbreviation, small and clearly secondary to the icon. " +
-        "The icon must be bold, simple, and read clearly at app icon and social profile avatar sizes."
+        "App icon concept: one standalone pet icon mark as the primary and dominant element. " +
+        "Do not include the full brand wordmark. " +
+        "Suitable for use as a favicon, app icon, and social profile avatar. " +
+        "The icon must be bold, simple, and instantly recognizable at small sizes."
       );
     }
 
