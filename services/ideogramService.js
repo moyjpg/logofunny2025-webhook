@@ -86,6 +86,13 @@ const CONCEPT_PROMPTS_SUFFIX =
   "No stray marks, trademark symbols, or random meaningless text near the brand name. " +
   "No brand boards, mockups, or multiple versions in one image.";
 
+// Minimal guardrails for the Magic Prompt AUTO experiment.
+const MINIMAL_CONCEPT_SUFFIX =
+  "One logo only. Plain clean background. No mockups, brand boards, or multiple versions in one image. Avoid random trademark symbols or meaningless tiny text. " +
+  "The logo mark, lettering, negative-space shapes, and any integrated letterform ideas must look complete, intentional, and fully formed. " +
+  "No half-drawn symbols, broken shapes, missing edges, incomplete outlines, cropped letter details, malformed negative space, or unfinished-looking marks. " +
+  "If a letterform is modified, it must still look like a complete readable letter. If negative space is used, it must be clear, closed, and intentional.";
+
 function isSaasLikeIndustry(searchableText, brandStyleRoute) {
   if (brandStyleRoute === "tech_saas") return true;
   if (!searchableText || !searchableText.trim()) return false;
@@ -515,6 +522,90 @@ function dbgSlice(v, n) {
   return String(v == null ? "" : v).slice(0, n);
 }
 
+// --- Minimal prompt experiment (Magic Prompt AUTO) ---
+
+function buildMinimalIndustryCue(input) {
+  const ind = String(input?.industry || "").toLowerCase();
+  if (ind.includes("pet")) {
+    const petText = [
+      String(input?.brandName || ""),
+      String(input?.industry  || ""),
+      String(input?.keywords  || ""),
+      String(input?.otherNotes || input?.notes || ""),
+    ].join(" ").toLowerCase();
+    const animalTarget = detectPetAnimal(petText);
+    if (animalTarget === "dog")         return "Use broad pet brand cues such as dog companion, paw, collar, playful warmth, friendly character, loyal feeling, or pet lifestyle.";
+    if (animalTarget === "cat")         return "Use broad pet brand cues such as cat companion, whisker, tail, graceful character, independent warmth, feline elegance, or pet lifestyle.";
+    if (animalTarget === "dog_and_cat") return "Use broad pet brand cues such as paw, dog and cat companions, shared warmth, friendly character, or pet lifestyle.";
+    return "Use broad pet brand cues such as paw, friendly animal companion, collar, playful warmth, or pet lifestyle.";
+  }
+  if (ind.includes("home") || ind.includes("decor"))                  return "Use broad home decor cues such as botanical forms, home warmth, interior style, craft, shelter, cozy living, or lifestyle branding.";
+  if (ind.includes("tech") || ind.includes("saas") || ind.includes("software")) return "Use broad software cues such as clarity, flow, spark, node, cursor, window, intelligence, or simple modern systems.";
+  if (ind.includes("cafe") || ind.includes("coffee") || ind.includes("bakery") || ind.includes("restaurant") || ind.includes("food") || ind.includes("beverage")) return "Use broad food brand cues such as warmth, craft, cafe feeling, handmade quality, appetite, freshness, or friendly hospitality.";
+  if (ind.includes("beauty") || ind.includes("skincare"))             return "Use broad beauty brand cues such as botanical refinement, soft natural forms, gentle elegance, skincare ritual, or premium lifestyle.";
+  if (ind.includes("health") || ind.includes("wellness"))             return "Use broad wellness cues such as natural flow, calm balance, organic growth, gentle strength, or serene lifestyle.";
+  if (ind.includes("fitness") || ind.includes("sport"))               return "Use broad fitness cues such as energy, motion, strength, bold form, athletic character, or dynamic lifestyle.";
+  if (ind.includes("fashion") || ind.includes("apparel"))             return "Use broad fashion brand cues such as editorial refinement, minimal tension, quiet luxury, or premium lifestyle.";
+  if (ind.includes("creative") || ind.includes("studio"))             return "Use broad creative brand cues such as bold concept, editorial character, geometric confidence, or distinctive visual identity.";
+  if (ind.includes("finance") || ind.includes("fintech"))             return "Use broad finance brand cues such as stability, trust, precision, clean geometry, or professional authority.";
+  if (ind.includes("legal") || ind.includes("consulting"))            return "Use broad professional cues such as balance, authority, clean structure, measured form, or credible presence.";
+  if (ind.includes("education"))                                       return "Use broad education cues such as open path, spark, learning, forward momentum, or encouraging clarity.";
+  if (ind.includes("real_estate") || ind.includes("real estate"))     return "Use broad real estate cues such as architectural form, refined elevation, premium space, or aspirational living.";
+  return "";
+}
+
+function buildMinimalConceptPrompt(input, conceptKey) {
+  const brandName     = String(input?.brandName || "Brand").trim();
+  const industry      = String(input?.industry  || "").replace(/_/g, " ").trim();
+  const keywords      = [
+    String(input?.keywords  || ""),
+    String(input?.styleCues || ""),
+  ].filter(Boolean).join(", ").trim();
+  const notes         = String(input?.otherNotes || input?.notes || "").trim();
+  const colorDir      = String(input?.colorDirection || "").replace(/_/g, " ").trim();
+  const typographyDir = String(
+    input?.typographyDirection || input?.typographyStyle || input?.fontStyle || ""
+  ).replace(/_/g, " ").trim();
+  const styles = String(
+    input?.style || input?.styles || input?.selectedStyles || input?.styleOptions || ""
+  ).replace(/,/g, ", ").trim();
+  const iconDir = String(
+    input?.iconDirection || input?.icon || input?.icons || input?.selectedIcons || input?.iconOptions || ""
+  ).replace(/,/g, ", ").trim();
+  const detail = String(
+    input?.detail || input?.detailLevel || input?.detailPreference || ""
+  ).trim();
+
+  const CONCEPT_ANGLES = {
+    recommended: "Explore the strongest complete logo direction.",
+    wordmark:    "Focus on a creative wordmark or lettering-led logo.",
+    app_icon:    "Explore a compact icon or avatar-style mark that can work at small sizes.",
+    symbol_mark: "Explore a memorable symbol mark or emblem for the brand.",
+  };
+
+  const parts = [];
+  const industryPhrase = industry ? `a ${industry} brand` : "a brand";
+  parts.push(`Create a creative commercial logo for ${brandName}, ${industryPhrase}.`);
+
+  const userDirection = [keywords, notes].filter(Boolean).join(". ");
+  if (userDirection)  parts.push(`User direction: ${userDirection}.`);
+  if (styles)         parts.push(`Style: ${styles}.`);
+  if (colorDir)       parts.push(`Color direction: ${colorDir}.`);
+  if (typographyDir)  parts.push(`Typography: ${typographyDir}.`);
+  if (iconDir)        parts.push(`Icon direction: ${iconDir}.`);
+  if (detail)         parts.push(`Detail level: ${detail}.`);
+
+  const conceptAngle = CONCEPT_ANGLES[conceptKey] || "";
+  if (conceptAngle)   parts.push(conceptAngle);
+
+  const industryCue = buildMinimalIndustryCue(input);
+  if (industryCue)    parts.push(industryCue);
+
+  parts.push("Make it feel polished, memorable, and suitable for real brand use.");
+
+  return parts.join(" ");
+}
+
 function buildIdeogramPrompt(input = {}, groupIndex = 0) {
   const CONCEPT_PROMPT_KEYS = ["recommended", "wordmark", "app_icon", "symbol_mark"];
   const conceptKey = CONCEPT_PROMPT_KEYS[groupIndex];
@@ -525,17 +616,21 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     typeof input.conceptPrompts[conceptKey] === "string" &&
     input.conceptPrompts[conceptKey].trim()
   ) {
+    // Minimal prompt + Magic Prompt AUTO experiment.
+    // To revert: restore the three parts below and change magicPromptOverride back to "OFF".
+    //   input.conceptPrompts[conceptKey].trim(),
+    //   buildConceptBriefPrompt(input, conceptKey),
+    //   CONCEPT_PROMPTS_SUFFIX,
     const parts = [
-      input.conceptPrompts[conceptKey].trim(),
-      buildConceptBriefPrompt(input, conceptKey),
-      CONCEPT_PROMPTS_SUFFIX,
+      buildMinimalConceptPrompt(input, conceptKey),
+      MINIMAL_CONCEPT_SUFFIX,
     ];
 
     return {
       prompt: parts.join(" "),
       style_name: "logofunny",
       conceptLabel: conceptKey,
-      magicPromptOverride: "OFF",
+      magicPromptOverride: "AUTO",
     };
   }
 
