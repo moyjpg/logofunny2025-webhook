@@ -83,12 +83,8 @@ const SAAS_CONCEPT_DIRECTIONS = [
 // Output rules appended to every prompt that arrives via the conceptPrompts path.
 const CONCEPT_PROMPTS_SUFFIX =
   "One centered logo only on a plain clean background. " +
-  "Keep the space around the wordmark clean and intentional. " +
-  "No random stray marks, floating dots, or trademark-style symbols near the brand name. " +
-  "Do not create brand boards, color tiles, color swatches, mockups, presentation sheets, " +
-  "multiple logo versions, split background panels, comparison layouts, " +
-  "or any image showing more than one logo composition. " +
-  "The output should look like a polished, finished logo a designer would present to a client — complete hierarchy, intentional spacing, and ready for immediate brand use.";
+  "No stray marks, trademark symbols, or random meaningless text near the brand name. " +
+  "No brand boards, mockups, or multiple versions in one image.";
 
 function isSaasLikeIndustry(searchableText, brandStyleRoute) {
   if (brandStyleRoute === "tech_saas") return true;
@@ -209,29 +205,29 @@ function buildFeelingFromKeywords(keywords, industry) {
 
 function buildVisualMetaphors(industry, animalTarget, keywords, notes) {
   if (industry.includes("pet")) {
-    if (animalTarget === "dog")         return "a friendly dog companion idea fused with a collar tag, wagging-tail curve, or soft paw rhythm — warm, loyal, and memorable as one simple mark";
-    if (animalTarget === "cat")         return "a graceful cat silhouette combined with a whisker arc or tail curve — feline elegance and quiet warmth fused into one refined mark";
-    if (animalTarget === "dog_and_cat") return "a shared paw or paired pet silhouette that carries both dog and cat warmth — one welcoming mark for both animal companions";
-    return "a friendly pet face or paw rhythm combined with a warm rounded form — approachable and memorable as one simple mark";
+    if (animalTarget === "dog")         return "combine loyal dog companion, collar tag, wagging-tail curve, and soft paw rhythm into one warm memorable mark";
+    if (animalTarget === "cat")         return "combine graceful cat silhouette, whisker arc, and tail curve into one refined feline mark";
+    if (animalTarget === "dog_and_cat") return "combine dog and cat shapes, a shared paw, or a paired pet silhouette into one welcoming mark";
+    return "combine a friendly pet face, paw rhythm, and warm rounded form into one approachable mark";
   }
-  if (industry.includes("home") || industry.includes("decor"))                  return "a botanical form nested inside a sheltering arch — leaf, bloom, and home warmth combined into one refined mark";
-  if (industry.includes("tech") || industry.includes("saas") || industry.includes("software")) return "a clean spark, node, cursor, or flow shape fused into one simple clarity symbol — purposeful and modern";
-  if (industry.includes("beauty") || industry.includes("skincare"))             return "a soft petal or bloom form growing from a clean drop or arc — botanical refinement and skincare ritual fused into one elegant mark";
-  if (industry.includes("food") || industry.includes("beverage"))               return "a simple leaf, grain, or ingredient shape paired with warmth — artisan craft and nourishing energy combined into one appetizing mark";
-  if (industry.includes("cafe") || industry.includes("restaurant"))             return "a steam arc rising from a cup or bean form — warmth, craft, and hospitality fused into one inviting mark";
-  if (industry.includes("health") || industry.includes("wellness"))             return "a gentle leaf arc or organic growth form balanced with calm open space — natural flow and quiet strength combined into one serene mark";
-  if (industry.includes("fitness") || industry.includes("sport"))               return "a bold motion arc or speed line combined with a strong geometric silhouette — energy and strength fused into one kinetic mark";
-  if (industry.includes("fashion") || industry.includes("apparel"))             return "a refined editorial line or minimal geometric tension — quiet luxury and typographic strength fused into one precise mark";
-  if (industry.includes("creative") || industry.includes("studio"))             return "a bold geometric form combined with a signature visual concept — creative tension and editorial clarity fused into one distinctive mark";
-  if (industry.includes("finance") || industry.includes("fintech"))             return "a stable geometric base combined with an upward arc or growth line — structure and forward momentum fused into one trustworthy mark";
-  if (industry.includes("legal") || industry.includes("consulting"))            return "a measured balanced form combined with clean authority lines — precision and credibility fused into one stable mark";
-  if (industry.includes("education"))                                            return "an open path or arc combined with a spark of learning — forward movement and clear structure fused into one encouraging mark";
-  if (industry.includes("real_estate") || industry.includes("real estate"))     return "a refined arch or elevated geometric form combined with premium space — architectural clarity and quiet aspiration fused into one distinguished mark";
+  if (industry.includes("home") || industry.includes("decor"))                  return "combine leaf, bloom, nest, and cozy home shelter into one refined botanical mark";
+  if (industry.includes("tech") || industry.includes("saas") || industry.includes("software")) return "combine spark, node, cursor, flow, and clarity into one clean modern symbol";
+  if (industry.includes("beauty") || industry.includes("skincare"))             return "combine soft petal, bloom, and gentle drop into one elegant botanical mark";
+  if (industry.includes("food") || industry.includes("beverage"))               return "combine leaf, grain, artisan ingredient, and warmth into one appetizing mark";
+  if (industry.includes("cafe") || industry.includes("restaurant"))             return "combine steam arc, cup, bean, and hospitality warmth into one inviting mark";
+  if (industry.includes("health") || industry.includes("wellness"))             return "combine leaf arc, organic flow, and calm open space into one serene balanced mark";
+  if (industry.includes("fitness") || industry.includes("sport"))               return "combine bold motion arc, speed line, and geometric strength into one kinetic mark";
+  if (industry.includes("fashion") || industry.includes("apparel"))             return "combine refined editorial line, minimal tension, and quiet luxury into one precise mark";
+  if (industry.includes("creative") || industry.includes("studio"))             return "combine bold geometric form, creative tension, and editorial clarity into one distinctive mark";
+  if (industry.includes("finance") || industry.includes("fintech"))             return "combine stable base, upward arc, and growth line into one trustworthy mark";
+  if (industry.includes("legal") || industry.includes("consulting"))            return "combine measured balance, clean lines, and authority into one credible stable mark";
+  if (industry.includes("education"))                                            return "combine open path, spark of learning, and clear arc into one encouraging mark";
+  if (industry.includes("real_estate") || industry.includes("real estate"))     return "combine refined arch, clean elevation, and premium space into one distinguished mark";
   const allText = (keywords + " " + notes).toLowerCase();
   if (allText.includes("nature") || allText.includes("plant") || allText.includes("organic") || allText.includes("botanical")) {
-    return "a botanical leaf or organic growth form combined with clean geometric balance — natural and purposeful fused into one memorable mark";
+    return "combine botanical leaf, organic form, and clean geometric balance into one natural mark";
   }
-  return "a clean abstract form with a strong geometric concept — two compatible shapes fused into one simple, memorable brand mark";
+  return "combine two compatible geometric forms into one clean, memorable brand mark";
 }
 
 function buildShapeDirection(industry, keywords) {
@@ -286,34 +282,30 @@ function buildTypographyDirection(typographyDir, industry, keywords) {
 }
 
 function buildAvoidDrift(industry, animalTarget, keywords) {
-  const rules = [];
+  let specific = "";
   if (industry.includes("pet")) {
-    if (animalTarget === "dog")         rules.push("stay in the dog creative world — unrelated animals like cats, foxes, or bears would pull the brand off course");
-    else if (animalTarget === "cat")    rules.push("stay in the cat creative world — avoid drifting into dogs or other unrelated animals");
-    else if (animalTarget === "dog_and_cat") rules.push("stay within dog and cat territory — other unrelated animals would break the brand world");
-    else                                rules.push("keep the visual world warm and pet-friendly — avoid unrelated animals");
-    rules.push("avoid detailed mascot scenes, cartoon fur textures, clipart animals, and childish illustration styles");
+    if (animalTarget === "dog")                   specific = "unrelated animals, cartoon fur textures, ";
+    else if (animalTarget === "cat")              specific = "unrelated animals, cartoon fur textures, ";
+    else if (animalTarget === "dog_and_cat")      specific = "unrelated animals, cartoon fur textures, ";
+    else                                          specific = "unrelated animals, cartoon fur textures, ";
   } else if (industry.includes("tech") || industry.includes("saas") || industry.includes("software")) {
-    rules.push("avoid robots, circuit boards, hexagon clichés, generic AI sparkle clusters, dashboard mockups, and literal computer hardware illustrations");
+    specific = "robots, hexagon clichés, circuit boards, AI sparkle overload, ";
   } else if (industry.includes("home") || industry.includes("decor")) {
-    rules.push("avoid house clipart, real estate for-sale signs, furniture room illustrations, floor plan diagrams, and overly rustic barn aesthetics");
+    specific = "house clipart, room scene illustrations, overly rustic barn aesthetics, ";
   } else if (industry.includes("beauty") || industry.includes("skincare")) {
-    rules.push("avoid product bottle illustrations, portrait faces, glitter, spa lifestyle scenes, and fine details that disappear at small sizes");
-  } else if (industry.includes("food") || industry.includes("cafe") || industry.includes("restaurant")) {
-    rules.push("avoid food photo realism, menu-style layouts, complex vintage badge overload, and detailed food scene illustrations");
+    specific = "product bottle illustrations, portrait faces, glitter, ";
+  } else if (industry.includes("food") || industry.includes("beverage") || industry.includes("cafe") || industry.includes("restaurant")) {
+    specific = "food photo realism, menu layouts, complex vintage badge overload, ";
   } else if (industry.includes("fitness") || industry.includes("sport")) {
-    rules.push("avoid detailed athlete figure illustrations, gym equipment scene art, aggressive mascot energy, and cluttered trophy-style badge layouts");
+    specific = "detailed athlete illustrations, gym equipment scenes, ";
   } else if (industry.includes("finance") || industry.includes("fintech")) {
-    rules.push("avoid dollar signs, coin illustrations, candlestick charts, bank building drawings, and generic corporate swoosh arcs");
+    specific = "dollar signs, coins, candlestick charts, bank building drawings, ";
   } else if (industry.includes("legal") || industry.includes("consulting")) {
-    rules.push("avoid scale-of-justice clipart, gavel drawings, courthouse illustrations, and generic authority clichés");
+    specific = "scales-of-justice clipart, gavel drawings, ";
   } else if (industry.includes("health") || industry.includes("wellness")) {
-    rules.push("avoid medical cross overuse, anatomy diagrams, clinical product illustrations, and lotus or mandala clichés");
-  } else {
-    rules.push("avoid generic clipart, unrelated scene illustrations, and visual styles that conflict with the brand's established feeling");
+    specific = "medical cross overuse, anatomy diagrams, lotus or mandala clichés, ";
   }
-  rules.push("no random floating marks, stray dots, or trademark-style symbols near the brand name");
-  return rules.join("; ");
+  return `avoid ${specific}random trademark symbols, meaningless micro text, unrelated objects, and clipart-like results`;
 }
 
 function shouldAllowDescriptor(input) {
@@ -367,67 +359,39 @@ function buildConceptBriefPrompt(input, conceptKey) {
   const avoid      = buildAvoidDrift(industryRaw, animalTarget, keywords);
 
   const brief =
-    `Brand feeling: ${feeling}. ` +
-    `Visual direction: ${metaphors}. ` +
-    `Shape language: ${shapes}. ` +
-    `Typography: ${typography}. ` +
-    `Creative boundary: ${avoid}.`;
+    `Feeling: ${feeling}. ` +
+    `Mark: ${metaphors}. ` +
+    `Shape: ${shapes}. ` +
+    `Type: ${typography}. ` +
+    `Avoid: ${avoid}.`;
 
   switch (conceptKey) {
     case "recommended": {
       const descriptor = shouldAllowDescriptor(input) ? getCategoryDescriptor(input) : null;
       const descriptorLine = descriptor
-        ? `A short category descriptor like "${descriptor}" may appear in small caps below the wordmark, subordinate to the brand name — only if it reads as a clean professional brand label, never as random text.`
+        ? `Optional: for this category, a small descriptor like ${descriptor} may appear below the wordmark if it improves the professional lockup.`
         : "";
       return [
-        "Concept direction: Lead commercial logo — polished, complete, and commercially ready. " +
-        "Balanced symbol icon paired with a readable wordmark, or a strong standalone wordmark if the brand calls for it.",
+        "Create the strongest complete commercial logo lockup. Combine a memorable symbol with a refined wordmark. Use mature spacing, clear hierarchy, and packaging-ready polish.",
         brief,
-        "Create a polished commercial brand lockup with mature spacing, clear hierarchy, refined typography, and an intentional mark-to-wordmark relationship. " +
-        "It should feel ready for packaging, website header, social profile, and brand identity use.",
         descriptorLine,
       ].filter(Boolean).join(" ");
     }
     case "wordmark":
-      return [
-        "Concept direction: Lettering-led wordmark — the brand name is the entire logo. " +
-        "Custom lettering carries the brand's personality. " +
-        "Readability comes first — letterforms must be clearly readable at first glance. " +
-        "Subtle integrated brand cues are welcome: a visual idea discovered in the letterforms through negative space, a stroke extension, a modified counter, or one intentional visual cue inside a single letter. " +
-        "The integration should feel designed into the letters, not applied on top of them. " +
-        "No separate icon or graphic element outside the letterforms. " +
-        "Plain clean background.",
-        brief,
-        "The wordmark should feel like mature custom typography, not plain typed text. " +
-        "Integrated negative-space or letterform cues are welcome only when they improve personality and keep the name readable.",
-      ].join(" ");
+      return (
+        "Create a lettering-led logo. The brand name is the hero. Use mature custom typography with subtle integrated visual cues only if they improve personality and readability. " +
+        brief
+      );
     case "app_icon":
-      return [
-        "Concept direction: App icon and social avatar — one compact, bold idea. " +
-        "Designed for favicon, app icon, and social avatar sizes. " +
-        "May use a simplified animal face, paw, abstract brand symbol, or one large initial. " +
-        "The icon stands alone — no full horizontal wordmark. " +
-        "Centered, simple, and instantly recognizable at small sizes.",
-        brief,
-        "Favor one compact graphic idea that works at small sizes: an icon, mascot head, avatar-like symbol, or single initial. " +
-        "Avoid full horizontal wordmark layouts.",
-      ].join(" ");
-    case "symbol_mark": {
-      const descriptor = shouldAllowDescriptor(input) ? getCategoryDescriptor(input) : null;
-      const descriptorLine = descriptor
-        ? `A short category descriptor like "${descriptor}" may appear in small caps below the wordmark, subordinate to the brand name — only if it reads as a clean professional brand label, never as random text.`
-        : "";
-      return [
-        "Concept direction: Symbol exploration — a memorable standalone mark paired with the brand name. " +
-        "The symbol has a strong independent silhouette and is concept-driven, not generic. " +
-        "Derived from the brand's visual direction and metaphors. " +
-        "Works as a standalone mark and as a full lockup with the wordmark below or beside it.",
-        brief,
-        "The symbol should be the hero: a memorable mark with a strong silhouette and a clear relationship to the brand idea. " +
-        "It should feel designed, not like literal clipart.",
-        descriptorLine,
-      ].filter(Boolean).join(" ");
-    }
+      return (
+        "Create a compact icon or avatar mark for small sizes. Prefer a symbol, mascot head, abstract mark, or single initial. Do not make a full horizontal logo. " +
+        brief
+      );
+    case "symbol_mark":
+      return (
+        "Create a memorable standalone symbol with a strong silhouette. It may pair with a small wordmark, but the symbol should carry the brand idea. " +
+        brief
+      );
     default:
       return brief;
   }
