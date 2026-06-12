@@ -598,10 +598,10 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   ).trim();
 
   const CONCEPT_ANGLES = {
-    recommended: "Explore the strongest complete logo direction.",
-    wordmark:    "Focus on a creative wordmark or lettering-led logo.",
-    app_icon:    "Explore a compact icon or avatar-style mark that can work at small sizes.",
-    symbol_mark: "Explore a memorable symbol mark or emblem for the brand.",
+    recommended: "Explore the strongest complete commercial logo lockup. It may include a symbol, refined wordmark, and a short category descriptor if the user requested one.",
+    wordmark:    "Focus on a creative wordmark or lettering-led logo. The brand name should be the main design. Avoid a separate large icon above the wordmark.",
+    app_icon:    "Explore a compact icon or avatar-style mark for small sizes. Prefer icon-only, mascot head, emblem, or single initial. Avoid full horizontal wordmark layouts and avoid secondary taglines.",
+    symbol_mark: "Explore a memorable standalone symbol mark or emblem. The symbol should carry the brand idea and may be shown with a small simple wordmark, but avoid making it look identical to the recommended lockup.",
   };
 
   const parts = [];
@@ -619,7 +619,7 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   if (detail)         parts.push(`Detail level: ${detail}.`);
 
   const conceptAngle = CONCEPT_ANGLES[conceptKey] || "";
-  if (conceptAngle)   parts.push(conceptAngle);
+  if (conceptAngle)   parts.push(`${conceptAngle} This direction should look visually distinct from the other logo concepts.`);
 
   const industryCue = buildMinimalIndustryCue(input);
   if (industryCue)    parts.push(industryCue);
