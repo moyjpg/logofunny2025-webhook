@@ -91,7 +91,8 @@ const MINIMAL_CONCEPT_SUFFIX =
   "One logo only. Plain clean background. No mockups, brand boards, or multiple versions in one image. Avoid random trademark symbols or meaningless tiny text. " +
   "The logo mark, lettering, negative-space shapes, and any integrated letterform ideas must look complete, intentional, and fully formed. " +
   "No half-drawn symbols, broken shapes, missing edges, incomplete outlines, cropped letter details, malformed negative space, or unfinished-looking marks. " +
-  "If a letterform is modified, it must still look like a complete readable letter. If negative space is used, it must be clear, closed, and intentional.";
+  "If a letterform is modified, it must still look like a complete readable letter. If negative space is used, it must be clear, closed, and intentional. " +
+  "If secondary text is used, use only clear real words provided by the user, such as HOME + DECOR; do not invent or misspell tiny text.";
 
 function isSaasLikeIndustry(searchableText, brandStyleRoute) {
   if (brandStyleRoute === "tech_saas") return true;
@@ -554,6 +555,26 @@ function buildMinimalIndustryCue(input) {
   return "";
 }
 
+function buildPaletteVariationCue(input) {
+  const c = String(input?.colorDirection || "").toLowerCase().replace(/_/g, " ");
+  if (!c) return "";
+  if (c.includes("green") || c.includes("natural") || c.includes("sage") || c.includes("forest") || c.includes("olive"))
+    return "Within the green/natural direction, explore tasteful palette variation such as sage green, deep forest green, olive, warm cream, soft beige, natural brown, or muted clay accents.";
+  if (c.includes("orange") || c.includes("yellow") || c.includes("amber") || c.includes("warm"))
+    return "Within the warm orange/yellow direction, explore tasteful palette variation such as terracotta, warm amber, soft cream, muted gold, clay, tan, or cocoa accents.";
+  if (c.includes("blue") || c.includes("navy") || c.includes("sky") || c.includes("slate"))
+    return "Within the blue direction, explore tasteful palette variation such as navy, soft sky blue, slate blue, mist blue, off-white, or cool gray accents.";
+  if ((c.includes("black") && c.includes("gold")) || c.includes("champagne") || c.includes("bronze"))
+    return "Within the black/gold direction, explore tasteful palette variation such as matte black, warm gold, champagne, ivory, charcoal, or muted bronze.";
+  if ((c.includes("black") && c.includes("white")) || c.includes("monochrome") || c.includes("grayscale"))
+    return "Keep the palette mostly monochrome, but explore contrast, spacing, and shape personality rather than adding extra colors.";
+  if (c.includes("bright") || c.includes("vibrant") || c.includes("bold color") || c.includes("colorful"))
+    return "Use bright colors tastefully with one dominant color and one or two supporting accents.";
+  if (c.includes("custom"))
+    return "Use the user's custom color as the anchor, with subtle supporting tones that stay harmonious.";
+  return "";
+}
+
 function buildMinimalConceptPrompt(input, conceptKey) {
   const brandName     = String(input?.brandName || "Brand").trim();
   const industry      = String(input?.industry  || "").replace(/_/g, " ").trim();
@@ -591,6 +612,8 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   if (userDirection)  parts.push(`User direction: ${userDirection}.`);
   if (styles)         parts.push(`Style: ${styles}.`);
   if (colorDir)       parts.push(`Color direction: ${colorDir}.`);
+  const paletteCue = buildPaletteVariationCue(input);
+  if (paletteCue)     parts.push(paletteCue);
   if (typographyDir)  parts.push(`Typography: ${typographyDir}.`);
   if (iconDir)        parts.push(`Icon direction: ${iconDir}.`);
   if (detail)         parts.push(`Detail level: ${detail}.`);
