@@ -197,18 +197,20 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
 
     if (conceptKey === "wordmark") {
       parts.push(
-        "Wordmark concept: the brand name rendered in custom rounded lettering is the entire logo. " +
-        "Use soft, hand-lettered-feeling letterforms with a slightly bouncy rhythm — warm, charming, and inviting, like something drawn with care for a modern pet lifestyle brand. " +
-        "The lettering should feel crafted and personal, not typed in a geometric or corporate sans-serif. " +
-        "No separate icon, paw, animal, or graphic element outside the letterforms. " +
-        "Plain clean white background only — no background color fill, color block, or panel behind the text."
+        "Wordmark concept: the brand name in custom lettering is the entire logo. " +
+        "Letterforms are soft, rounded, slightly bouncy, warm, charming, and clearly readable. " +
+        "No separate icon. " +
+        "No animal face, paw, ear, tail, collar, badge, dot, circle, or tiny decorative detail inside or around the letters. " +
+        "Do not alter any letter into an animal shape or embed an animal silhouette inside a letter. " +
+        "Plain clean white background only — no color fill, color block, or panel."
       );
     } else if (conceptKey === "app_icon") {
       parts.push(
-        "App icon concept: one standalone pet icon mark as the primary and dominant element. " +
-        "Do not include the full brand wordmark. " +
-        "Suitable for use as a favicon, app icon, and social profile avatar. " +
-        "The icon must be bold, simple, and instantly recognizable at small sizes."
+        "App icon concept: one standalone icon only — no full brand name, no full wordmark. " +
+        "Prefer a simple pet face, paw-inspired abstract shape, animal silhouette, collar tag, or single large initial. " +
+        "Centered, simple, and clear at small sizes. " +
+        "Designed for app icon, favicon, and social avatar use. " +
+        "If any letter appears, use only one large initial — not the full brand name."
       );
     }
 
