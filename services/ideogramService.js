@@ -634,9 +634,9 @@ function buildMinimalConceptPrompt(input, conceptKey) {
 
   const CONCEPT_ANGLES = {
     recommended: "Explore the strongest complete commercial logo lockup with clear brand hierarchy.",
-    wordmark:    "Explore a lettering-led logo where the brand name itself is the design. Avoid a separate large icon above the wordmark.",
-    app_icon:    "Explore a compact standalone icon, symbol, or emblem for small sizes. It should work without any text.",
-    symbol_mark: "Explore a memorable standalone symbol or emblem that can represent the brand independently from the full logo.",
+    wordmark:    "Explore a lettering-led wordmark where the brand name is the complete design. Do not place a separate large icon above the wordmark. Any visual detail should be integrated into the letterforms.",
+    app_icon:    "Explore an icon-first compact emblem. The icon or symbol should dominate and occupy the main space. A small brand name is optional but should not be the focal point.",
+    symbol_mark: "Explore an independent symbol or emblem that stands on its own. Prefer no text or very minimal text. The symbol should be the complete visual statement.",
   };
 
   const parts = [];
@@ -653,11 +653,11 @@ function buildMinimalConceptPrompt(input, conceptKey) {
       ? `Visible text lock: use only the exact brand name '${brandName}' and, if needed, the exact descriptor '${descriptor}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text.`
       : `Visible text lock: use only the exact brand name '${brandName}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text.`;
   } else if (conceptKey === "wordmark") {
-    textLock = `Visible text lock: use only the exact brand name '${brandName}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text. Wordmark text behavior: focus on the brand name only. Avoid secondary descriptors or tagline text.`;
+    textLock = `Visible text lock: use only the exact brand name '${brandName}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text. Wordmark text behavior: the brand name itself is the design. Do not place a separate large icon above the wordmark. Any decorative element should be integrated into the letters.`;
   } else if (conceptKey === "app_icon") {
-    textLock = `App icon text behavior: no visible text. Do not include brand name, descriptor, tagline, letters, captions, or micro text. Create only a standalone icon.`;
+    textLock = `App icon text behavior: icon-first composition. The icon or emblem must be the visual focus and occupy the main space. A small brand name may appear only as a secondary support element. Do not include descriptors, taglines, category text, or micro text. Avoid full logo lockup layout.`;
   } else if (conceptKey === "symbol_mark") {
-    textLock = `Visible text lock: brand name may appear small only if needed. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text. Symbol mark text behavior: focus on the symbol. Avoid secondary descriptors and tagline text.`;
+    textLock = `Symbol mark text behavior: symbol-first composition. The symbol should work independently from the brand name. Prefer no text or a very small brand name only if needed. Do not include descriptors, taglines, category text, or micro text. Avoid full logo lockup layout.`;
   } else {
     textLock = `Visible text lock: use only the exact brand name '${brandName}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text.`;
   }
