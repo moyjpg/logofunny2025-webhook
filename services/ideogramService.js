@@ -92,7 +92,7 @@ const MINIMAL_CONCEPT_SUFFIX =
   "The logo mark, lettering, negative-space shapes, and any integrated letterform ideas must look complete, intentional, and fully formed. " +
   "No half-drawn symbols, broken shapes, missing edges, incomplete outlines, cropped letter details, malformed negative space, or unfinished-looking marks. " +
   "If a letterform is modified, it must still look like a complete readable letter. If negative space is used, it must be clear, closed, and intentional. " +
-  "If secondary text is used, use only clear real words provided by the user, such as HOME + DECOR; do not invent or misspell tiny text.";
+  "If secondary text is used, it must exactly match the allowed descriptor from the prompt. If the descriptor cannot be rendered clearly, omit it rather than inventing or misspelling text.";
 
 function isSaasLikeIndustry(searchableText, brandStyleRoute) {
   if (brandStyleRoute === "tech_saas") return true;
@@ -575,6 +575,41 @@ function buildPaletteVariationCue(input) {
   return "";
 }
 
+function buildAllowedVisibleTextCue(input) {
+  const brandName = String(input?.brandName || "Brand").trim();
+  const userText = [
+    String(input?.notes      || ""),
+    String(input?.otherNotes || ""),
+    String(input?.keywords   || ""),
+    String(input?.styleCues  || ""),
+  ];
+  if (input?.conceptPrompts && typeof input.conceptPrompts === "object") {
+    for (const val of Object.values(input.conceptPrompts)) {
+      if (typeof val === "string") userText.push(val);
+    }
+  }
+  const userStr = userText.join(" ").toUpperCase();
+  const ALLOWED_DESCRIPTORS = [
+    "HOME + DECOR",
+    "HOME & DECOR",
+    "PETS",
+    "STUDIO",
+    "CAFE",
+    "BAKERY",
+    "WELLNESS",
+    "BEAUTY",
+    "SKINCARE",
+  ];
+  let descriptor = null;
+  for (const d of ALLOWED_DESCRIPTORS) {
+    if (userStr.includes(d)) {
+      descriptor = d;
+      break;
+    }
+  }
+  return { brandName, descriptor };
+}
+
 function buildMinimalConceptPrompt(input, conceptKey) {
   const brandName     = String(input?.brandName || "Brand").trim();
   const industry      = String(input?.industry  || "").replace(/_/g, " ").trim();
@@ -625,6 +660,12 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   if (industryCue)    parts.push(industryCue);
 
   parts.push("Make it feel polished, memorable, and suitable for real brand use.");
+
+  const { descriptor } = buildAllowedVisibleTextCue(input);
+  const textLock = descriptor
+    ? `Visible text lock: use only the exact brand name '${brandName}' and, if needed, the exact descriptor '${descriptor}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text.`
+    : `Visible text lock: use only the exact brand name '${brandName}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text.`;
+  parts.push(textLock);
 
   return parts.join(" ");
 }
