@@ -636,7 +636,7 @@ function buildMinimalConceptPrompt(input, conceptKey) {
     recommended: "Explore the strongest complete commercial logo lockup with clear brand hierarchy.",
     wordmark:    "Explore a lettering-led wordmark where the brand name is the complete design. Do not place a separate large icon above the wordmark. Any visual detail should be integrated into the letterforms.",
     app_icon:    "Explore an icon-first compact app/avatar system preview. Top section shows the main compact logo with optional small brand name. Bottom section shows four square usage tiles using the same icon in monochrome or reversed color on solid brand-color backgrounds. Keep it clean and centered.",
-    symbol_mark: "Explore an independent symbol or emblem that stands on its own. Prefer no text or very minimal text. The symbol should be the complete visual statement.",
+    symbol_mark: "Explore an independent symbol or emblem that stands on its own as the complete visual statement. Keep the output clean: no captions, no explanatory notes, no paragraph text, and no presentation copy. Use minimal or no text.",
   };
 
   const parts = [];
@@ -655,9 +655,9 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   } else if (conceptKey === "wordmark") {
     textLock = `Visible text lock: use only the exact brand name '${brandName}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text. Wordmark text behavior: the brand name itself is the design. Do not place a separate large icon above the wordmark. Any decorative element should be integrated into the letters.`;
   } else if (conceptKey === "app_icon") {
-    textLock = `App icon text behavior: icon-first composition. The icon or emblem must be the visual focus. A small brand name may appear only as a secondary support element in the top section. Do not include descriptors, taglines, category text, captions, labels, or micro text. App icon layout behavior: use a clean two-section layout. Top section shows the main compact logo. Bottom section shows four square app/avatar usage tiles using the same icon in monochrome or reversed color on solid brand-color backgrounds. Do not include phones, devices, UI mockups, browser frames, extra words, or unrelated objects.`;
+    textLock = `App icon text behavior: icon-first composition. The icon or emblem must be the visual focus. A small brand name may appear only as a secondary support element in the top section. Do not include descriptors, taglines, category text, captions, labels, or micro text. Do not include SM, TM, registered marks, copyright symbols, or trademark symbols. App icon layout behavior: use a clean two-section layout. Top section shows the main compact logo. Bottom section shows four square app/avatar usage tiles using the same icon in monochrome or reversed color on solid brand-color backgrounds. Do not include phones, devices, UI mockups, browser frames, extra words, or unrelated objects.`;
   } else if (conceptKey === "symbol_mark") {
-    textLock = `Symbol mark text behavior: symbol-first composition. The symbol should work independently from the brand name. Prefer no text or a very small brand name only if needed. Do not include descriptors, taglines, category text, or micro text. Avoid full logo lockup layout.`;
+    textLock = `Symbol mark text behavior: symbol-first composition. The symbol should work independently from the brand name and must be the main visual focus. Prefer no text, or use only a very small exact brand name if needed. Do not include descriptors, taglines, category text, captions, labels, explanatory text, paragraph text, presentation notes, composition notes, layout notes, fake small text, micro text, or unreadable filler text. Do not include trademark symbols, SM, TM, registered marks, copyright symbols, or any legal marks. Avoid full logo lockup layout.`;
   } else {
     textLock = `Visible text lock: use only the exact brand name '${brandName}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text.`;
   }
