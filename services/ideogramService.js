@@ -635,7 +635,7 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   const CONCEPT_ANGLES = {
     recommended: "Explore the strongest complete commercial logo lockup. It may include a symbol, refined wordmark, and a short category descriptor if the user requested one.",
     wordmark:    "Focus on a creative wordmark or lettering-led logo. The brand name should be the main design. Avoid a separate large icon above the wordmark.",
-    app_icon:    "Explore a compact icon or avatar-style mark for small sizes. Prefer icon-only, mascot head, emblem, or single initial. Avoid full horizontal wordmark layouts and avoid secondary taglines.",
+    app_icon:    "Explore a compact icon, symbol, or emblem for small sizes. Icon or symbol only — no secondary text, no category descriptor, no tagline. The mark must stand alone as a graphic. Brand name may appear in small type below only; no other words.",
     symbol_mark: "Explore a memorable standalone symbol mark or emblem. The symbol should carry the brand idea and may be shown with a small simple wordmark, but avoid making it look identical to the recommended lockup.",
   };
 
@@ -644,7 +644,14 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   parts.push(`Create a creative commercial logo for ${brandName}, ${industryPhrase}.`);
 
   const userDirection = [keywords, notes].filter(Boolean).join(". ");
-  if (userDirection)  parts.push(`User direction: ${userDirection}.`);
+  if (userDirection)  parts.push(`Visual style only — not visible text: ${userDirection}.`);
+
+  const { descriptor } = buildAllowedVisibleTextCue(input);
+  const textLock = descriptor
+    ? `Visible text lock: use only the exact brand name '${brandName}' and, if needed, the exact descriptor '${descriptor}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text.`
+    : `Visible text lock: use only the exact brand name '${brandName}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text.`;
+  parts.push(textLock);
+
   if (styles)         parts.push(`Style: ${styles}.`);
   if (colorDir)       parts.push(`Color direction: ${colorDir}.`);
   const paletteCue = buildPaletteVariationCue(input);
@@ -660,12 +667,6 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   if (industryCue)    parts.push(industryCue);
 
   parts.push("Make it feel polished, memorable, and suitable for real brand use.");
-
-  const { descriptor } = buildAllowedVisibleTextCue(input);
-  const textLock = descriptor
-    ? `Visible text lock: use only the exact brand name '${brandName}' and, if needed, the exact descriptor '${descriptor}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text.`
-    : `Visible text lock: use only the exact brand name '${brandName}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text.`;
-  parts.push(textLock);
 
   return parts.join(" ");
 }
