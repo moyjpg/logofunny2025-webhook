@@ -1017,6 +1017,12 @@ async function generateIdeogramLogos(input = {}) {
   const magicPromptRaw    = String(process.env.LOGOFUNNY_IDEOGRAM_MAGIC_PROMPT || "").toUpperCase();
   const globalMagicPrompt = VALID_MAGIC_PROMPT.has(magicPromptRaw) ? magicPromptRaw : "OFF";
 
+  const referenceImageUrl = (typeof input.referenceImageUrl === "string" && input.referenceImageUrl.trim())
+    ? input.referenceImageUrl.trim()
+    : null;
+  const hasStyleReference = Boolean(referenceImageUrl);
+  console.log("[ideogram] hasStyleReference=%s", hasStyleReference);
+
   // SaaS: 4 independent concept prompts × 1 image each (Lead, Custom wordmark, App icon, Modular mark).
   // Non-SaaS: 2 group prompts × 2 sibling images each (unchanged GROUP_DIRECTIONS behavior).
   const saasSearchableText = [
@@ -1043,8 +1049,8 @@ async function generateIdeogramLogos(input = {}) {
         : globalMagicPrompt;
 
       if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
-        console.log("[ideogram-request] conceptIndex=%d num_images=%d magic_prompt=%s style_type=DESIGN aspect_ratio=1x1 rendering_speed=QUALITY promptPreview=%j",
-          conceptIndex, numImages, resolvedMagicPrompt, dbgSlice(prompt, 300));
+        console.log("[ideogram-request] conceptIndex=%d num_images=%d magic_prompt=%s style_type=DESIGN aspect_ratio=1x1 rendering_speed=QUALITY hasStyleReference=%s promptPreview=%j",
+          conceptIndex, numImages, resolvedMagicPrompt, hasStyleReference, dbgSlice(prompt, 300));
       }
 
       const response = await fetch("https://api.ideogram.ai/v1/ideogram-v3/generate", {
@@ -1061,11 +1067,14 @@ async function generateIdeogramLogos(input = {}) {
           style_type: "DESIGN",
           aspect_ratio: "1x1",
           rendering_speed: "QUALITY",
+          // Style reference: field name and strength can be adjusted if Ideogram schema changes.
+          ...(hasStyleReference ? { style_reference: { url: referenceImageUrl, strength: 0.5 } } : {}),
         }),
       });
 
       if (!response.ok) {
         const detail = await response.text().catch(() => "");
+        console.error("[ideogram-request] API error conceptIndex=%d hasStyleReference=%s status=%d", conceptIndex, hasStyleReference, response.status);
         throw new Error(`Ideogram API error ${response.status}: ${detail || "no details"}`);
       }
 

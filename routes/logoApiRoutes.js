@@ -1,6 +1,7 @@
 const express = require('express');
+const multer = require('multer');
 const { generateLogoMock, buildPromptFromBody } = require('../services/logoGenerateMock');
-const { uploadLogoImageToR2, uploadLogoSvgTextToR2 } = require('../services/r2Upload');
+const { uploadLogoImageToR2, uploadLogoSvgTextToR2, uploadBufferToR2 } = require('../services/r2Upload');
 const { generateDesignDecision, buildPromptFromDesignDecision, generateBrandInsight } = require('../services/designDecision');
 const { generateIdeogramLogos } = require('../services/ideogramService');
 // const { runLogoPipeline } = require('../services/logoPipeline'); // temporarily disabled: single-candidate mode
@@ -173,6 +174,27 @@ function mapElementorToAI(body) {
     uploadImage: f["uploadLogo"] || null,
   };
 }
+const REFERENCE_ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const _referenceMulter = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    REFERENCE_ALLOWED_TYPES.has(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error('Reference image must be PNG, JPEG, or WebP.'));
+  },
+}).single('referenceImage');
+
+function handleReferenceUpload(req, res, next) {
+  _referenceMulter(req, res, (err) => {
+    if (!err) return next();
+    const msg = err.code === 'LIMIT_FILE_SIZE'
+      ? 'Reference image must be under 5MB.'
+      : (err.message || 'Invalid reference image.');
+    return res.status(400).json({ success: false, data: null, error: msg });
+  });
+}
+
 function requireInternalKey(req, res, next) {
   const serverKey = process.env.LOGOFUNNY_INTERNAL_API_KEY;
   if (!serverKey) {
@@ -199,14 +221,26 @@ router.post('/test-generate-logo', requireInternalKey, (req, res) => {
 });
 
 // POST /generate-logo  (Elementor -> backend; returns dual-track shape, same as /generate-logo-dual)
-router.post('/generate-logo', requireInternalKey, async (req, res) => {
+router.post('/generate-logo', requireInternalKey, handleReferenceUpload, async (req, res) => {
   const requestStart = Date.now();
   const requestId = String(Date.now()) + Math.random().toString(16).slice(2);
   const mapped = mapElementorToAI(req.body);
+
+  if (req.file) {
+    try {
+      const { publicUrl } = await uploadBufferToR2(req.file.buffer, req.file.mimetype, { prefix: 'references' });
+      mapped.referenceImageUrl = publicUrl;
+    } catch (r2Err) {
+      console.error('[generate-logo] R2 reference upload failed:', r2Err?.message);
+      return res.status(500).json({ success: false, data: null, error: 'Reference image upload failed. Please try again.' });
+    }
+  }
+
+  const hasReferenceImage = Boolean(mapped.referenceImageUrl);
   const mode = mapped.uploadImage ? 'img2img' : 'text2img';
 
-  console.log('[HIT] /generate-logo route=generate-logo', 'timestamp=', new Date(requestStart).toISOString(), 'requestId=', requestId, 'brandName=', safePreview(mapped.brandName).preview, 'mode=', mode);
-  console.log('[BODY]', 'brandNameLen=', safePreview(mapped.brandName).length, 'keywordsLen=', safePreview(mapped.keywords).length, 'hasUploadImage=', Boolean(mapped.uploadImage), 'colorThemeCount=', Array.isArray(mapped.colorTheme) ? mapped.colorTheme.length : 0);
+  console.log('[HIT] /generate-logo route=generate-logo', 'timestamp=', new Date(requestStart).toISOString(), 'requestId=', requestId, 'brandName=', safePreview(mapped.brandName).preview, 'mode=', mode, 'hasReferenceImage=', hasReferenceImage);
+  console.log('[BODY]', 'brandNameLen=', safePreview(mapped.brandName).length, 'keywordsLen=', safePreview(mapped.keywords).length, 'hasUploadImage=', Boolean(mapped.uploadImage), 'hasReferenceImage=', hasReferenceImage, 'colorThemeCount=', Array.isArray(mapped.colorTheme) ? mapped.colorTheme.length : 0);
 
   try {
     const hasText = (mapped.brandName && mapped.brandName.trim()) || (mapped.keywords && mapped.keywords.trim());
@@ -229,6 +263,7 @@ router.post('/generate-logo', requireInternalKey, async (req, res) => {
       data: {
         ...data,
         imageUrl: firstUserUrl,
+        referenceApplied: hasReferenceImage,
       },
       error: null,
     });
