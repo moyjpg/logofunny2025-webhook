@@ -4,6 +4,7 @@ const { generateLogoMock, buildPromptFromBody } = require('../services/logoGener
 const { uploadLogoImageToR2, uploadLogoSvgTextToR2, uploadBufferToR2 } = require('../services/r2Upload');
 const { generateDesignDecision, buildPromptFromDesignDecision, generateBrandInsight } = require('../services/designDecision');
 const { generateIdeogramLogos } = require('../services/ideogramService');
+const { analyzeReferenceImage } = require('../services/referenceVisionService');
 // const { runLogoPipeline } = require('../services/logoPipeline'); // temporarily disabled: single-candidate mode
 
 const router = express.Router();
@@ -227,20 +228,31 @@ router.post('/generate-logo', requireInternalKey, handleReferenceUpload, async (
   const mapped = mapElementorToAI(req.body);
 
   if (req.file) {
-    try {
-      const { publicUrl } = await uploadBufferToR2(req.file.buffer, req.file.mimetype, { prefix: 'references' });
-      mapped.referenceImageUrl = publicUrl;
-    } catch (r2Err) {
-      console.error('[generate-logo] R2 reference upload failed:', r2Err?.message);
+    // Run R2 upload and vision analysis in parallel; vision failure must never block generation.
+    const [r2Result, visionResult] = await Promise.allSettled([
+      uploadBufferToR2(req.file.buffer, req.file.mimetype, { prefix: 'references' }),
+      analyzeReferenceImage(req.file.buffer, req.file.mimetype),
+    ]);
+
+    if (r2Result.status === 'rejected') {
+      console.error('[generate-logo] R2 reference upload failed:', r2Result.reason?.message);
       return res.status(500).json({ success: false, data: null, error: 'Reference image upload failed. Please try again.' });
+    }
+
+    mapped.referenceImageUrl = r2Result.value.publicUrl;
+
+    const visionAnalysis = visionResult.status === 'fulfilled' ? visionResult.value : null;
+    if (visionAnalysis) {
+      mapped.referenceAnalysis = visionAnalysis;
     }
   }
 
-  const hasReferenceImage = Boolean(mapped.referenceImageUrl);
+  const hasReferenceImage    = Boolean(mapped.referenceImageUrl);
+  const hasReferenceAnalysis = Boolean(mapped.referenceAnalysis?.safePromptFragment);
   const mode = mapped.uploadImage ? 'img2img' : 'text2img';
 
-  console.log('[HIT] /generate-logo route=generate-logo', 'timestamp=', new Date(requestStart).toISOString(), 'requestId=', requestId, 'brandName=', safePreview(mapped.brandName).preview, 'mode=', mode, 'hasReferenceImage=', hasReferenceImage);
-  console.log('[BODY]', 'brandNameLen=', safePreview(mapped.brandName).length, 'keywordsLen=', safePreview(mapped.keywords).length, 'hasUploadImage=', Boolean(mapped.uploadImage), 'hasReferenceImage=', hasReferenceImage, 'colorThemeCount=', Array.isArray(mapped.colorTheme) ? mapped.colorTheme.length : 0);
+  console.log('[HIT] /generate-logo route=generate-logo', 'timestamp=', new Date(requestStart).toISOString(), 'requestId=', requestId, 'brandName=', safePreview(mapped.brandName).preview, 'mode=', mode, 'hasReferenceImage=', hasReferenceImage, 'hasReferenceAnalysis=', hasReferenceAnalysis);
+  console.log('[BODY]', 'brandNameLen=', safePreview(mapped.brandName).length, 'keywordsLen=', safePreview(mapped.keywords).length, 'hasUploadImage=', Boolean(mapped.uploadImage), 'hasReferenceImage=', hasReferenceImage, 'hasReferenceAnalysis=', hasReferenceAnalysis, 'referenceAnalysisDetailLevel=', mapped.referenceAnalysis?.detailLevel ?? 'n/a', 'colorThemeCount=', Array.isArray(mapped.colorTheme) ? mapped.colorTheme.length : 0);
 
   try {
     const hasText = (mapped.brandName && mapped.brandName.trim()) || (mapped.keywords && mapped.keywords.trim());

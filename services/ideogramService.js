@@ -643,7 +643,10 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   const industryPhrase = industry ? `a ${industry} brand` : "a brand";
   parts.push(`Create a creative commercial logo for ${brandName}, ${industryPhrase}.`);
 
-  const userDirection = [keywords, notes].filter(Boolean).join(". ");
+  const visionFragment = typeof input?.referenceAnalysis?.safePromptFragment === "string"
+    ? input.referenceAnalysis.safePromptFragment.trim()
+    : "";
+  const userDirection = [visionFragment, keywords, notes].filter(Boolean).join(". ");
   if (userDirection)  parts.push(`Visual style only — not visible text: ${userDirection}.`);
 
   const { descriptor } = buildAllowedVisibleTextCue(input);
@@ -1020,9 +1023,10 @@ async function generateIdeogramLogos(input = {}) {
   const referenceImageUrl = (typeof input.referenceImageUrl === "string" && input.referenceImageUrl.trim())
     ? input.referenceImageUrl.trim()
     : null;
-  const hasStyleReference = Boolean(referenceImageUrl);
+  const hasStyleReference    = Boolean(referenceImageUrl);
+  const hasReferenceAnalysis = Boolean(input?.referenceAnalysis?.safePromptFragment);
   const styleReferenceStrength = 0.75;
-  console.log("[ideogram] hasStyleReference=%s styleReferenceStrength=%s", hasStyleReference, styleReferenceStrength);
+  console.log("[ideogram] hasStyleReference=%s styleReferenceStrength=%s hasReferenceAnalysis=%s", hasStyleReference, styleReferenceStrength, hasReferenceAnalysis);
 
   // SaaS: 4 independent concept prompts × 1 image each (Lead, Custom wordmark, App icon, Modular mark).
   // Non-SaaS: 2 group prompts × 2 sibling images each (unchanged GROUP_DIRECTIONS behavior).
