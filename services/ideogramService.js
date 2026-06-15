@@ -1021,7 +1021,8 @@ async function generateIdeogramLogos(input = {}) {
     ? input.referenceImageUrl.trim()
     : null;
   const hasStyleReference = Boolean(referenceImageUrl);
-  console.log("[ideogram] hasStyleReference=%s", hasStyleReference);
+  const styleReferenceStrength = 0.75;
+  console.log("[ideogram] hasStyleReference=%s styleReferenceStrength=%s", hasStyleReference, styleReferenceStrength);
 
   // SaaS: 4 independent concept prompts × 1 image each (Lead, Custom wordmark, App icon, Modular mark).
   // Non-SaaS: 2 group prompts × 2 sibling images each (unchanged GROUP_DIRECTIONS behavior).
@@ -1043,7 +1044,10 @@ async function generateIdeogramLogos(input = {}) {
 
   const groups = await Promise.all(
     Array.from({ length: conceptCount }, (_, i) => i).map(async (conceptIndex) => {
-      const { prompt, style_name, conceptLabel, magicPromptOverride } = buildIdeogramPrompt(input, conceptIndex);
+      let { prompt, style_name, conceptLabel, magicPromptOverride } = buildIdeogramPrompt(input, conceptIndex);
+      if (hasStyleReference) {
+        prompt = prompt + " Use the uploaded reference image as a strong visual style guide only. Strongly follow its overall visual language, such as shape language, composition, color mood, line weight, simplicity level, icon or mascot feel, and layout. Create a new original logo for the requested brand. Do not copy exact artwork, text, brand names, trademarks, or protected logos from the reference.";
+      }
       const resolvedMagicPrompt = VALID_MAGIC_PROMPT.has(magicPromptOverride ?? "")
         ? magicPromptOverride
         : globalMagicPrompt;
@@ -1068,7 +1072,7 @@ async function generateIdeogramLogos(input = {}) {
           aspect_ratio: "1x1",
           rendering_speed: "QUALITY",
           // Style reference: field name and strength can be adjusted if Ideogram schema changes.
-          ...(hasStyleReference ? { style_reference: { url: referenceImageUrl, strength: 0.5 } } : {}),
+          ...(hasStyleReference ? { style_reference: { url: referenceImageUrl, strength: styleReferenceStrength } } : {}),
         }),
       });
 
