@@ -94,6 +94,32 @@ const MINIMAL_CONCEPT_SUFFIX =
   "If a letterform is modified, it must still look like a complete readable letter. If negative space is used, it must be clear, closed, and intentional. " +
   "If secondary text is used, it must exactly match the allowed descriptor from the prompt. If the descriptor cannot be rendered clearly, omit it rather than inventing or misspelling text.";
 
+const ANIMAL_TRAITS = {
+  dog:    "floppy rounded ears drooping from the sides, a rounded friendly muzzle with a small circular nose, warm forward-facing dog face",
+  cat:    "upright pointed ears, a compact round cat face, implied whisker arc, elegant feline silhouette or tail curve",
+  bird:   "curved beak, rounded compact head, wing arc or spread feather shape, alert bird form",
+  rabbit: "long upright ears, a round compact bunny face, small dot nose, soft rounded body",
+  fox:    "pointed upright ears, a narrow tapered muzzle, bushy tail arc, alert fox face",
+  bear:   "small rounded ears, a broad round bear head, wide friendly muzzle, sturdy rounded silhouette",
+  panda:  "distinct round eye patches, compact round head, high-contrast dark and light circular markings",
+  fish:   "streamlined body arc, fin shapes, tail fan spread, fluid flowing form",
+  horse:  "elegant elongated head, flowing mane arc, strong graceful neck, equine silhouette",
+  owl:    "large round eyes, a rounded compact owl head, subtle wing arc or feather texture",
+};
+
+const LOGO_ANIMAL_KEYWORDS = [
+  { key: "dog",    words: ["dog", "dogs", "puppy", "puppies", "canine", "pup"] },
+  { key: "cat",    words: ["cat", "cats", "kitten", "kittens", "feline"] },
+  { key: "bird",   words: ["bird", "birds", "parrot", "parakeet", "budgie", "cockatiel", "macaw"] },
+  { key: "rabbit", words: ["rabbit", "rabbits", "bunny", "bunnies", "hare"] },
+  { key: "fox",    words: ["fox", "foxes"] },
+  { key: "bear",   words: ["bear", "bears", "grizzly", "teddy"] },
+  { key: "panda",  words: ["panda", "pandas"] },
+  { key: "fish",   words: ["fish", "goldfish", "betta"] },
+  { key: "horse",  words: ["horse", "horses", "pony", "equine", "stallion", "mare"] },
+  { key: "owl",    words: ["owl", "owls"] },
+];
+
 function isSaasLikeIndustry(searchableText, brandStyleRoute) {
   if (brandStyleRoute === "tech_saas") return true;
   if (!searchableText || !searchableText.trim()) return false;
@@ -137,6 +163,13 @@ function detectPetAnimal(text) {
   if (hasDog) return "dog";
   if (hasCat) return "cat";
   return "none";
+}
+
+function detectLogoAnimal(text) {
+  for (const { key, words } of LOGO_ANIMAL_KEYWORDS) {
+    if (words.some((w) => text.includes(w))) return key;
+  }
+  return null;
 }
 
 function getPetAnimalCue(animalTarget) {
@@ -631,6 +664,33 @@ function buildReferenceStyleCue(analysis) {
   );
 }
 
+function buildTargetSubjectCue(subjectSearchText, hasReference, hasUserBrief) {
+  if (!hasReference) return "";
+
+  const animalKey = detectLogoAnimal(subjectSearchText);
+
+  if (animalKey) {
+    const traits = ANIMAL_TRAITS[animalKey] || "";
+    const cap    = animalKey.charAt(0).toUpperCase() + animalKey.slice(1);
+    let block = `${cap.toUpperCase()} MARK — apply the reference image's construction style to a ${animalKey} subject: `;
+    block += `The icon in this logo is a ${animalKey} or ${animalKey}-inspired mark. `;
+    if (traits) block += `Draw clear ${animalKey} visual traits: ${traits}. `;
+    block += `Build this ${animalKey} form using the geometric construction, rounded shapes, compact weight, and negative space approach from the reference image. `;
+    block += `The mark must read clearly as a ${animalKey} — not a generic animal, not an abstract shape.`;
+    return block;
+  }
+
+  if (hasUserBrief) {
+    return (
+      "TARGET SUBJECT — use the subject explicitly requested in the user's brief. " +
+      "Make it recognizable through its most distinctive simple silhouette traits while keeping the mark clean, geometric, and logo-like. " +
+      "Do not default to the reference image's animal, object, character, or mascot."
+    );
+  }
+
+  return "";
+}
+
 function buildMinimalConceptPrompt(input, conceptKey) {
   const brandName     = String(input?.brandName || "Brand").trim();
   const industry      = String(input?.industry  || "").replace(/_/g, " ").trim();
@@ -674,26 +734,9 @@ function buildMinimalConceptPrompt(input, conceptKey) {
     String(input?.styleCues  || ""),
     String(input?.otherNotes || input?.notes || ""),
   ].join(" ").toLowerCase();
-  const animalTarget = industry.includes("pet") ? detectPetAnimal(subjectSearchText) : "none";
-  let targetSubjectBlock = "";
-  if (animalTarget === "dog") {
-    targetSubjectBlock =
-      "TARGET SUBJECT (hard constraint — overrides reference image subject): " +
-      "The mark in this logo MUST depict a DOG or dog-inspired form — such as a dog face, floppy ears, snout, paw, or tail. " +
-      "Do NOT depict a bear, panda, cat, fox, koala, raccoon, bird, otter, or any non-dog animal. " +
-      "The reference image defines the geometric construction style only — not the animal subject.";
-  } else if (animalTarget === "cat") {
-    targetSubjectBlock =
-      "TARGET SUBJECT (hard constraint — overrides reference image subject): " +
-      "The mark in this logo MUST depict a CAT or cat-inspired form — such as cat ears, whiskers, tail curl, or feline silhouette. " +
-      "The reference image defines the geometric construction style only — not the animal subject.";
-  } else if (notes || keywords) {
-    targetSubjectBlock =
-      "TARGET SUBJECT (hard constraint — overrides reference image subject): " +
-      "The icon and mark of this logo must follow the user's brief below. " +
-      "Do not default to the animal, character, or object depicted in the reference image.";
-  }
-  if (targetSubjectBlock) parts.push(targetSubjectBlock);
+  const hasUserBrief = Boolean(notes || keywords);
+  const targetSubjectCue = buildTargetSubjectCue(subjectSearchText, Boolean(referenceStyleCue), hasUserBrief);
+  if (targetSubjectCue) parts.push(targetSubjectCue);
 
   const userDirection = [keywords, notes].filter(Boolean).join(". ");
   if (userDirection)  parts.push(`User brief (do not render as visible text in the logo): ${userDirection}.`);
@@ -1031,6 +1074,11 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
   const styleCuesTag = styleCuesText ? `Style cues: ${styleCuesText}.` : "";
   const notesTag = otherNotes ? `Art direction notes: ${otherNotes}.` : "";
   const referenceStyleCue = buildReferenceStyleCue(input?.referenceAnalysis);
+  const targetSubjectCue = buildTargetSubjectCue(
+    [brandName, industryRaw, keywords, styleCues, otherNotes].join(" ").toLowerCase(),
+    Boolean(referenceStyleCue),
+    Boolean(otherNotes || keywords)
+  );
   const exclusionTag =
     "Plain white background only. Standalone logo mark on white. " +
     "No photo scene, no lifestyle imagery, no mockup, no product shot, no table, no cup, " +
@@ -1041,6 +1089,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
   const prompt = [
     `Flat vector logo design for "${brandName}".`,
     referenceStyleCue,
+    targetSubjectCue,
     colorTag,
     variationNote,
     industryBaseTag,
