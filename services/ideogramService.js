@@ -616,14 +616,17 @@ function buildReferenceStyleCue(analysis) {
   if (analysis.styleDescription) parts.push(`Overall visual language: ${analysis.styleDescription}.`);
   if (analysis.shapeLanguage)    parts.push(`Shape language: ${analysis.shapeLanguage}.`);
   if (analysis.composition)      parts.push(`Composition structure: ${analysis.composition}.`);
-  if (analysis.iconFeel)         parts.push(`Mark or icon feel: ${analysis.iconFeel}.`);
+  if (analysis.iconFeel)         parts.push(`Mark construction approach (visual weight and geometry only — not the reference subject type): ${analysis.iconFeel}.`);
   // colorPalette is a feel hint only — user colorDirection/colorTheme takes precedence
   if (analysis.colorPalette)     parts.push(`Color feel (hint only — user color direction takes precedence): ${analysis.colorPalette}.`);
   if (analysis.detailLevel)      parts.push(`Detail level: ${analysis.detailLevel}.`);
-  parts.push(analysis.safePromptFragment);
+  parts.push(`Apply this visual construction style to the user's chosen subject — do not apply the reference image's subject: ${analysis.safePromptFragment}`);
   return (
-    "REFERENCE STYLE GUIDE (abstract visual inspiration only — do not copy brand identity, " +
-    "trademarks, text, exact shapes, mascots, outlines, or any distinctive proprietary details): " +
+    "REFERENCE STYLE GUIDE — use only for: geometric construction, shape language, composition structure, " +
+    "negative space approach, visual weight, and finish level. " +
+    "Do NOT use the reference image's subject, character type, animal type, icon type, or depicted object. " +
+    "The subject and icon of this logo must come from the user's brief, not from the reference image. " +
+    "Do not copy brand identity, trademarks, text, exact shapes, mascots, outlines, or proprietary details: " +
     parts.join(" ")
   );
 }
