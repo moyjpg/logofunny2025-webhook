@@ -691,6 +691,43 @@ function buildTargetSubjectCue(subjectSearchText, hasReference, hasUserBrief) {
   return "";
 }
 
+function buildAnimalConceptAngle(conceptKey, animalKey) {
+  if (!animalKey) return null;
+  if (conceptKey === "recommended") {
+    return (
+      `Explore a complete commercial logo lockup: a clear friendly ${animalKey} or ${animalKey}-inspired ` +
+      `symbol mark paired with the brand name wordmark. ` +
+      `The ${animalKey} symbol is the primary visual element — warm, recognizable, and logo-ready. ` +
+      `The composition should feel like a polished commercial brand identity.`
+    );
+  }
+  if (conceptKey === "wordmark") {
+    return (
+      `Explore a lettering-led wordmark where the brand name is the primary visual element. ` +
+      `Optionally integrate a subtle ${animalKey}-inspired accent — such as a distinctive ear curve, ` +
+      `tail arc, or silhouette detail — into one letterform as a crafted accent. ` +
+      `The wordmark is the hero; any animal element is an integrated letterform detail, not a separate floating icon.`
+    );
+  }
+  if (conceptKey === "app_icon") {
+    return (
+      `Explore a compact ${animalKey} head or ${animalKey}-inspired icon mark — ` +
+      `bold clean silhouette, recognizable at app icon size, suitable as a social avatar. ` +
+      `Top section: the compact ${animalKey} icon with optional small brand name below. ` +
+      `Bottom section: four clean square usage tiles of the same icon on solid brand-color backgrounds. ` +
+      `The icon must be clear and minimal — nothing else in the frame.`
+    );
+  }
+  if (conceptKey === "symbol_mark") {
+    return (
+      `Explore the boldest standalone ${animalKey} or ${animalKey}-inspired symbol — ` +
+      `stripped to its most essential silhouette, graphic and powerful. ` +
+      `The mark should work as a standalone emblem, clean on white, with the frame focused on the ${animalKey} symbol only.`
+    );
+  }
+  return null;
+}
+
 function buildMinimalConceptPrompt(input, conceptKey) {
   const brandName     = String(input?.brandName || "Brand").trim();
   const industry      = String(input?.industry  || "").replace(/_/g, " ").trim();
@@ -766,7 +803,8 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   if (iconDir)        parts.push(`Icon direction: ${iconDir}.`);
   if (detail)         parts.push(`Detail level: ${detail}.`);
 
-  const conceptAngle = CONCEPT_ANGLES[conceptKey] || "";
+  const animalKey    = detectLogoAnimal(subjectSearchText);
+  const conceptAngle = (referenceStyleCue && buildAnimalConceptAngle(conceptKey, animalKey)) || CONCEPT_ANGLES[conceptKey] || "";
   if (conceptAngle)   parts.push(`${conceptAngle} This direction should look visually distinct from the other logo concepts.`);
 
   const industryCue = buildMinimalIndustryCue(input);
