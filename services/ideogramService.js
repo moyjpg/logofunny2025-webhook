@@ -610,6 +610,24 @@ function buildAllowedVisibleTextCue(input) {
   return { brandName, descriptor };
 }
 
+function buildReferenceStyleCue(analysis) {
+  if (!analysis?.safePromptFragment) return "";
+  const parts = [];
+  if (analysis.styleDescription) parts.push(`Overall visual language: ${analysis.styleDescription}.`);
+  if (analysis.shapeLanguage)    parts.push(`Shape language: ${analysis.shapeLanguage}.`);
+  if (analysis.composition)      parts.push(`Composition structure: ${analysis.composition}.`);
+  if (analysis.iconFeel)         parts.push(`Mark or icon feel: ${analysis.iconFeel}.`);
+  // colorPalette is a feel hint only — user colorDirection/colorTheme takes precedence
+  if (analysis.colorPalette)     parts.push(`Color feel (hint only — user color direction takes precedence): ${analysis.colorPalette}.`);
+  if (analysis.detailLevel)      parts.push(`Detail level: ${analysis.detailLevel}.`);
+  parts.push(analysis.safePromptFragment);
+  return (
+    "REFERENCE STYLE GUIDE (abstract visual inspiration only — do not copy brand identity, " +
+    "trademarks, text, exact shapes, mascots, outlines, or any distinctive proprietary details): " +
+    parts.join(" ")
+  );
+}
+
 function buildMinimalConceptPrompt(input, conceptKey) {
   const brandName     = String(input?.brandName || "Brand").trim();
   const industry      = String(input?.industry  || "").replace(/_/g, " ").trim();
@@ -643,10 +661,10 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   const industryPhrase = industry ? `a ${industry} brand` : "a brand";
   parts.push(`Create a creative commercial logo for ${brandName}, ${industryPhrase}.`);
 
-  const visionFragment = typeof input?.referenceAnalysis?.safePromptFragment === "string"
-    ? input.referenceAnalysis.safePromptFragment.trim()
-    : "";
-  const userDirection = [visionFragment, keywords, notes].filter(Boolean).join(". ");
+  const referenceStyleCue = buildReferenceStyleCue(input?.referenceAnalysis);
+  if (referenceStyleCue) parts.push(referenceStyleCue);
+
+  const userDirection = [keywords, notes].filter(Boolean).join(". ");
   if (userDirection)  parts.push(`Visual style only — not visible text: ${userDirection}.`);
 
   const { descriptor } = buildAllowedVisibleTextCue(input);
@@ -976,6 +994,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
   const styleCuesText = styleCues || keywords;
   const styleCuesTag = styleCuesText ? `Style cues: ${styleCuesText}.` : "";
   const notesTag = otherNotes ? `Art direction notes: ${otherNotes}.` : "";
+  const referenceStyleCue = buildReferenceStyleCue(input?.referenceAnalysis);
   const exclusionTag =
     "Plain white background only. Standalone logo mark on white. " +
     "No photo scene, no lifestyle imagery, no mockup, no product shot, no table, no cup, " +
@@ -996,6 +1015,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     moodTag,
     styleCuesTag,
     notesTag,
+    referenceStyleCue,
     textConstraintTag,
     backgroundTag,
     exclusionTag,

@@ -24,7 +24,7 @@ Return ONLY a valid JSON object — no markdown, no code fences, no explanation:
   "safePromptFragment": "..."
 }
 
-safePromptFragment: a single sentence, 20–60 words, ready to inject into a logo generation prompt. Describes the visual style only — no brand names, no trademarks, no copied artwork. Must begin with "Logo with" or "A logo featuring".`;
+safePromptFragment: 2–3 focused sentences, 40–90 words total. Cover: (1) the abstract mark construction and geometry, (2) the composition structure and any notable negative space or layout, (3) the overall visual weight, finish level, and style feel. No brand names, no trademarks, no copied artwork, no reference to specific companies, products, or distinctive proprietary details. Must begin with "Logo with" or "A logo featuring".`;
 
 const VALID_DETAIL_LEVELS = new Set(["minimal", "balanced", "refined"]);
 
