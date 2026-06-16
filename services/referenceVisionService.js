@@ -2,7 +2,7 @@
 
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_API_VERSION   = "2023-06-01";
-const VISION_TIMEOUT_MS       = 5000;
+const VISION_TIMEOUT_MS       = 15000;
 
 const SAFE_SYSTEM_PROMPT = `You are a professional logo design analyst. Analyze the uploaded logo image and describe its visual design language in abstract, non-identifying terms only.
 
@@ -165,7 +165,12 @@ async function analyzeReferenceImage(buffer, mimetype) {
       safePromptFragment: typeof parsed.safePromptFragment === "string" ? parsed.safePromptFragment.trim() : "",
     };
   } catch (err) {
-    console.warn("[vision] analyzeReferenceImage error:", err?.message || String(err));
+    if (err?.name === "AbortError") {
+      console.warn(`[vision] analyzeReferenceImage timeout after ${VISION_TIMEOUT_MS}ms`);
+    } else {
+      const detail = err?.status ? ` (status ${err.status})` : "";
+      console.warn(`[vision] analyzeReferenceImage error${detail}:`, err?.message || String(err));
+    }
     return null;
   }
 }
