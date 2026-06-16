@@ -667,8 +667,36 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   const referenceStyleCue = buildReferenceStyleCue(input?.referenceAnalysis);
   if (referenceStyleCue) parts.push(referenceStyleCue);
 
+  const subjectSearchText = [
+    String(input?.brandName  || ""),
+    String(input?.industry   || ""),
+    String(input?.keywords   || ""),
+    String(input?.styleCues  || ""),
+    String(input?.otherNotes || input?.notes || ""),
+  ].join(" ").toLowerCase();
+  const animalTarget = industry.includes("pet") ? detectPetAnimal(subjectSearchText) : "none";
+  let targetSubjectBlock = "";
+  if (animalTarget === "dog") {
+    targetSubjectBlock =
+      "TARGET SUBJECT (hard constraint — overrides reference image subject): " +
+      "The mark in this logo MUST depict a DOG or dog-inspired form — such as a dog face, floppy ears, snout, paw, or tail. " +
+      "Do NOT depict a bear, panda, cat, fox, koala, raccoon, bird, otter, or any non-dog animal. " +
+      "The reference image defines the geometric construction style only — not the animal subject.";
+  } else if (animalTarget === "cat") {
+    targetSubjectBlock =
+      "TARGET SUBJECT (hard constraint — overrides reference image subject): " +
+      "The mark in this logo MUST depict a CAT or cat-inspired form — such as cat ears, whiskers, tail curl, or feline silhouette. " +
+      "The reference image defines the geometric construction style only — not the animal subject.";
+  } else if (notes || keywords) {
+    targetSubjectBlock =
+      "TARGET SUBJECT (hard constraint — overrides reference image subject): " +
+      "The icon and mark of this logo must follow the user's brief below. " +
+      "Do not default to the animal, character, or object depicted in the reference image.";
+  }
+  if (targetSubjectBlock) parts.push(targetSubjectBlock);
+
   const userDirection = [keywords, notes].filter(Boolean).join(". ");
-  if (userDirection)  parts.push(`Visual style only — not visible text: ${userDirection}.`);
+  if (userDirection)  parts.push(`User brief (do not render as visible text in the logo): ${userDirection}.`);
 
   const { descriptor } = buildAllowedVisibleTextCue(input);
   let textLock;
@@ -984,6 +1012,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     keywords,
     styleCues,
     String(input?.promptOverride || ""),
+    String(input?.otherNotes || input?.notes || ""),
     colorDirection,
     typographyDirection,
   ].join(" ").toLowerCase();
