@@ -723,6 +723,10 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
       MINIMAL_CONCEPT_SUFFIX,
     ];
 
+    if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
+      console.log("[prompt-debug] path=conceptPrompts conceptKey=%s promptPreview=%j",
+        conceptKey, dbgSlice(parts.join(" "), 600));
+    }
     return {
       prompt: parts.join(" "),
       style_name: "logofunny",
@@ -1004,6 +1008,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
 
   const prompt = [
     `Flat vector logo design for "${brandName}".`,
+    referenceStyleCue,
     colorTag,
     variationNote,
     industryBaseTag,
@@ -1015,7 +1020,6 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     moodTag,
     styleCuesTag,
     notesTag,
-    referenceStyleCue,
     textConstraintTag,
     backgroundTag,
     exclusionTag,
@@ -1078,7 +1082,7 @@ async function generateIdeogramLogos(input = {}) {
 
       if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
         console.log("[ideogram-request] conceptIndex=%d num_images=%d magic_prompt=%s style_type=DESIGN aspect_ratio=1x1 rendering_speed=QUALITY hasStyleReference=%s promptPreview=%j",
-          conceptIndex, numImages, resolvedMagicPrompt, hasStyleReference, dbgSlice(prompt, 300));
+          conceptIndex, numImages, resolvedMagicPrompt, hasStyleReference, dbgSlice(prompt, 600));
       }
 
       const response = await fetch("https://api.ideogram.ai/v1/ideogram-v3/generate", {
