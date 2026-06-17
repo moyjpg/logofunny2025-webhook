@@ -181,7 +181,7 @@ router.post("/brand-plan", requireInternalKey, async (req, res) => {
 const { buildPrompts } = require("../utils/promptEngine");
 const { generateSvgFromPrompt, svgToPngBuffer } = require("../services/aiGenerateService");
 
-router.post("/generate__ai", async (req, res) => {
+router.post("/generate__ai", requireInternalKey, async (req, res) => {
   try {
     const type = req.body?.type || "letter";
     const brand = req.body?.brand || "LOGOFUNNY";
