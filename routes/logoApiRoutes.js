@@ -5,6 +5,7 @@ const { uploadLogoImageToR2, uploadLogoSvgTextToR2, uploadBufferToR2 } = require
 const { generateDesignDecision, buildPromptFromDesignDecision, generateBrandInsight } = require('../services/designDecision');
 const { generateIdeogramLogos } = require('../services/ideogramService');
 const { analyzeReferenceImage } = require('../services/referenceVisionService');
+const { judgeLogo } = require('../services/openaiJudge');
 // const { runLogoPipeline } = require('../services/logoPipeline'); // temporarily disabled: single-candidate mode
 
 const router = express.Router();
@@ -96,9 +97,58 @@ async function runDualTrackPipeline(mapped) {
     console.log(`[Ideogram] generated count=${ideogramResults.length}`);
 
     const normalized = await Promise.all(ideogramResults.slice(0, 4).map((item) => normalizeResultToItem(item)));
-    const basedOnUser = normalized.slice(0, 2);
-    const recommended = normalized.slice(2, 4);
-    const results = normalized;
+
+    // Quality gate: judge all concepts in parallel, annotate with qualityStatus/qualityWarnings,
+    // then rank clean concepts first. All concepts are always returned — nothing is removed.
+    const VIOLATION_WARNINGS = {
+      hasTrademarkSymbol: 'May include trademark-like symbols',
+      hasFakeText: 'May include small unreadable or extra text',
+      hasPresentationLayout: 'May look like a presentation board rather than a single logo',
+    };
+    const RANK_ORDER = { pass: 0, unchecked: 1, needs_review: 2 };
+
+    const judgeSettled = await Promise.allSettled(
+      normalized.map((item) =>
+        item.imageUrl
+          ? judgeLogo(item.imageUrl, mapped, { r2Key: item.r2Key })
+          : Promise.resolve(null)
+      )
+    );
+
+    const annotated = normalized.map((item, i) => {
+      const settled = judgeSettled[i];
+      const judgeResult = settled.status === 'fulfilled' ? settled.value : null;
+
+      if (!item.imageUrl) {
+        return { ...item, qualityStatus: 'unchecked', qualityWarnings: [] };
+      }
+      if (!judgeResult) {
+        console.log('[quality-gate] concept unchecked; passing through label=%j', item.label ?? 'unknown');
+        return { ...item, qualityStatus: 'unchecked', qualityWarnings: [] };
+      }
+
+      const v = judgeResult.violations || {};
+      const warnings = [...new Set(
+        Object.entries(VIOLATION_WARNINGS)
+          .filter(([flag]) => v[flag])
+          .map(([, label]) => label)
+      )];
+
+      if (warnings.length > 0) {
+        console.log('[quality-gate] concept needs review label=%j warnings=%j', item.label ?? 'unknown', warnings);
+        return { ...item, qualityStatus: 'needs_review', qualityWarnings: warnings };
+      }
+
+      return { ...item, qualityStatus: 'pass', qualityWarnings: [] };
+    });
+
+    const ranked = [...annotated].sort(
+      (a, b) => RANK_ORDER[a.qualityStatus] - RANK_ORDER[b.qualityStatus]
+    );
+
+    const basedOnUser = ranked.slice(0, 2);
+    const recommended = ranked.slice(2, 4);
+    const results = ranked;
 
     return { basedOnUser, recommended, designDecision, brandInsight, results };
   } catch (ideogramErr) {

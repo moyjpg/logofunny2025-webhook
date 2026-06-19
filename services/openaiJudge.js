@@ -30,6 +30,9 @@ function buildJudgePrompt(context) {
     "- If ANY human/person/worker/photographer/character/mascot/humanoid appears (even small) => violations.hasPeople = true",
     "- If the image is primarily a scene/illustration rather than a logo => violations.tooIllustrative = true",
     "- If there is a background scene or multiple objects beyond a simple logo mark => violations.hasScene = true",
+    "- If any ® ™ © or SM trademark or copyright symbol appears anywhere in the image => violations.hasTrademarkSymbol = true",
+    "- If there is body copy, paragraph text, captions, footnotes, taglines, descriptors, or any text block beyond the brand name => violations.hasFakeText = true",
+    "- If the image is divided into panels or tiles, shows multiple logo versions, or resembles a brand board or style guide => violations.hasPresentationLayout = true",
     "",
     "Violations must be conservative: when unsure, mark the violation as true.",
     "",
@@ -51,13 +54,16 @@ function buildResponseSchema() {
       violations: {
         type: "object",
         additionalProperties: false,
-        required: ["hasPeople", "hasHuman", "hasMascot", "hasScene", "tooIllustrative"],
+        required: ["hasPeople", "hasHuman", "hasMascot", "hasScene", "tooIllustrative", "hasTrademarkSymbol", "hasFakeText", "hasPresentationLayout"],
         properties: {
           hasPeople: { type: "boolean" },
           hasHuman: { type: "boolean" },
           hasMascot: { type: "boolean" },
           hasScene: { type: "boolean" },
           tooIllustrative: { type: "boolean" },
+          hasTrademarkSymbol: { type: "boolean" },
+          hasFakeText: { type: "boolean" },
+          hasPresentationLayout: { type: "boolean" },
         },
       },
       breakdown: {
@@ -104,7 +110,10 @@ function isCommercialLogoPass(judgeResult) {
     v.hasHuman ||
     v.hasMascot ||
     v.hasScene ||
-    v.tooIllustrative
+    v.tooIllustrative ||
+    v.hasTrademarkSymbol ||
+    v.hasFakeText ||
+    v.hasPresentationLayout
   ) {
     return false;
   }
@@ -132,6 +141,9 @@ async function judgeLogo(imageUrl, context = {}, opts = {}) {
         hasMascot: false,
         hasScene: false,
         tooIllustrative: false,
+        hasTrademarkSymbol: false,
+        hasFakeText: false,
+        hasPresentationLayout: false,
       },
       breakdown: {
         brand_consistency: 5,

@@ -729,6 +729,21 @@ function buildAnimalConceptAngle(conceptKey, animalKey) {
   return null;
 }
 
+// Strip clauses from user-supplied notes that would ask the image model to render
+// extra text elements or presentation layouts (taglines, body copy, boards, etc.).
+const USER_NOTES_STRIP_RE = /\b(tagline|slogan|presentation[\s-]?board|brand[\s-]?board|style[\s-]?guide|body[\s-]?copy|paragraph|caption|footnote|show multiple|multiple (logo )?versions?|description below|add text)\b/i;
+
+function sanitizeUserNotes(text) {
+  if (!text) return text;
+  return text
+    .split(/[.!?\n;]+/)
+    .map((clause) => clause.trim())
+    .filter((clause) => clause.length > 0 && !USER_NOTES_STRIP_RE.test(clause))
+    .join(". ")
+    .replace(/\.\s*\./g, ".")
+    .trim();
+}
+
 function buildMinimalConceptPrompt(input, conceptKey) {
   const brandName     = String(input?.brandName || "Brand").trim();
   const industry      = String(input?.industry  || "").replace(/_/g, " ").trim();
@@ -736,7 +751,7 @@ function buildMinimalConceptPrompt(input, conceptKey) {
     String(input?.keywords  || ""),
     String(input?.styleCues || ""),
   ].filter(Boolean).join(", ").trim();
-  const notes         = String(input?.otherNotes || input?.notes || "").trim();
+  const notes         = sanitizeUserNotes(String(input?.otherNotes || input?.notes || "").trim());
   const colorDir      = String(input?.colorDirection || "").replace(/_/g, " ").trim();
   const typographyDir = String(
     input?.typographyDirection || input?.typographyStyle || input?.fontStyle || ""
@@ -752,7 +767,7 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   ).trim();
 
   const CONCEPT_ANGLES = {
-    recommended: "Explore the strongest complete commercial logo lockup with clear brand hierarchy.",
+    recommended: "Explore the strongest complete logo lockup with clear brand hierarchy.",
     wordmark:    "Explore a lettering-led wordmark where the brand name is the complete design. Do not place a separate large icon above the wordmark. Any visual detail should be integrated into the letterforms.",
     app_icon:    "Explore a compact icon-first logo: one centered mark, monogram, or simple industry symbol with the brand name clearly readable below or beside it. One unified composition only on a plain background.",
     symbol_mark: "Explore an independent symbol or emblem paired with the brand name clearly readable below or beside it. One centered composition only on a plain background.",
@@ -811,7 +826,7 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   const industryCue = buildMinimalIndustryCue(input);
   if (industryCue)    parts.push(industryCue);
 
-  parts.push("Make it feel polished, memorable, and suitable for real brand use.");
+  parts.push("Make it feel polished, memorable, and suitable for actual use.");
 
   return parts.join(" ");
 }
