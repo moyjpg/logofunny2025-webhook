@@ -88,11 +88,13 @@ const CONCEPT_PROMPTS_SUFFIX =
 
 // Minimal guardrails for the Magic Prompt AUTO experiment.
 const MINIMAL_CONCEPT_SUFFIX =
-  "One logo only. Plain clean background. No mockups, brand boards, or multiple versions in one image. Avoid random trademark symbols or meaningless tiny text. " +
-  "The logo mark, lettering, negative-space shapes, and any integrated letterform ideas must look complete, intentional, and fully formed. " +
-  "No half-drawn symbols, broken shapes, missing edges, incomplete outlines, cropped letter details, malformed negative space, or unfinished-looking marks. " +
-  "If a letterform is modified, it must still look like a complete readable letter. If negative space is used, it must be clear, closed, and intentional. " +
-  "If secondary text is used, it must exactly match the allowed descriptor from the prompt. If the descriptor cannot be rendered clearly, omit it rather than inventing or misspelling text.";
+  "Create one clean standalone commercial logo on a plain warm-white background. " +
+  "Use one centered composition only. " +
+  "Make the brand name readable and accurate. " +
+  "Use simple vector-like shapes, clear spacing, and a memorable silhouette. " +
+  "The result should look like a finished logo for a real small business. " +
+  "Do not add any extra text or legal marks. " +
+  "Do not create a divided or multi-panel layout.";
 
 const ANIMAL_TRAITS = {
   dog:    "floppy rounded ears drooping from the sides, a rounded friendly muzzle with a small circular nose, warm forward-facing dog face",
@@ -712,10 +714,9 @@ function buildAnimalConceptAngle(conceptKey, animalKey) {
   if (conceptKey === "app_icon") {
     return (
       `Explore a compact ${animalKey} head or ${animalKey}-inspired icon mark — ` +
-      `bold clean silhouette, recognizable at app icon size, suitable as a social avatar. ` +
-      `Top section: the compact ${animalKey} icon with optional small brand name below. ` +
-      `Bottom section: four clean square usage tiles of the same icon on solid brand-color backgrounds. ` +
-      `The icon must be clear and minimal — nothing else in the frame.`
+      `bold clean silhouette, recognizable at small sizes. ` +
+      `One centered composition: the compact ${animalKey} icon with the brand name clearly readable below or beside it. ` +
+      `One unified composition only on a plain background.`
     );
   }
   if (conceptKey === "symbol_mark") {
@@ -753,8 +754,8 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   const CONCEPT_ANGLES = {
     recommended: "Explore the strongest complete commercial logo lockup with clear brand hierarchy.",
     wordmark:    "Explore a lettering-led wordmark where the brand name is the complete design. Do not place a separate large icon above the wordmark. Any visual detail should be integrated into the letterforms.",
-    app_icon:    "Explore an icon-first compact app/avatar system preview. Top section shows the main compact logo with optional small brand name. Bottom section shows four square usage tiles using the same icon in monochrome or reversed color on solid brand-color backgrounds. Keep it clean and centered.",
-    symbol_mark: "Explore an independent symbol or emblem that stands on its own as the complete visual statement. Keep the output clean: no captions, no explanatory notes, no paragraph text, and no presentation copy. Use minimal or no text.",
+    app_icon:    "Explore a compact icon-first logo: one centered mark, monogram, or simple industry symbol with the brand name clearly readable below or beside it. One unified composition only on a plain background.",
+    symbol_mark: "Explore an independent symbol or emblem paired with the brand name clearly readable below or beside it. One centered composition only on a plain background.",
   };
 
   const parts = [];
@@ -782,16 +783,16 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   let textLock;
   if (conceptKey === "recommended") {
     textLock = descriptor
-      ? `Visible text lock: use only the exact brand name '${brandName}' and, if needed, the exact descriptor '${descriptor}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text.`
-      : `Visible text lock: use only the exact brand name '${brandName}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text.`;
+      ? `Visible text: only the exact brand name '${brandName}' and the exact descriptor '${descriptor}'. Keep the logo clean, readable, and centered.`
+      : `Visible text: only the exact brand name '${brandName}'. Keep the logo clean, readable, and centered.`;
   } else if (conceptKey === "wordmark") {
-    textLock = `Visible text lock: use only the exact brand name '${brandName}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text. Wordmark text behavior: the brand name itself is the design. Do not place a separate large icon above the wordmark. Any decorative element should be integrated into the letters.`;
+    textLock = `Visible text: only the exact brand name '${brandName}'. Keep the logo clean, readable, and centered. The brand name itself is the complete design.`;
   } else if (conceptKey === "app_icon") {
-    textLock = `App icon text behavior: icon-first composition. The icon or emblem must be the visual focus. A small brand name may appear only as a secondary support element in the top section. Do not include descriptors, taglines, category text, captions, labels, or micro text. Do not include SM, TM, registered marks, copyright symbols, or trademark symbols. App icon layout behavior: use a clean two-section layout. Top section shows the main compact logo. Bottom section shows four square app/avatar usage tiles using the same icon in monochrome or reversed color on solid brand-color backgrounds. Do not include phones, devices, UI mockups, browser frames, extra words, or unrelated objects.`;
+    textLock = `Visible text: only the exact brand name '${brandName}'. Keep the logo clean, readable, and centered.`;
   } else if (conceptKey === "symbol_mark") {
-    textLock = `Symbol mark text behavior: symbol-first composition. The symbol should work independently from the brand name and must be the main visual focus. Prefer no text, or use only a very small exact brand name if needed. Do not include descriptors, taglines, category text, captions, labels, explanatory text, paragraph text, presentation notes, composition notes, layout notes, fake small text, micro text, or unreadable filler text. Do not include trademark symbols, SM, TM, registered marks, copyright symbols, or any legal marks. Avoid full logo lockup layout.`;
+    textLock = `Visible text: only the exact brand name '${brandName}', or no text if the symbol stands alone. Keep the logo clean, readable, and centered.`;
   } else {
-    textLock = `Visible text lock: use only the exact brand name '${brandName}'. Do not invent any other words, captions, labels, micro text, slogans, trademark symbols, or fake secondary text.`;
+    textLock = `Visible text: only the exact brand name '${brandName}'. Keep the logo clean, readable, and centered.`;
   }
   parts.push(textLock);
 
@@ -843,7 +844,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
       prompt: parts.join(" "),
       style_name: "logofunny",
       conceptLabel: conceptKey,
-      magicPromptOverride: "AUTO",
+      magicPromptOverride: "OFF",
     };
   }
 
