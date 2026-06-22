@@ -82,18 +82,18 @@ const SAAS_CONCEPT_DIRECTIONS = [
 
 // Output rules appended to every prompt that arrives via the conceptPrompts path.
 const CONCEPT_PROMPTS_SUFFIX =
-  "One centered logo only on a plain clean background. " +
+  "One centered logo only on a pure white background. No card, no paper texture, no beige, no colored wash. " +
   "No stray marks, trademark symbols, or random meaningless text near the brand name. " +
   "No brand boards, mockups, or multiple versions in one image.";
 
-// Minimal guardrails for the Magic Prompt AUTO experiment.
+// Minimal guardrails appended after every structured concept prompt.
 const MINIMAL_CONCEPT_SUFFIX =
-  "Create one clean standalone commercial logo on a plain warm-white background. " +
+  "Create one clean standalone commercial logo on a pure white background. " +
   "Use one centered composition only. " +
   "Make the brand name readable and accurate. " +
-  "Use simple vector-like shapes, clear spacing, and a memorable silhouette. " +
-  "The result should look like a finished logo for a real small business. " +
-  "Do not add any extra text or legal marks. " +
+  "Use clear spacing and a memorable silhouette. " +
+  "The result should look like a finished logo for a real brand. " +
+  "Do not add any extra text, legal marks, or trademark symbols. " +
   "Do not create a divided or multi-panel layout.";
 
 const ANIMAL_TRAITS = {
@@ -504,6 +504,15 @@ function planConceptDirections(industryRaw, animalTarget, brandName, keywords) {
     };
   }
 
+  if (industryRaw.includes("wedding") || industryRaw.includes("event")) {
+    return {
+      recommended: "An elegant romantic lockup — refined interlocking initials, botanical sprig, graceful arch, or decorative monogram as the primary mark, paired with the wordmark. If a subtitle is provided, include it as smaller supporting text near the primary mark when suitable. Premium and emotionally warm.",
+      wordmark:    "A refined typographic lockup — brand name in elegant custom letter spacing. If a subtitle was provided, use it as supporting text when it improves the logo composition. Pure typography, premium and romantic. No separate icon.",
+      app_icon:    "A compact emblem or crest — a contained refined mark framing the brand name. Elegant and minimal, readable at small sizes. If a subtitle is provided, include it as a small supporting line beneath.",
+      symbol_mark: "A distinctive decorative mark — botanical, geometric, or ornamental symbol above or beside the wordmark. If a subtitle is provided, include it as smaller supporting text near the primary mark when suitable. One centered composition only.",
+    };
+  }
+
   return {
     recommended: "A complete commercial logo lockup — a memorable concept-driven symbol paired with a refined wordmark. Mature spacing, clear hierarchy, and packaging-ready polish.",
     wordmark:    "A lettering-led wordmark — the brand name is the hero. Mature custom typography with subtle integrated visual cue only if it improves personality and readability. No separate icon.",
@@ -587,6 +596,7 @@ function buildMinimalIndustryCue(input) {
   if (ind.includes("legal") || ind.includes("consulting"))            return "Use broad professional cues such as balance, authority, clean structure, measured form, or credible presence.";
   if (ind.includes("education"))                                       return "Use broad education cues such as open path, spark, learning, forward momentum, or encouraging clarity.";
   if (ind.includes("real_estate") || ind.includes("real estate"))     return "Use broad real estate cues such as architectural form, refined elevation, premium space, or aspirational living.";
+  if (ind.includes("wedding") || ind.includes("event"))               return "Use broad wedding and events brand cues such as romantic elegance, botanical floral, graceful monogram, arch, ribbon, vow-inspired detail, interlocking initials, or refined celebration spirit.";
   return "";
 }
 
@@ -744,7 +754,7 @@ function sanitizeUserNotes(text) {
     .trim();
 }
 
-function buildMinimalConceptPrompt(input, conceptKey) {
+function buildMinimalConceptPrompt(input, conceptKey, conceptOverride) {
   const brandName     = String(input?.brandName || "Brand").trim();
   const industry      = String(input?.industry  || "").replace(/_/g, " ").trim();
   const keywords      = [
@@ -765,6 +775,7 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   const detail = String(
     input?.detail || input?.detailLevel || input?.detailPreference || ""
   ).trim();
+  const subtitle = String(input?.subtitle || input?.tagline || "").trim();
 
   const CONCEPT_ANGLES = {
     recommended: "Explore the strongest complete logo lockup with clear brand hierarchy.",
@@ -795,19 +806,20 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   if (userDirection)  parts.push(`User brief (do not render as visible text in the logo): ${userDirection}.`);
 
   const { descriptor } = buildAllowedVisibleTextCue(input);
+  const subtitleClause = subtitle ? ` and the subtitle '${subtitle}' as smaller supporting text near the primary mark when suitable` : "";
   let textLock;
   if (conceptKey === "recommended") {
     textLock = descriptor
-      ? `Visible text: only the exact brand name '${brandName}' and the exact descriptor '${descriptor}'. Keep the logo clean, readable, and centered.`
-      : `Visible text: only the exact brand name '${brandName}'. Keep the logo clean, readable, and centered.`;
+      ? `Use only the specified brand text: the brand name '${brandName}'${subtitleClause} and the descriptor '${descriptor}'. Do not add random extra words.`
+      : `Use only the specified brand text: the brand name '${brandName}'${subtitleClause}. Do not add random extra words.`;
   } else if (conceptKey === "wordmark") {
-    textLock = `Visible text: only the exact brand name '${brandName}'. Keep the logo clean, readable, and centered. The brand name itself is the complete design.`;
+    textLock = `Use only the specified brand text: the brand name '${brandName}'${subtitleClause}. The wordmark is the complete design. Do not add random extra words.`;
   } else if (conceptKey === "app_icon") {
-    textLock = `Visible text: only the exact brand name '${brandName}'. Keep the logo clean, readable, and centered.`;
+    textLock = `Use only the specified brand text: the brand name '${brandName}'${subtitleClause}. Keep it clean and readable. Do not add random extra words.`;
   } else if (conceptKey === "symbol_mark") {
-    textLock = `Visible text: only the exact brand name '${brandName}', or no text if the symbol stands alone. Keep the logo clean, readable, and centered.`;
+    textLock = `Use only the specified brand text: the brand name '${brandName}'${subtitleClause}, or just the symbol if it stands alone. Do not add random extra words.`;
   } else {
-    textLock = `Visible text: only the exact brand name '${brandName}'. Keep the logo clean, readable, and centered.`;
+    textLock = `Use only the specified brand text: the brand name '${brandName}'${subtitleClause}. Do not add random extra words.`;
   }
   parts.push(textLock);
 
@@ -820,7 +832,10 @@ function buildMinimalConceptPrompt(input, conceptKey) {
   if (detail)         parts.push(`Detail level: ${detail}.`);
 
   const animalKey    = detectLogoAnimal(subjectSearchText);
-  const conceptAngle = (referenceStyleCue && buildAnimalConceptAngle(conceptKey, animalKey)) || CONCEPT_ANGLES[conceptKey] || "";
+  const conceptAngle = conceptOverride
+    || (referenceStyleCue && buildAnimalConceptAngle(conceptKey, animalKey))
+    || CONCEPT_ANGLES[conceptKey]
+    || "";
   if (conceptAngle)   parts.push(`${conceptAngle} This direction should look visually distinct from the other logo concepts.`);
 
   const industryCue = buildMinimalIndustryCue(input);
@@ -841,13 +856,9 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     typeof input.conceptPrompts[conceptKey] === "string" &&
     input.conceptPrompts[conceptKey].trim()
   ) {
-    // Minimal prompt + Magic Prompt AUTO experiment.
-    // To revert: restore the three parts below and change magicPromptOverride back to "OFF".
-    //   input.conceptPrompts[conceptKey].trim(),
-    //   buildConceptBriefPrompt(input, conceptKey),
-    //   CONCEPT_PROMPTS_SUFFIX,
+    const frontendConcept = input.conceptPrompts[conceptKey].trim();
     const parts = [
-      buildMinimalConceptPrompt(input, conceptKey),
+      buildMinimalConceptPrompt(input, conceptKey, frontendConcept),
       MINIMAL_CONCEPT_SUFFIX,
     ];
 

@@ -207,6 +207,7 @@ function mapElementorToAI(body) {
 
   return {
     brandName: pickStr("brandName"),
+    subtitle: pickStr("subtitle") || pickStr("tagline") || pickStr("brandTagline"),
     tagline: pickStr("brandTagline"),
     keywords: pickStr("keywords"),
     industry: pickStr("industry"),
@@ -220,6 +221,8 @@ function mapElementorToAI(body) {
     colorDirection: pickStr("colorDirection"),
     typographyDirection: pickStr("typographyDirection"),
     styleCues: pickStr("styleCues"),
+    style: pickStr("style"),
+    detail: pickStr("detail"),
     promptOverride: pickStr("promptOverride") || pickStr("prompt"),
     conceptPrompts: f["conceptPrompts"] ?? null,
     uploadImage: f["uploadLogo"] || null,
