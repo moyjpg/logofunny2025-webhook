@@ -89,6 +89,7 @@ const CONCEPT_PROMPTS_SUFFIX =
 // Minimal guardrails appended after every structured concept prompt.
 const MINIMAL_CONCEPT_SUFFIX =
   "Create one clean standalone commercial logo on a pure white background. " +
+  "Canvas background must be pure bright white (#FFFFFF), not off-white, cream, beige, paper, or warm-tinted. Color belongs only inside the logo elements. " +
   "Use one centered composition only. " +
   "Make the brand name readable and accurate. " +
   "Use clear spacing and a memorable silhouette. " +
@@ -357,167 +358,167 @@ function planConceptDirections(industryRaw, animalTarget, brandName, keywords) {
   if (industryRaw.includes("pet")) {
     if (animalTarget === "dog") {
       return {
-        recommended: "A warm dog companion lockup — a friendly dog face, collar tag badge, or bold paw shape as a symbol, paired with the wordmark. Polished commercial finish.",
-        wordmark:    "A lettering-led wordmark where a dog tail curve, paw element, or collar arc is integrated into the brand name letterforms. No separate icon.",
-        app_icon:    "A compact friendly dog head or paw icon for avatar use — bold, warm silhouette, no wordmark. Legible at small sizes.",
-        symbol_mark: "A standalone dog mark — a collar badge, paw rhythm pattern, or bold dog silhouette that works independently.",
+        recommended: "A warm, loyal dog brand identity — joyful, approachable, and genuinely lovable. Find the mark that feels specific to this brand's spirit, not generic. Paired with the wordmark.",
+        wordmark:    "The brand name with dog-brand warmth — characterful letterforms with personality and approachable energy. No separate icon.",
+        app_icon:    "A bold, warm mark that reads clearly at small sizes — expressive dog-brand energy. Brand name beside or below.",
+        symbol_mark: "A standalone mark with genuine dog-brand character — graphic, warm, and immediately lovable.",
       };
     }
     if (animalTarget === "cat") {
       return {
-        recommended: "A graceful cat companion lockup — a cat face silhouette, arched tail curve, or whisker arc as a refined symbol, paired with the wordmark. Polished commercial finish.",
-        wordmark:    "A lettering-led wordmark where a cat ear, tail curve, or whisker arc is integrated into the brand name letterforms. No separate icon.",
-        app_icon:    "A compact cat face or tail curl icon for avatar use — elegant, minimal silhouette, no wordmark. Legible at small sizes.",
-        symbol_mark: "A standalone cat mark — a graceful cat silhouette, tail arc, or ear-and-whisker form that works independently.",
+        recommended: "A graceful, confident cat brand identity — curious, elegant, and independent. Find the mark that captures this brand's particular feline personality. Paired with the wordmark.",
+        wordmark:    "The brand name with feline elegance — refined letterforms with quiet confidence and character. No separate icon.",
+        app_icon:    "A compact mark with genuine cat-brand grace — bold and elegant at small sizes. Brand name beside or below.",
+        symbol_mark: "A standalone mark with real feline character — graceful, confident, and specific to this brand.",
       };
     }
     if (animalTarget === "dog_and_cat") {
       return {
-        recommended: "A shared pet-family lockup — a paired paw, dog-and-cat silhouette, or friendly dual-pet mark as a symbol, paired with the wordmark. Warm and polished.",
-        wordmark:    "A lettering-led wordmark where a shared pet element — a paw, combined ear shape, or friendly arc — is integrated into the letterforms. No separate icon.",
-        app_icon:    "A compact paired pet or shared paw icon for avatar use — warm, simple, no wordmark. Legible at small sizes.",
-        symbol_mark: "A standalone pet-family mark — a shared paw print, paired pet silhouette, or combined dog-and-cat form that works independently.",
+        recommended: "A warm, inclusive pet family identity — the spirit of dogs and cats together, made into a mark. Find the form that unites both without being generic. Paired with the wordmark.",
+        wordmark:    "The brand name warm and welcoming — open, pet-loving letterforms with genuine character. No separate icon.",
+        app_icon:    "A compact mark capturing shared pet warmth — expressive and clear at small sizes. Brand name beside or below.",
+        symbol_mark: "A standalone mark with genuine pet-family warmth — friendly, specific, and not generic stock art.",
       };
     }
     return {
-      recommended: "A warm friendly pet lockup — a paw, pet face, or collar tag as a clean symbol, paired with the wordmark. Warm and polished.",
-      wordmark:    "A lettering-led wordmark where a paw, ear, or collar detail is integrated into the brand name letterforms. No separate icon.",
-      app_icon:    "A compact pet face or paw icon for avatar use — friendly bold silhouette, no wordmark. Legible at small sizes.",
-      symbol_mark: "A standalone pet mark — a bold paw, pet face silhouette, or collar badge that works independently.",
+      recommended: "A warm, character-driven pet brand identity — find the mark that captures this brand's particular animal spirit. Joyful, genuine, and specific. Paired with the wordmark.",
+      wordmark:    "The brand name with warm pet-brand character — approachable, genuine letterforms with personality. No separate icon.",
+      app_icon:    "A bold, warm pet-brand mark — expressive and clear at small sizes. Brand name beside or below.",
+      symbol_mark: "A standalone mark with real pet-brand warmth — specific and genuine, not a generic icon.",
     };
   }
 
   if (industryRaw.includes("home") || industryRaw.includes("decor")) {
     return {
-      recommended: "A botanical shelter lockup — a leaf or bloom nestled inside a sheltering home arch as a refined symbol, paired with the wordmark. Include a HOME + DECOR descriptor in small caps below the wordmark.",
-      wordmark:    "A lettering-led wordmark where a botanical detail — a leaf extension, bloom counter, or nest curve — is integrated into one or two letters of the brand name. No separate icon.",
-      app_icon:    "A compact nest or bloom icon — a rounded nest cradling a small sprout, or a stylized bloom circle. Bold and legible at small sizes. No wordmark.",
-      symbol_mark: "A standalone botanical emblem — a leaf arch, nest silhouette, or bloom mark with a strong independent silhouette that works alone.",
+      recommended: "A refined, inviting home brand identity — the feeling of a beautifully considered space, made into a mark. Warm, personal, and crafted. Paired with the wordmark.",
+      wordmark:    "The brand name as a warm, crafted wordmark — the kind of lettering that belongs on artisan packaging or a beautiful label. No separate icon.",
+      app_icon:    "A compact mark evoking warmth and craft — something that feels designed and personal. Brand name below or beside it.",
+      symbol_mark: "A standalone mark with home-brand warmth and consideration — designed and genuine, not generic decor imagery.",
     };
   }
 
   if (industryRaw.includes("tech") || industryRaw.includes("saas") || industryRaw.includes("software")) {
     return {
-      recommended: "A clean modern symbol + wordmark lockup — a concept-driven spark, node, cursor, or flow shape as a symbol, paired with the wordmark. Geometric precision and polish.",
-      wordmark:    "A clean geometric wordmark with a subtle spark, cursor, node, or motion cue integrated into one letterform. Typography-first. No separate icon.",
-      app_icon:    "A compact app-ready symbol — a single bold geometric form, spark, or node that reads clearly as a favicon and avatar icon. No wordmark.",
-      symbol_mark: "A standalone abstract symbol — a precise geometric mark with a strong independent silhouette derived from the brand idea.",
+      recommended: "A clean, intelligent tech identity — clarity, precision, and forward motion without resorting to clichés. A concept-driven mark that communicates what this brand actually does. Paired with the wordmark.",
+      wordmark:    "The brand name as a sharp, deliberate wordmark — custom letterforms with a detail that makes it feel designed, not just set in a font. No separate icon.",
+      app_icon:    "A bold, scalable mark ready for app icon use — geometric and concept-driven, reads perfectly at small sizes. Brand name beside or below.",
+      symbol_mark: "A standalone geometric mark — precise, memorable, concept-led. Something that becomes instantly recognizable.",
     };
   }
 
   if (industryRaw.includes("beauty") || industryRaw.includes("skincare")) {
     return {
-      recommended: "A refined botanical lockup — a soft petal, bloom, or drop form as an elegant symbol, paired with the wordmark. Premium spacing and finish.",
-      wordmark:    "A lettering-led wordmark with a soft botanical or drop detail integrated into one letter. Elegant premium typography. No separate icon.",
-      app_icon:    "A compact bloom or drop icon — a single petal form or elegant circular mark. Minimal and refined. No wordmark.",
-      symbol_mark: "A standalone botanical mark — a refined petal silhouette, bloom form, or drop shape with premium finish that works independently.",
+      recommended: "A refined, premium beauty identity — calm, elevated, and genuinely beautiful. Something that belongs on luxury packaging. Paired with the wordmark.",
+      wordmark:    "The brand name as a refined wordmark — graceful spacing and quiet luxury in every letterform. No separate icon.",
+      app_icon:    "A compact, premium mark — minimal and confident, needing no explanation. Brand name below or beside it.",
+      symbol_mark: "A standalone elegant mark — restrained, premium, with a silhouette that's genuinely beautiful and specific to this brand.",
     };
   }
 
   if (industryRaw.includes("food") || industryRaw.includes("beverage")) {
     return {
-      recommended: "A warm artisan lockup — a leaf, grain, or ingredient symbol paired with the wordmark. Clean and appetizing with artisan character.",
-      wordmark:    "A lettering-led wordmark where a leaf, grain, or natural detail is integrated into the letterforms. Warm and approachable. No separate icon.",
-      app_icon:    "A compact leaf or ingredient icon — a bold simple organic form at small sizes. No wordmark.",
-      symbol_mark: "A standalone artisan mark — a leaf, grain, or botanical silhouette with a clean legible form that works independently.",
+      recommended: "A warm, appetizing food brand identity — the craft and quality behind this brand, made visible. Genuine, not stock. Paired with the wordmark.",
+      wordmark:    "The brand name with food-brand warmth — approachable, characterful letterforms that feel handmade and genuine. No separate icon.",
+      app_icon:    "A compact mark with artisan food-brand personality — warm and inviting at small sizes. Brand name beside or below.",
+      symbol_mark: "A standalone mark that captures this food brand's craft and character — genuine and specific to this brand.",
     };
   }
 
   if (industryRaw.includes("cafe") || industryRaw.includes("restaurant")) {
     return {
-      recommended: "A warm hospitality lockup — a steam arc, cup form, or bean shape as a symbol, paired with the wordmark. Inviting and storefront-ready.",
-      wordmark:    "A lettering-led wordmark where a steam arc, cup handle, or bean curve is subtly integrated into the letterforms. Warm character. No separate icon.",
-      app_icon:    "A compact cup or bean icon — a bold simple form for avatar and app use. No wordmark.",
-      symbol_mark: "A standalone hospitality mark — a cup silhouette, steam arc, or bean form with a strong shape that works independently.",
+      recommended: "A warm, welcoming hospitality identity — the feeling of a great place to eat or drink, made into a mark. Something people would put on a tote bag. Paired with the wordmark.",
+      wordmark:    "The brand name as warm, characterful lettering — the kind you'd see painted above a great neighborhood spot. No separate icon.",
+      app_icon:    "A compact hospitality mark — bold and friendly, reads warmly at small sizes. Brand name below or beside it.",
+      symbol_mark: "A standalone mark with genuine hospitality character — warm, confident, and specific to this place.",
     };
   }
 
   if (industryRaw.includes("health") || industryRaw.includes("wellness")) {
     return {
-      recommended: "A calm balanced lockup — a leaf arc, organic flow, or gentle circle as a refined symbol, paired with the wordmark. Trustworthy and serene.",
-      wordmark:    "A lettering-led wordmark with a leaf, arc, or flow detail integrated into one letter. Calm and natural. No separate icon.",
-      app_icon:    "A compact leaf or flow icon — a serene organic form at small sizes. No wordmark.",
-      symbol_mark: "A standalone wellness mark — a leaf arc, flow form, or balanced organic shape with a clear silhouette that works independently.",
+      recommended: "A calm, trustworthy wellness identity — serene, grounded, and genuinely reassuring. A mark that feels like it heals. Paired with the wordmark.",
+      wordmark:    "The brand name as a calm, balanced wordmark — clean letterforms with quiet strength and natural rhythm. No separate icon.",
+      app_icon:    "A compact mark evoking calm and wellbeing — simple, serene, and legible at small sizes. Brand name below or beside it.",
+      symbol_mark: "A standalone wellness mark — organic, balanced, and genuinely calming. Not a generic cliché.",
     };
   }
 
   if (industryRaw.includes("fitness") || industryRaw.includes("sport")) {
     return {
-      recommended: "A bold energetic lockup — a motion arc, speed line, or strong geometric silhouette as a dynamic symbol, paired with the wordmark. High impact and commercial finish.",
-      wordmark:    "A bold lettering-led wordmark where a motion arc or speed line is integrated into the letterforms. Energetic. No separate icon.",
-      app_icon:    "A compact bold mark — a motion arc, strong geometric form, or bold initial for avatar use. No wordmark.",
-      symbol_mark: "A standalone dynamic mark — a bold motion arc, kinetic silhouette, or geometric strength form that works independently.",
+      recommended: "A bold, energetic fitness identity — dynamic, powerful, and genuinely motivating. Something athletes would be proud to wear. Paired with the wordmark.",
+      wordmark:    "The brand name as a bold, energetic wordmark — strong letterforms with forward momentum baked in. No separate icon.",
+      app_icon:    "A compact, high-impact mark — bold and kinetic at small sizes. Brand name below or beside it.",
+      symbol_mark: "A standalone fitness mark — bold, dynamic, and graphic. The kind of mark that reads on a jersey.",
     };
   }
 
   if (industryRaw.includes("fashion") || industryRaw.includes("apparel")) {
     return {
-      recommended: "A refined editorial lockup — a minimal geometric line or precision mark as a symbol, paired with the wordmark. Quiet luxury and premium spacing.",
-      wordmark:    "An editorial lettering-led wordmark with precise custom spacing, deliberate weight, and refined character. No separate icon.",
-      app_icon:    "A compact editorial mark — a refined geometric form or stylized initial. Minimal and precise. No wordmark.",
-      symbol_mark: "A standalone editorial mark — a refined line, geometric tension, or typographic form with premium finish that works independently.",
+      recommended: "A refined, editorial fashion identity — minimal, precise, and genuinely tasteful. The mark that belongs on premium packaging. Paired with the wordmark.",
+      wordmark:    "The brand name as an editorial wordmark — custom letterforms with deliberate spacing and refined tension. No separate icon.",
+      app_icon:    "A compact, minimal fashion mark — precise and confident at small sizes. Brand name beside or below it.",
+      symbol_mark: "A standalone editorial mark — refined, graphic, with the confidence of a quiet luxury brand.",
     };
   }
 
   if (industryRaw.includes("creative") || industryRaw.includes("studio")) {
     return {
-      recommended: "A bold editorial lockup — a distinctive geometric concept symbol, paired with the wordmark. Strong typographic presence and creative confidence.",
-      wordmark:    "A lettering-led wordmark with a distinctive typographic personality — bold custom spacing, a signature letterform modification, or a visual cue integrated into one letter. No separate icon.",
-      app_icon:    "A compact bold mark or stylized initial — a strong geometric form or editorial symbol for avatar use. No wordmark.",
-      symbol_mark: "A standalone creative mark — a bold geometric concept, editorial form, or signature mark with a distinctive silhouette that works independently.",
+      recommended: "A bold, distinctive creative identity — something that demonstrates this studio's own taste and vision. The mark that feels genuinely designed, not assembled. Paired with the wordmark.",
+      wordmark:    "The brand name as a signature wordmark — real typographic personality and creative confidence. The kind of wordmark a top studio makes for itself. No separate icon.",
+      app_icon:    "A compact mark with creative studio confidence — distinctive and immediately recognizable. Brand name below or beside it.",
+      symbol_mark: "A standalone mark that shows creative vision — distinctive, concept-led, and genuinely original.",
     };
   }
 
   if (industryRaw.includes("finance") || industryRaw.includes("fintech")) {
     return {
-      recommended: "A trustworthy professional lockup — a stable geometric mark or upward arc as a symbol, paired with the wordmark. Clean, precise, and authoritative.",
-      wordmark:    "A clean professional wordmark with strong geometric letterforms and deliberate spacing. No separate icon.",
-      app_icon:    "A compact geometric mark — a stable form or stylized initial. Clean and trustworthy. No wordmark.",
-      symbol_mark: "A standalone geometric mark — a stable base, upward arc, or balanced form with clean authority that works independently.",
+      recommended: "A trustworthy, precise finance identity — stable, modern, and genuinely credible. A mark that earns confidence. Paired with the wordmark.",
+      wordmark:    "The brand name as a clean, authoritative wordmark — deliberate letterforms with professional clarity and confident spacing. No separate icon.",
+      app_icon:    "A compact, precise mark — clean, stable, and legible at small sizes. Brand name below or beside it.",
+      symbol_mark: "A standalone geometric mark — precise, trustworthy, and clean. The kind of mark that belongs on a card or a contract.",
     };
   }
 
   if (industryRaw.includes("legal") || industryRaw.includes("consulting")) {
     return {
-      recommended: "A credible professional lockup — a measured geometric or balanced mark as a symbol, paired with the wordmark. Authoritative and clean.",
-      wordmark:    "A clean authoritative wordmark with strong readable letterforms and deliberate professional spacing. No separate icon.",
-      app_icon:    "A compact professional mark — a balanced geometric form or stylized initial. Clean authority. No wordmark.",
-      symbol_mark: "A standalone authoritative mark — a measured balanced form with clean lines and strong professional presence that works independently.",
+      recommended: "A credible, authoritative professional identity — measured, confident, and genuinely trustworthy. A mark that signals expertise. Paired with the wordmark.",
+      wordmark:    "The brand name as a clean, authoritative wordmark — strong letterforms with deliberate professional gravitas. No separate icon.",
+      app_icon:    "A compact mark — balanced, precise, and professional. Brand name below or beside it.",
+      symbol_mark: "A standalone mark with professional authority — stable, measured, and clean.",
     };
   }
 
   if (industryRaw.includes("education")) {
     return {
-      recommended: "An encouraging professional lockup — an open path, arc, or spark-of-learning symbol paired with the wordmark. Clear structure and forward momentum.",
-      wordmark:    "A lettering-led wordmark with a spark, arc, or path detail integrated into a letterform. Approachable and trustworthy. No separate icon.",
-      app_icon:    "A compact spark or arc icon — a clear encouraging form at small sizes. No wordmark.",
-      symbol_mark: "A standalone learning mark — an open arc, spark form, or forward-motion shape with a clear silhouette that works independently.",
+      recommended: "An encouraging, forward-looking education identity — open, inspiring, and genuinely trustworthy. A mark that feels like a good mentor. Paired with the wordmark.",
+      wordmark:    "The brand name as an approachable, confident wordmark — clarity and forward momentum. No separate icon.",
+      app_icon:    "A compact mark evoking learning and progress — clear and encouraging at small sizes. Brand name below or beside it.",
+      symbol_mark: "A standalone mark with educational spirit — open, forward-looking, and hopeful.",
     };
   }
 
   if (industryRaw.includes("real_estate") || industryRaw.includes("real estate")) {
     return {
-      recommended: "A premium architectural lockup — a refined arch, clean elevation, or geometric home form as a symbol, paired with the wordmark. Aspirational and trustworthy.",
-      wordmark:    "A lettering-led wordmark with a subtle arch, roofline, or elevation detail integrated into one letter. Premium and readable. No separate icon.",
-      app_icon:    "A compact arch or geometric mark — a refined architectural form or stylized initial. Premium finish. No wordmark.",
-      symbol_mark: "A standalone architectural mark — a clean arch, refined elevation, or geometric form with a strong premium silhouette that works independently.",
+      recommended: "A premium, aspirational real estate identity — refined, trustworthy, and genuinely elegant. The mark that makes every sign look expensive. Paired with the wordmark.",
+      wordmark:    "The brand name as a premium wordmark — strong letterforms with architectural confidence and deliberate spacing. No separate icon.",
+      app_icon:    "A compact, premium mark — refined and legible at small sizes. Brand name below or beside it.",
+      symbol_mark: "A standalone mark with real estate ambition — premium, distinctive, and architectural in feeling.",
     };
   }
 
   if (industryRaw.includes("wedding") || industryRaw.includes("event")) {
     return {
-      recommended: "An elegant romantic lockup — refined interlocking initials, botanical sprig, graceful arch, or decorative monogram as the primary mark, paired with the wordmark. If a subtitle is provided, include it as smaller supporting text near the primary mark when suitable. Premium and emotionally warm.",
-      wordmark:    "A refined typographic lockup — brand name in elegant custom letter spacing. If a subtitle was provided, use it as supporting text when it improves the logo composition. Pure typography, premium and romantic. No separate icon.",
-      app_icon:    "A compact emblem or crest — a contained refined mark framing the brand name. Elegant and minimal, readable at small sizes. If a subtitle is provided, include it as a small supporting line beneath.",
-      symbol_mark: "A distinctive decorative mark — botanical, geometric, or ornamental symbol above or beside the wordmark. If a subtitle is provided, include it as smaller supporting text near the primary mark when suitable. One centered composition only.",
+      recommended: "A romantic, premium wedding identity — genuine elegance, not a template. Find the mark that feels made for this brand: graceful, emotionally warm, and quietly luxurious. If a subtitle is provided, include it as smaller supporting text near the primary mark when suitable. Paired with the wordmark.",
+      wordmark:    "The brand name as a refined typographic wedding identity — elegant letterforms with genuine romantic character. If a subtitle was provided, use it as supporting text when it improves the composition. No separate icon.",
+      app_icon:    "A compact, refined emblem — elegant at small sizes and instantly recognizable as premium. If a subtitle is provided, include it as a small supporting line when suitable.",
+      symbol_mark: "A standalone decorative mark — graceful, elegant, and genuinely romantic. Not a cheesy wedding cliché. If a subtitle is provided, include it as smaller supporting text when suitable.",
     };
   }
 
   return {
-    recommended: "A complete commercial logo lockup — a memorable concept-driven symbol paired with a refined wordmark. Mature spacing, clear hierarchy, and packaging-ready polish.",
-    wordmark:    "A lettering-led wordmark — the brand name is the hero. Mature custom typography with subtle integrated visual cue only if it improves personality and readability. No separate icon.",
-    app_icon:    "A compact icon or avatar mark — a bold symbol, abstract mark, or single initial designed for small sizes. No full wordmark.",
-    symbol_mark: "A standalone symbol mark — a concept-driven mark with a strong independent silhouette, paired with a small wordmark below.",
+    recommended: "A memorable, distinctive brand identity — the most emotionally resonant mark possible for this brand, feeling invented and specific rather than generic. Paired with the wordmark.",
+    wordmark:    "The brand name as a crafted wordmark — deliberate letterforms with personality and commercial polish. No separate icon.",
+    app_icon:    "A bold, original mark — distinctive at small sizes. Brand name readable below or beside it.",
+    symbol_mark: "A standalone symbol with a strong, memorable silhouette — concept-led and graphic. Paired with the brand name.",
   };
 }
 
@@ -832,8 +833,18 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride) {
   if (detail)         parts.push(`Detail level: ${detail}.`);
 
   const animalKey    = detectLogoAnimal(subjectSearchText);
+  const industryConceptDirections = planConceptDirections(
+    String(input?.industry || "").toLowerCase(),
+    String(input?.industry || "").toLowerCase().includes("pet")
+      ? detectPetAnimal(subjectSearchText)
+      : "none",
+    brandName,
+    keywords
+  );
+  const industryConceptAngle = industryConceptDirections[conceptKey] || "";
   const conceptAngle = conceptOverride
     || (referenceStyleCue && buildAnimalConceptAngle(conceptKey, animalKey))
+    || industryConceptAngle
     || CONCEPT_ANGLES[conceptKey]
     || "";
   if (conceptAngle)   parts.push(`${conceptAngle} This direction should look visually distinct from the other logo concepts.`);
@@ -856,9 +867,8 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     typeof input.conceptPrompts[conceptKey] === "string" &&
     input.conceptPrompts[conceptKey].trim()
   ) {
-    const frontendConcept = input.conceptPrompts[conceptKey].trim();
     const parts = [
-      buildMinimalConceptPrompt(input, conceptKey, frontendConcept),
+      buildMinimalConceptPrompt(input, conceptKey, null),
       MINIMAL_CONCEPT_SUFFIX,
     ];
 
