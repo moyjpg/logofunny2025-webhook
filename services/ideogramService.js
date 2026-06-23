@@ -358,33 +358,51 @@ function planConceptDirections(industryRaw, animalTarget, brandName, keywords) {
   if (industryRaw.includes("pet")) {
     if (animalTarget === "dog") {
       return {
-        recommended: "A warm, loyal dog brand identity — joyful, approachable, and genuinely lovable. Find the mark that feels specific to this brand's spirit, not generic. Paired with the wordmark.",
-        wordmark:    "The brand name with dog-brand warmth — characterful letterforms with personality and approachable energy. No separate icon.",
-        app_icon:    "A bold, warm mark that reads clearly at small sizes — expressive dog-brand energy. Brand name beside or below.",
-        symbol_mark: "A standalone mark with genuine dog-brand character — graphic, warm, and immediately lovable.",
+        recommended: "A warm, loyal dog brand identity — joyful, approachable, and genuinely lovable. Draw inspiration from: paw, tail, ear, collar, caring hands, heart, animal silhouette — one clear symbolic idea, integrated with the wordmark when possible. Find the mark that feels specific to this brand's spirit, not generic. Paired with the wordmark.",
+        wordmark:    "The brand name with dog-brand warmth — characterful letterforms with personality. A paw curve, tail arc, or ear detail fused into a letterform when it makes the design more distinctive. No separate icon.",
+        app_icon:    "A bold, warm mark that reads clearly at small sizes — draw from: paw, face, ear, collar shape, or heart. Expressive dog-brand energy. Brand name beside or below.",
+        symbol_mark: "A standalone mark with genuine dog-brand character — a paw, silhouette, collar badge, or heart. Graphic, warm, and immediately lovable.",
       };
     }
     if (animalTarget === "cat") {
       return {
-        recommended: "A graceful, confident cat brand identity — curious, elegant, and independent. Find the mark that captures this brand's particular feline personality. Paired with the wordmark.",
-        wordmark:    "The brand name with feline elegance — refined letterforms with quiet confidence and character. No separate icon.",
-        app_icon:    "A compact mark with genuine cat-brand grace — bold and elegant at small sizes. Brand name beside or below.",
-        symbol_mark: "A standalone mark with real feline character — graceful, confident, and specific to this brand.",
+        recommended: "A graceful, confident cat brand identity — curious, elegant, and independent. Draw inspiration from: tail arc, ear silhouette, whisker form, paw, feline face — one clear symbolic idea integrated with the wordmark. Find the mark that captures this brand's particular feline personality. Paired with the wordmark.",
+        wordmark:    "The brand name with feline elegance — refined letterforms with quiet confidence. A tail curve, ear peak, or whisker arc fused into a letter when it makes the design more distinctive. No separate icon.",
+        app_icon:    "A compact mark with genuine cat-brand grace — draw from: tail curl, ear silhouette, feline face, or paw. Bold and elegant at small sizes. Brand name beside or below.",
+        symbol_mark: "A standalone mark with real feline character — a tail arc, ear silhouette, or minimal cat form. Graceful, confident, and specific to this brand.",
       };
     }
     if (animalTarget === "dog_and_cat") {
       return {
-        recommended: "A warm, inclusive pet family identity — the spirit of dogs and cats together, made into a mark. Find the form that unites both without being generic. Paired with the wordmark.",
-        wordmark:    "The brand name warm and welcoming — open, pet-loving letterforms with genuine character. No separate icon.",
-        app_icon:    "A compact mark capturing shared pet warmth — expressive and clear at small sizes. Brand name beside or below.",
-        symbol_mark: "A standalone mark with genuine pet-family warmth — friendly, specific, and not generic stock art.",
+        recommended: "A warm, inclusive pet family identity — the spirit of dogs and cats together. Draw from: shared paw, paired silhouette, heart, overlapping forms, caring hands — one clear symbolic idea that unites both without being generic. Paired with the wordmark.",
+        wordmark:    "The brand name warm and welcoming — open, pet-loving letterforms. A shared paw, combined ear arc, or heart fused into a letter when it improves the design. No separate icon.",
+        app_icon:    "A compact mark capturing shared pet warmth — draw from: shared paw, paired silhouette, or heart. Expressive and clear at small sizes. Brand name beside or below.",
+        symbol_mark: "A standalone mark with genuine pet-family warmth — a shared paw, paired silhouette, or connecting heart form. Friendly and specific.",
       };
     }
     return {
-      recommended: "A warm, character-driven pet brand identity — find the mark that captures this brand's particular animal spirit. Joyful, genuine, and specific. Paired with the wordmark.",
-      wordmark:    "The brand name with warm pet-brand character — approachable, genuine letterforms with personality. No separate icon.",
-      app_icon:    "A bold, warm pet-brand mark — expressive and clear at small sizes. Brand name beside or below.",
-      symbol_mark: "A standalone mark with real pet-brand warmth — specific and genuine, not a generic icon.",
+      recommended: "A warm, character-driven pet brand identity — joyful, genuine, and specific. Draw from: paw, ear, tail, animal silhouette, caring hands, heart — one clear symbolic idea. Find the mark that captures this brand's particular animal spirit. Paired with the wordmark.",
+      wordmark:    "The brand name with warm pet-brand character — approachable, genuine letterforms. A paw, ear, or collar detail fused into a letterform when it makes the design more distinctive. No separate icon.",
+      app_icon:    "A bold, warm pet-brand mark — draw from: paw, face, tail, or heart. Expressive and clear at small sizes. Brand name beside or below.",
+      symbol_mark: "A standalone mark with real pet-brand warmth — a paw, silhouette, or caring form. Specific and genuine, not a generic icon.",
+    };
+  }
+
+  if (industryRaw.includes("outdoor") || industryRaw.includes("adventure") || industryRaw.includes("hiking") || industryRaw.includes("camping")) {
+    return {
+      recommended: "A bold, adventurous outdoor identity — the feeling of open landscapes and exploration. Draw inspiration from: mountain, tree, trail, tent, sun arc, camp badge, horizon line — one clear symbolic idea, integrated with the wordmark when possible. Paired with the wordmark.",
+      wordmark:    "The brand name with outdoor character — strong, direct letterforms. A peak, trail mark, or terrain detail fused into a letterform when it makes the design more distinctive. No separate icon.",
+      app_icon:    "A compact outdoor mark — draw from: mountain, sun arc, tree silhouette, or camp badge form. Bold and reads strongly at small sizes. Brand name beside or below.",
+      symbol_mark: "A standalone outdoor symbol — a mountain, trail, or landscape form with a bold, graphic silhouette. The kind of mark that belongs on a badge or jacket patch.",
+    };
+  }
+
+  if (industryRaw.includes("logistic") || industryRaw.includes("shipping") || industryRaw.includes("delivery") || industryRaw.includes("transport") || industryRaw.includes("freight") || industryRaw.includes("courier")) {
+    return {
+      recommended: "A clean, efficient logistics identity — precision, speed, and reliable movement. Draw inspiration from: arrow, route line, connected geometry, path, speed mark — one clear symbolic idea, integrated with the wordmark when possible. Paired with the wordmark.",
+      wordmark:    "The brand name as a clean, forward-moving wordmark — strong letterforms with direction and momentum. A route line, arrow, or motion detail fused into a letterform when it makes the design more distinctive. No separate icon.",
+      app_icon:    "A compact logistics mark — draw from: arrow, path, connected geometry, or speed form. Bold and reads clearly at small sizes. Brand name beside or below.",
+      symbol_mark: "A standalone logistics symbol — a bold arrow, route, or geometric path with a strong directional silhouette.",
     };
   }
 
@@ -399,10 +417,10 @@ function planConceptDirections(industryRaw, animalTarget, brandName, keywords) {
 
   if (industryRaw.includes("tech") || industryRaw.includes("saas") || industryRaw.includes("software")) {
     return {
-      recommended: "A clean, intelligent tech identity — clarity, precision, and forward motion without resorting to clichés. A concept-driven mark that communicates what this brand actually does. Paired with the wordmark.",
-      wordmark:    "The brand name as a sharp, deliberate wordmark — custom letterforms with a detail that makes it feel designed, not just set in a font. No separate icon.",
-      app_icon:    "A bold, scalable mark ready for app icon use — geometric and concept-driven, reads perfectly at small sizes. Brand name beside or below.",
-      symbol_mark: "A standalone geometric mark — precise, memorable, concept-led. Something that becomes instantly recognizable.",
+      recommended: "A clean, intelligent tech identity — clarity, precision, and forward motion without resorting to clichés. Draw inspiration from: spark, node, flow, intelligent signal, abstract mark — one clear concept-driven symbol that communicates what this brand actually does. Paired with the wordmark.",
+      wordmark:    "The brand name as a sharp, deliberate wordmark — custom letterforms. A spark, node, or subtle signal detail fused into a letterform when it makes the design feel designed, not just set in a font. No separate icon.",
+      app_icon:    "A bold, scalable mark ready for app icon use — draw from: spark, node, flow, signal, or abstract geometric. Concept-driven, reads perfectly at small sizes. Brand name beside or below.",
+      symbol_mark: "A standalone geometric mark — draw from: spark, node, flow, or intelligent signal. Precise, memorable, concept-led. Something that becomes instantly recognizable.",
     };
   }
 
@@ -444,10 +462,10 @@ function planConceptDirections(industryRaw, animalTarget, brandName, keywords) {
 
   if (industryRaw.includes("fitness") || industryRaw.includes("sport")) {
     return {
-      recommended: "A bold, energetic fitness identity — dynamic, powerful, and genuinely motivating. Something athletes would be proud to wear. Paired with the wordmark.",
-      wordmark:    "The brand name as a bold, energetic wordmark — strong letterforms with forward momentum baked in. No separate icon.",
-      app_icon:    "A compact, high-impact mark — bold and kinetic at small sizes. Brand name below or beside it.",
-      symbol_mark: "A standalone fitness mark — bold, dynamic, and graphic. The kind of mark that reads on a jersey.",
+      recommended: "A bold, energetic fitness identity — dynamic, powerful, and genuinely motivating. Draw inspiration from: motion cut, lightning bolt, strength angle, shield, speed arc — one clear symbolic idea integrated with the wordmark when possible. Something athletes would be proud to wear. Paired with the wordmark.",
+      wordmark:    "The brand name as a bold, energetic wordmark — strong letterforms with forward momentum. A motion cut, lightning detail, or angle fused into a letterform when it makes the design more distinctive. No separate icon.",
+      app_icon:    "A compact, high-impact mark — draw from: lightning bolt, shield, motion arc, or strength angle. Bold and kinetic at small sizes. Brand name below or beside it.",
+      symbol_mark: "A standalone fitness mark — a lightning bolt, shield, motion arc, or strength form. Bold, dynamic, and graphic. The kind of mark that reads on a jersey.",
     };
   }
 
@@ -507,10 +525,10 @@ function planConceptDirections(industryRaw, animalTarget, brandName, keywords) {
 
   if (industryRaw.includes("wedding") || industryRaw.includes("event")) {
     return {
-      recommended: "A romantic, premium wedding identity — genuine elegance, not a template. Find the mark that feels made for this brand: graceful, emotionally warm, and quietly luxurious. If a subtitle is provided, include it as smaller supporting text near the primary mark when suitable. Paired with the wordmark.",
-      wordmark:    "The brand name as a refined typographic wedding identity — elegant letterforms with genuine romantic character. If a subtitle was provided, use it as supporting text when it improves the composition. No separate icon.",
-      app_icon:    "A compact, refined emblem — elegant at small sizes and instantly recognizable as premium. If a subtitle is provided, include it as a small supporting line when suitable.",
-      symbol_mark: "A standalone decorative mark — graceful, elegant, and genuinely romantic. Not a cheesy wedding cliché. If a subtitle is provided, include it as smaller supporting text when suitable.",
+      recommended: "A romantic, premium wedding identity — genuine elegance, not a template. Draw inspiration from: botanical linework, ribbon, invitation seal, tiny heart, laurel wreath, vow-inspired detail — one clear symbolic idea integrated with the wordmark when possible. Find the mark that's graceful, emotionally warm, and quietly luxurious. If a subtitle is provided, include it as smaller supporting text near the primary mark when suitable. Paired with the wordmark.",
+      wordmark:    "The brand name as a refined typographic wedding identity — elegant letterforms with genuine romantic character. A botanical detail, ribbon curve, or heart accent fused into a letterform when it improves the design. If a subtitle was provided, use it as supporting text when it improves the composition. No separate icon.",
+      app_icon:    "A compact, refined emblem — draw from: botanical sprig, invitation seal, tiny heart, or laurel wreath. Elegant at small sizes and instantly recognizable as premium. If a subtitle is provided, include it as a small supporting line when suitable.",
+      symbol_mark: "A standalone decorative mark — draw from: botanical linework, ribbon, heart, laurel, or graceful ornamental form. Genuinely romantic, not a cheesy cliché. If a subtitle is provided, include it as smaller supporting text when suitable.",
     };
   }
 
@@ -580,24 +598,26 @@ function buildMinimalIndustryCue(input) {
       String(input?.otherNotes || input?.notes || ""),
     ].join(" ").toLowerCase();
     const animalTarget = detectPetAnimal(petText);
-    if (animalTarget === "dog")         return "Use broad pet brand cues such as dog companion, paw, collar, playful warmth, friendly character, loyal feeling, or pet lifestyle.";
-    if (animalTarget === "cat")         return "Use broad pet brand cues such as cat companion, whisker, tail, graceful character, independent warmth, feline elegance, or pet lifestyle.";
-    if (animalTarget === "dog_and_cat") return "Use broad pet brand cues such as paw, dog and cat companions, shared warmth, friendly character, or pet lifestyle.";
-    return "Use broad pet brand cues such as paw, friendly animal companion, collar, playful warmth, or pet lifestyle.";
+    if (animalTarget === "dog")         return "Use broad pet brand cues such as paw, tail, ear, collar, caring hands, heart, animal silhouette, dog companion, playful warmth, loyal feeling, or pet lifestyle. One clear symbol integrated with the wordmark when possible.";
+    if (animalTarget === "cat")         return "Use broad pet brand cues such as tail arc, ear silhouette, whisker form, paw, feline face, cat companion, graceful character, independent warmth, or pet lifestyle. One clear symbol integrated with the wordmark when possible.";
+    if (animalTarget === "dog_and_cat") return "Use broad pet brand cues such as shared paw, paired animal silhouette, heart, caring hands, dog and cat companions, shared warmth, friendly character, or pet lifestyle. One clear symbol integrated with the wordmark when possible.";
+    return "Use broad pet brand cues such as paw, tail, ear, animal silhouette, heart, caring hands, friendly animal companion, collar, playful warmth, or pet lifestyle. One clear symbol integrated with the wordmark when possible.";
   }
   if (ind.includes("home") || ind.includes("decor"))                  return "Use broad home decor cues such as botanical forms, home warmth, interior style, craft, shelter, cozy living, or lifestyle branding.";
-  if (ind.includes("tech") || ind.includes("saas") || ind.includes("software")) return "Use broad software cues such as clarity, flow, spark, node, cursor, window, intelligence, or simple modern systems.";
+  if (ind.includes("tech") || ind.includes("saas") || ind.includes("software")) return "Use broad software cues such as spark, node, flow, intelligent signal, abstract mark, cursor, window, clarity, or simple modern systems. One clear concept-driven symbol when it makes the mark more distinctive.";
   if (ind.includes("cafe") || ind.includes("coffee") || ind.includes("bakery") || ind.includes("restaurant") || ind.includes("food") || ind.includes("beverage")) return "Use broad food brand cues such as warmth, craft, cafe feeling, handmade quality, appetite, freshness, or friendly hospitality.";
   if (ind.includes("beauty") || ind.includes("skincare"))             return "Use broad beauty brand cues such as botanical refinement, soft natural forms, gentle elegance, skincare ritual, or premium lifestyle.";
   if (ind.includes("health") || ind.includes("wellness"))             return "Use broad wellness cues such as natural flow, calm balance, organic growth, gentle strength, or serene lifestyle.";
-  if (ind.includes("fitness") || ind.includes("sport"))               return "Use broad fitness cues such as energy, motion, strength, bold form, athletic character, or dynamic lifestyle.";
+  if (ind.includes("fitness") || ind.includes("sport"))               return "Use broad fitness cues such as motion cut, lightning bolt, strength angle, shield, speed arc, dynamic letterform, energy, bold form, athletic character, or dynamic lifestyle. One clear symbol integrated with the brand text when possible.";
   if (ind.includes("fashion") || ind.includes("apparel"))             return "Use broad fashion brand cues such as editorial refinement, minimal tension, quiet luxury, or premium lifestyle.";
   if (ind.includes("creative") || ind.includes("studio"))             return "Use broad creative brand cues such as bold concept, editorial character, geometric confidence, or distinctive visual identity.";
   if (ind.includes("finance") || ind.includes("fintech"))             return "Use broad finance brand cues such as stability, trust, precision, clean geometry, or professional authority.";
   if (ind.includes("legal") || ind.includes("consulting"))            return "Use broad professional cues such as balance, authority, clean structure, measured form, or credible presence.";
   if (ind.includes("education"))                                       return "Use broad education cues such as open path, spark, learning, forward momentum, or encouraging clarity.";
   if (ind.includes("real_estate") || ind.includes("real estate"))     return "Use broad real estate cues such as architectural form, refined elevation, premium space, or aspirational living.";
-  if (ind.includes("wedding") || ind.includes("event"))               return "Use broad wedding and events brand cues such as romantic elegance, botanical floral, graceful monogram, arch, ribbon, vow-inspired detail, interlocking initials, or refined celebration spirit.";
+  if (ind.includes("wedding") || ind.includes("event"))               return "Use broad wedding and events brand cues such as botanical linework, ribbon, invitation seal, tiny heart, laurel wreath, vow-inspired detail, graceful arch, interlocking initials, or refined celebration spirit. One clear symbol integrated with the wordmark when possible.";
+  if (ind.includes("outdoor") || ind.includes("adventure") || ind.includes("hiking") || ind.includes("camping")) return "Use broad outdoor and adventure brand cues such as mountain, tree, trail, tent, sun arc, camp badge, horizon line, landscape form, nature spirit, or wilderness exploration. One clear symbol integrated with the wordmark when possible.";
+  if (ind.includes("logistic") || ind.includes("shipping") || ind.includes("delivery") || ind.includes("transport") || ind.includes("freight") || ind.includes("courier")) return "Use broad logistics brand cues such as arrow, route line, path, speed mark, connected geometry, forward motion, direction, or reliable movement. One clear symbol integrated with the wordmark when possible.";
   return "";
 }
 
