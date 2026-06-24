@@ -1367,4 +1367,8 @@ async function generateIdeogramLogos(input = {}) {
 
 module.exports = {
   generateIdeogramLogos,
+  planConceptDirections,
+  buildMinimalIndustryCue,
+  buildPaletteVariationCue,
+  detectPetAnimal,
 };
