@@ -6,6 +6,7 @@ const { generateDesignDecision, buildPromptFromDesignDecision, generateBrandInsi
 const { generateIdeogramLogos } = require('../services/ideogramService');
 const { analyzeReferenceImage } = require('../services/referenceVisionService');
 const { judgeLogo } = require('../services/openaiJudge');
+const { generateOpenAILogoConcept } = require('../services/openaiImageService');
 // const { runLogoPipeline } = require('../services/logoPipeline'); // temporarily disabled: single-candidate mode
 
 const router = express.Router();
@@ -537,4 +538,52 @@ router.post('/generate-logo-pipeline', requireInternalKey, async (req, res) => {
     });
   }
 });
+// POST /generate-logo-openai-test
+// Internal manual test route for Phase 1.0 OpenAI image service.
+// Disabled unless LOGOFUNNY_OPENAI_IMAGE_ENABLED=true and LOGOFUNNY_INTERNAL_TEST_SECRET is set.
+// Does not charge credits, trigger refund logic, or trigger referral logic.
+router.post('/generate-logo-openai-test', async (req, res) => {
+  // Guard 1: feature flag
+  if (process.env.LOGOFUNNY_OPENAI_IMAGE_ENABLED !== 'true') {
+    return res.status(200).json({ success: false, data: null, error: 'OpenAI image generation is disabled.' });
+  }
+
+  // Guard 2: test secret must be configured
+  const testSecret = process.env.LOGOFUNNY_INTERNAL_TEST_SECRET;
+  if (!testSecret) {
+    return res.status(200).json({ success: false, data: null, error: 'Test route not configured.' });
+  }
+
+  // Guard 3: request must supply matching test secret
+  if (req.headers['x-logofunny-test-secret'] !== testSecret) {
+    return res.status(401).json({ success: false, data: null, error: 'Unauthorized.' });
+  }
+
+  // Guard 4: brandName required
+  const brandName = String(req.body?.brandName || '').trim();
+  if (!brandName) {
+    return res.status(200).json({ success: false, data: null, error: 'Missing brandName.' });
+  }
+
+  // Guard 5: conceptKey validation
+  const VALID_CONCEPT_KEYS = new Set(['recommended', 'wordmark', 'app_icon', 'symbol_mark']);
+  const conceptKey = String(req.body?.conceptKey || 'app_icon').trim();
+  if (!VALID_CONCEPT_KEYS.has(conceptKey)) {
+    return res.status(200).json({ success: false, data: null, error: `Invalid conceptKey. Allowed: ${[...VALID_CONCEPT_KEYS].join(', ')}.` });
+  }
+
+  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  console.log('[openai-test] brandName=%j conceptKey=%s quality=%s ip=%s',
+    brandName, conceptKey, process.env.LOGOFUNNY_OPENAI_IMAGE_QUALITY || 'medium', ip);
+
+  try {
+    const input = mapElementorToAI(req.body);
+    const result = await generateOpenAILogoConcept(input, conceptKey);
+    return res.status(200).json({ success: true, data: result, error: null });
+  } catch (err) {
+    console.error('[openai-test] error:', err?.message || err);
+    return res.status(200).json({ success: false, data: null, error: err?.message || 'Internal error.' });
+  }
+});
+
 module.exports = router;
