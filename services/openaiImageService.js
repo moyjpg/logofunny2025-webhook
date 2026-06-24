@@ -7,6 +7,116 @@ const {
   detectPetAnimal,
 } = require("./ideogramService");
 
+function getConceptTerritory(industryRaw, conceptKey, brandName) {
+  // Deterministic offset so same brand always gets the same territory slot.
+  const offset = brandName.split("").reduce((n, c) => n + c.charCodeAt(0), 0);
+
+  const isTech    = /tech|saas|ai|software|app|data|cloud|platform|startup|dev|digital|cyber|robot|ml|analytics|api/.test(industryRaw);
+  const isPet     = /pet|animal|vet|dog|cat|bird/.test(industryRaw);
+  const isFood    = /food|restaurant|cafe|coffee|bakery|kitchen|catering|meal/.test(industryRaw);
+  const isHealth  = /health|wellness|medical|fitness|pharma|clinic|therapy|mental/.test(industryRaw);
+  const isFinance = /finance|fintech|bank|invest|insurance|payment|wealth|crypto/.test(industryRaw);
+
+  if (conceptKey === "wordmark") {
+    if (isTech) {
+      const picks = [
+        `The wordmark's defining move: the first letter of "${brandName}" is redrawn with a modified terminal that implies direction — as if the letterform itself is moving forward. The remaining letters are set with precise, even spacing.`,
+        `The wordmark turns "${brandName}" into a visual system: one letter has an open counter that creates a deliberate pocket of negative space, giving the name an architectural quality — built, not typed.`,
+        `One character in "${brandName}" carries a subtle geometric extension — a stem or stroke that reaches slightly further than expected, adding tension and direction to an otherwise clean wordmark.`,
+        `The wordmark for "${brandName}" plays with rhythm: letter-spacing opens progressively from left to right, as if the word is expanding — a typographic metaphor for growth and forward motion.`,
+      ];
+      return picks[offset % picks.length];
+    }
+    if (isPet) {
+      return `The wordmark for "${brandName}" has warmth in its letterforms — rounded terminals, generous spacing, and one character with a softened counter that makes the name feel approachable and alive.`;
+    }
+    if (isFood) {
+      return `The wordmark for "${brandName}" has craft in its letterforms — one character has a slightly organic terminal, as if drawn by hand, while the rest maintains clean geometric structure.`;
+    }
+    if (isHealth) {
+      return `The wordmark for "${brandName}" balances clinical precision with human warmth: clean geometric letterforms with one character modified to have a slightly open, inviting counter.`;
+    }
+    if (isFinance) {
+      return `The wordmark for "${brandName}" conveys authority through typographic precision: strong verticals, deliberate spacing, and one character with a modified terminal that adds a mark of distinction.`;
+    }
+    return `The wordmark for "${brandName}" looks drawn rather than typed: one letter carries a deliberate modification — a terminal, counter, or extension — that gives the name a specific personality no off-the-shelf font could provide.`;
+  }
+
+  if (conceptKey === "app_icon") {
+    if (isTech) {
+      const picks = [
+        `The mark is a portal or gateway — an arch or threshold form implying entry, access, and connection. Clean geometry, strong closed silhouette. Not a spark or node.`,
+        `The mark is a workflow ribbon — a single unbroken stroke that loops back on itself, implying automation and continuous process. One closed geometric path, cleanly resolved.`,
+        `The mark is folded geometry — one plane that folds at a precise angle, implying transformation and efficiency. Angular, architectural, with a strong silhouette at any size.`,
+        `The mark is a cursor or window — a software-native metaphor: a clean rectangular frame, a pointer, or both in relationship. Direct, functional, specific to the software experience.`,
+        `The mark is a motion trail — one geometric shape that implies velocity: a clean leading edge and a clear sense of direction. The mark looks like it arrived from somewhere.`,
+      ];
+      return picks[offset % picks.length];
+    }
+    if (isPet) {
+      return `The mark is a single clean animal silhouette — bold enough to read at 32 pixels, simple enough to feel symbolic rather than illustrative. One form, strong outline, no internal detail.`;
+    }
+    if (isFood) {
+      return `The mark is one bold food or utensil form — reduced to its strongest geometric silhouette, specific to this brand's concept, immediately legible at favicon size.`;
+    }
+    if (isHealth) {
+      return `The mark is a single clean form suggesting wellness — a leaf, a continuous path, or a circle with a purposeful break — geometric and simple, readable at any size, free of medical clichés.`;
+    }
+    if (isFinance) {
+      return `The mark is a single geometric form implying growth or direction — an upward angle, a contained shape, or a path that resolves to a point. Clean, authoritative, favicon-ready.`;
+    }
+    return `The mark is a single geometric form — reduced to its strongest silhouette, specific to the concept behind ${brandName}, immediately readable at 32 pixels. One idea, cleanly executed.`;
+  }
+
+  if (conceptKey === "symbol_mark") {
+    if (isTech) {
+      const picks = [
+        `The mark is an abstract fusion of the first letter of "${brandName}" with a directional concept — letterform and idea become one geometric shape, readable as both simultaneously.`,
+        `The mark is an intelligent signal — not a spark or node, but the moment of transmission: a geometric form implying information traveling with purpose. Minimal, specific, unmistakable.`,
+        `The mark is a neural path — a single elegant geometric stroke implying structured decision-making: a path that branches once and resolves. A geometric abstraction of precision thinking, not a brain illustration.`,
+        `The mark has a dual reading: at first glance one geometric form; on closer inspection it contains a second idea. A shape that reveals itself to the viewer who looks twice.`,
+        `The mark is a modular unit seen up close — a small set of identical geometric elements arranged to imply a larger system, like seeing the underlying logic of a platform.`,
+      ];
+      return picks[offset % picks.length];
+    }
+    if (isPet) {
+      return `The mark is the most inventive animal symbol possible — not an illustration but a geometric abstraction that captures the animal's most memorable quality in the fewest possible strokes.`;
+    }
+    if (isFood) {
+      return `The mark takes a food concept and resolves it into something unexpected — a geometric abstraction that implies flavor or craft without resorting to literal food shapes.`;
+    }
+    if (isHealth) {
+      return `The mark is the most inventive health symbol possible — not a cross or leaf or person, but a geometric form that captures vitality or transformation in an unexpected shape owned entirely by this brand.`;
+    }
+    if (isFinance) {
+      return `The mark is a geometric abstraction of financial momentum — not a chart or dollar sign, but a shape implying growth and direction in a form that could only belong to this brand.`;
+    }
+    return `The mark is the most inventive symbol possible for ${brandName} — a geometric idea that captures the brand's core concept in a form specific, memorable, and designed to belong to no other brand.`;
+  }
+
+  // recommended
+  if (isTech) {
+    const picks = [
+      `The mark and wordmark share a visual idea: the symbol's geometric logic appears again in one modified letterform — a connection that makes the identity feel designed as a system, not assembled from parts.`,
+      `The mark is one clean geometric concept specific to what ${brandName} does — not a generic tech icon, but an invented form. The wordmark beside it has precise, slightly open-spaced lettering.`,
+    ];
+    return picks[offset % picks.length];
+  }
+  if (isPet) {
+    return `A warm, confident brand identity: a clean animal-inspired mark paired with a wordmark in rounded, approachable letterforms — both feel like they came from the same design thinking.`;
+  }
+  if (isFood) {
+    return `A confident food brand identity: a craft-driven mark paired with a wordmark that feels considered. The overall composition has warmth and specificity — made, not generated.`;
+  }
+  if (isHealth) {
+    return `A clear, trustworthy health brand identity: a clean symbolic mark paired with a confident wordmark. The composition balances precision with warmth.`;
+  }
+  if (isFinance) {
+    return `An authoritative financial brand identity: a precise geometric mark paired with a strong, deliberate wordmark. The composition conveys stability and forward direction.`;
+  }
+  return `A complete brand identity where mark and wordmark share a visual logic — both feel designed from the same thinking, giving ${brandName} a cohesive, memorable identity that could belong to no other brand.`;
+}
+
 function buildOpenAILogoPrompt(input, conceptKey) {
   const brandName    = String(input?.brandName || "Brand").trim();
   const industryRaw  = String(input?.industry  || "").toLowerCase();
@@ -34,6 +144,8 @@ function buildOpenAILogoPrompt(input, conceptKey) {
   const nameAnchor   = `Brand name: "${brandName}". Spell it exactly, character by character: ${nameChars}. Do not add, remove, or change any letter or space.`;
   const SAFETY_BLOCK = "Output: one centered logo on a plain white (#FFFFFF) background. No ® ™ © symbols. No multi-panel. No brand board. No extra text beyond the brand name.";
 
+  const territory = getConceptTerritory(industryRaw, conceptKey, brandName);
+
   const optional = [
     industryCue ? industryCue                     : null,
     colorDir    ? `Color direction: ${colorDir}.` : null,
@@ -42,49 +154,47 @@ function buildOpenAILogoPrompt(input, conceptKey) {
     notes       ? `User notes: ${notes}.`         : null,
   ].filter(Boolean);
 
-  const industryLabel = industry || "category";
-
   let parts;
 
   if (conceptKey === "wordmark") {
     parts = [
       brandIntro,
-      "Style: flat vector logo design.",
+      territory,
       ...(conceptAngle ? [conceptAngle] : []),
-      `Design a custom typographic wordmark where the letterforms are the entire logo — no separate symbol or icon. The brand name should look drawn, not typed. One or two characters carry a deliberate design decision: an open counter, a modified terminal, a custom ligature, or adjusted stroke contrast. Letter-spacing feels intentional — not default. The result is a wordmark with genuine typographic personality, specific to ${brandName} and not substitutable by a generic font.`,
+      "Flat vector design, logo-ready.",
       ...optional,
-      `${nameAnchor} Every letter correct. This is the entire logo.`,
+      `${nameAnchor} Every letter correct. This is the entire logo — no symbol, no icon.`,
       SAFETY_BLOCK,
     ];
   } else if (conceptKey === "app_icon") {
     parts = [
       brandIntro,
-      "Style: flat vector logo design.",
+      territory,
       ...(conceptAngle ? [conceptAngle] : []),
-      `Create a bold standalone symbol mark with the brand name below in clean, readable type. The symbol must have a strong silhouette — one that reads clearly at favicon size (32×32 pixels) and at full size equally well. The mark is original: derived from a specific concept behind ${brandName}, not a generic ${industryLabel} icon. The brand name below is subordinate — clean, legible, and in supporting weight.`,
+      "Flat vector design, logo-ready.",
       ...optional,
       nameAnchor,
       SAFETY_BLOCK,
-      "The result should look like a polished app icon system — complete and production-ready.",
+      "The mark reads clearly at favicon size (32×32 pixels) and at full size equally well.",
     ];
   } else if (conceptKey === "symbol_mark") {
     parts = [
       brandIntro,
-      "Style: flat vector logo design.",
+      territory,
       ...(conceptAngle ? [conceptAngle] : []),
-      `Create the most inventive mark possible for this brand. Push past obvious ${industryLabel} imagery into something genuinely original — a geometric idea rather than an illustration. The best marks have a concept behind them: a metaphor made geometric, a dual reading, or a form that becomes more interesting the longer you look. Brand name appears below in restrained, clean type — the mark does the creative work. The result should feel specific to ${brandName} and not substitutable for any other brand in the category.`,
+      `Brand name "${brandName}" appears below the mark in restrained, minimal type — the mark carries the creative weight.`,
+      "Flat vector design, logo-ready.",
       ...optional,
       nameAnchor,
       SAFETY_BLOCK,
-      "The result should feel like it was designed by a senior brand designer — original, concept-driven, and memorable.",
     ];
   } else {
     // recommended — complete identity lockup
     parts = [
       brandIntro,
-      "Style: flat vector logo design.",
+      territory,
       ...(conceptAngle ? [conceptAngle] : []),
-      `Create a complete brand identity lockup: a concept-driven symbol mark paired with the brand name as a wordmark. The symbol is original to this brand — derived from what the brand does or represents, not a generic ${industryLabel} icon. The wordmark sits beside or below the mark with deliberate letter-spacing. The overall composition feels like a finished identity — the kind of logo that would appear in a professional branding case study.`,
+      "Flat vector design, logo-ready.",
       ...optional,
       nameAnchor,
       SAFETY_BLOCK,
