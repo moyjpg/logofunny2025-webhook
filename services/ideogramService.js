@@ -826,7 +826,9 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
     : "";
 
   const { descriptor } = buildAllowedVisibleTextCue(input);
-  const subtitleClause = subtitle ? ` and the subtitle '${subtitle}' as smaller supporting text near the primary mark when suitable` : "";
+  const subtitleClause = (subtitle && track === "commercial")
+    ? ` and the subtitle '${subtitle}' as smaller supporting text near the primary mark when suitable`
+    : "";
   let textLock;
   if (conceptKey === "recommended") {
     textLock = descriptor
@@ -864,8 +866,15 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
 
   const parts = [];
 
+  const CREATIVE_SAFETY =
+    "One standalone logo mark on a plain white background only. " +
+    "Do not include ® symbols, ™ symbols, © symbols, or any legal marks. " +
+    "Do not create a brand guideline page, style board, multi-panel layout, or color/type specimen. " +
+    "Do not add decorative captions, explanatory labels, or descriptors outside the brand name.";
+
   if (track === "creative") {
     parts.push(brandIntro);
+    parts.push(CREATIVE_SAFETY);
     parts.push("Approach this with maximum creative freedom. Express the brand's concept through unexpected visual ideas, bold symbolism, and original mark-making.");
     if (conceptAngle)      parts.push(`${conceptAngle} This direction should look visually distinct from the other logo concepts.`);
     if (industryCue)       parts.push(industryCue);
@@ -879,7 +888,8 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
     parts.push("Make it feel polished, memorable, and suitable for actual use.");
   } else if (track === "symbol_fusion") {
     parts.push(brandIntro);
-    parts.push("Create a symbol fusion logo where the brand's core concept is fused into a bold abstract mark. The symbol and letter become one — a hybrid where a letterform becomes an icon or the icon becomes a letterform. Push past conventional logo assembly into genuine invented mark-making.");
+    parts.push(CREATIVE_SAFETY);
+    parts.push("Create a symbol fusion logo where the brand's core concept is fused into a bold abstract mark. The symbol and letter become one — a hybrid where a letterform becomes an icon or the icon becomes a letterform. The creative challenge is in the invented form of the mark itself. The result is one finished logo on a clean white background — not a brand board, not a style guide, not a presentation.");
     if (conceptAngle)      parts.push(`${conceptAngle} This direction should look visually distinct from the other logo concepts.`);
     if (industryCue)       parts.push(industryCue);
     if (referenceStyleCue) parts.push(referenceStyleCue);
