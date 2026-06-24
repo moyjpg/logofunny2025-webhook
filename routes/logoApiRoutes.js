@@ -586,4 +586,130 @@ router.post('/generate-logo-openai-test', async (req, res) => {
   }
 });
 
+// POST /generate-logo-hybrid-test
+// Internal 2 Ideogram + 2 OpenAI hybrid inspection route.
+// Does not charge credits, trigger refund, or trigger referral.
+// Requires LOGOFUNNY_HYBRID_TEST_ENABLED=true and LOGOFUNNY_OPENAI_IMAGE_ENABLED=true.
+router.post('/generate-logo-hybrid-test', async (req, res) => {
+  const t0 = Date.now();
+
+  // Guard 1: hybrid test must be explicitly enabled
+  if (process.env.LOGOFUNNY_HYBRID_TEST_ENABLED !== 'true') {
+    return res.status(404).json({ success: false, data: null, error: 'Not found.' });
+  }
+
+  // Guard 2: test secret must be configured on the server
+  const testSecret = process.env.LOGOFUNNY_INTERNAL_TEST_SECRET;
+  if (!testSecret) {
+    return res.status(500).json({ success: false, data: null, error: 'Test route not configured.' });
+  }
+
+  // Guard 3: request must supply matching test secret
+  if (req.headers['x-logofunny-test-secret'] !== testSecret) {
+    return res.status(403).json({ success: false, data: null, error: 'Unauthorized.' });
+  }
+
+  // Guard 4: OpenAI must be enabled (required for slots 2 and 3)
+  if (process.env.LOGOFUNNY_OPENAI_IMAGE_ENABLED !== 'true') {
+    return res.status(503).json({ success: false, data: null, error: 'OpenAI image generation is disabled (set LOGOFUNNY_OPENAI_IMAGE_ENABLED=true).' });
+  }
+
+  // Guard 5: brandName required
+  const brandName = String(req.body?.brandName || '').trim();
+  if (!brandName) {
+    return res.status(400).json({ success: false, data: null, error: 'Missing brandName.' });
+  }
+
+  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  console.log('[hybrid-test] brandName=%j industry=%j ip=%s',
+    brandName, String(req.body?.industry || ''), ip);
+
+  const input = mapElementorToAI(req.body);
+
+  // Run all 3 calls in parallel: Ideogram (4 slots internally, we take [0] and [1]) + 2 OpenAI slots.
+  const [ideogramOutcome, openaiSlot2Outcome, openaiSlot3Outcome] = await Promise.allSettled([
+    generateIdeogramLogos(input),
+    generateOpenAILogoConcept(input, 'symbol_mark'),
+    generateOpenAILogoConcept(input, 'recommended'),
+  ]);
+
+  const results = [];
+
+  // Slots 0 and 1 — Ideogram Commercial
+  if (ideogramOutcome.status === 'fulfilled') {
+    const ideogramResults = ideogramOutcome.value || [];
+    for (let i = 0; i < 2; i++) {
+      const r = ideogramResults[i];
+      if (r) {
+        results.push({
+          slot: i,
+          model: 'ideogram',
+          imageUrl: r.imageUrl ?? null,
+          conceptLabel: r.conceptLabel ?? r.label ?? `ideogram-${i}`,
+          prompt: r.prompt ?? null,
+        });
+      } else {
+        results.push({ slot: i, model: 'ideogram', error: `Ideogram slot ${i} missing from results.` });
+      }
+    }
+  } else {
+    const errMsg = ideogramOutcome.reason?.message || 'Ideogram generation failed.';
+    console.error('[hybrid-test] Ideogram error:', errMsg);
+    results.push({ slot: 0, model: 'ideogram', error: errMsg });
+    results.push({ slot: 1, model: 'ideogram', error: errMsg });
+  }
+
+  // Slot 2 — OpenAI symbol_mark
+  if (openaiSlot2Outcome.status === 'fulfilled') {
+    const r = openaiSlot2Outcome.value;
+    results.push({
+      slot: 2,
+      model: 'openai',
+      imageUrl: r.imageUrl ?? null,
+      conceptLabel: r.conceptLabel ?? 'symbol_mark',
+      prompt: r.prompt ?? null,
+    });
+  } else {
+    const errMsg = openaiSlot2Outcome.reason?.message || 'OpenAI symbol_mark failed.';
+    console.error('[hybrid-test] OpenAI slot 2 error:', errMsg);
+    results.push({ slot: 2, model: 'openai', conceptLabel: 'symbol_mark', error: errMsg });
+  }
+
+  // Slot 3 — OpenAI recommended
+  if (openaiSlot3Outcome.status === 'fulfilled') {
+    const r = openaiSlot3Outcome.value;
+    results.push({
+      slot: 3,
+      model: 'openai',
+      imageUrl: r.imageUrl ?? null,
+      conceptLabel: r.conceptLabel ?? 'recommended',
+      prompt: r.prompt ?? null,
+    });
+  } else {
+    const errMsg = openaiSlot3Outcome.reason?.message || 'OpenAI recommended failed.';
+    console.error('[hybrid-test] OpenAI slot 3 error:', errMsg);
+    results.push({ slot: 3, model: 'openai', conceptLabel: 'recommended', error: errMsg });
+  }
+
+  const durationMs = Date.now() - t0;
+  console.log('[hybrid-test] done brandName=%j slots=%d durationMs=%d',
+    brandName, results.filter((r) => r.imageUrl).length, durationMs);
+
+  return res.status(200).json({
+    success: true,
+    results,
+    meta: {
+      brandName,
+      industry: String(req.body?.industry || ''),
+      durationMs,
+      slots: {
+        0: 'ideogram-commercial',
+        1: 'ideogram-commercial',
+        2: 'openai-symbol_mark',
+        3: 'openai-recommended',
+      },
+    },
+  });
+});
+
 module.exports = router;
