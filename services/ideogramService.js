@@ -775,7 +775,7 @@ function sanitizeUserNotes(text) {
     .trim();
 }
 
-function buildMinimalConceptPrompt(input, conceptKey, conceptOverride) {
+function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "commercial") {
   const brandName     = String(input?.brandName || "Brand").trim();
   const industry      = String(input?.industry  || "").replace(/_/g, " ").trim();
   const keywords      = [
@@ -805,12 +805,10 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride) {
     symbol_mark: "Explore an independent symbol or emblem paired with the brand name clearly readable below or beside it. One centered composition only on a plain background.",
   };
 
-  const parts = [];
   const industryPhrase = industry ? `a ${industry} brand` : "a brand";
-  parts.push(`Create a creative commercial logo for ${brandName}, ${industryPhrase}.`);
+  const brandIntro = `Create a creative commercial logo for ${brandName}, ${industryPhrase}.`;
 
   const referenceStyleCue = buildReferenceStyleCue(input?.referenceAnalysis);
-  if (referenceStyleCue) parts.push(referenceStyleCue);
 
   const subjectSearchText = [
     String(input?.brandName  || ""),
@@ -821,10 +819,11 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride) {
   ].join(" ").toLowerCase();
   const hasUserBrief = Boolean(notes || keywords);
   const targetSubjectCue = buildTargetSubjectCue(subjectSearchText, Boolean(referenceStyleCue), hasUserBrief);
-  if (targetSubjectCue) parts.push(targetSubjectCue);
 
   const userDirection = [keywords, notes].filter(Boolean).join(". ");
-  if (userDirection)  parts.push(`User brief (do not render as visible text in the logo): ${userDirection}.`);
+  const userBriefPart = userDirection
+    ? `User brief (do not render as visible text in the logo): ${userDirection}.`
+    : "";
 
   const { descriptor } = buildAllowedVisibleTextCue(input);
   const subtitleClause = subtitle ? ` and the subtitle '${subtitle}' as smaller supporting text near the primary mark when suitable` : "";
@@ -842,15 +841,8 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride) {
   } else {
     textLock = `Use only the specified brand text: the brand name '${brandName}'${subtitleClause}. Do not add random extra words.`;
   }
-  parts.push(textLock);
 
-  if (styles)         parts.push(`Style: ${styles}.`);
-  if (colorDir)       parts.push(`Color direction: ${colorDir}.`);
   const paletteCue = buildPaletteVariationCue(input);
-  if (paletteCue)     parts.push(paletteCue);
-  if (typographyDir)  parts.push(`Typography: ${typographyDir}.`);
-  if (iconDir)        parts.push(`Icon direction: ${iconDir}.`);
-  if (detail)         parts.push(`Detail level: ${detail}.`);
 
   const animalKey    = detectLogoAnimal(subjectSearchText);
   const industryConceptDirections = planConceptDirections(
@@ -867,17 +859,58 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride) {
     || industryConceptAngle
     || CONCEPT_ANGLES[conceptKey]
     || "";
-  if (conceptAngle)   parts.push(`${conceptAngle} This direction should look visually distinct from the other logo concepts.`);
 
   const industryCue = buildMinimalIndustryCue(input);
-  if (industryCue)    parts.push(industryCue);
 
-  parts.push("Make it feel polished, memorable, and suitable for actual use.");
+  const parts = [];
+
+  if (track === "creative") {
+    parts.push(brandIntro);
+    parts.push("Approach this with maximum creative freedom. Express the brand's concept through unexpected visual ideas, bold symbolism, and original mark-making.");
+    if (conceptAngle)      parts.push(`${conceptAngle} This direction should look visually distinct from the other logo concepts.`);
+    if (industryCue)       parts.push(industryCue);
+    if (referenceStyleCue) parts.push(referenceStyleCue);
+    if (targetSubjectCue)  parts.push(targetSubjectCue);
+    if (userBriefPart)     parts.push(userBriefPart);
+    parts.push(textLock);
+    if (colorDir)          parts.push(`Color direction: ${colorDir}.`);
+    if (paletteCue)        parts.push(paletteCue);
+    if (typographyDir)     parts.push(`Typography: ${typographyDir}.`);
+    parts.push("Make it feel polished, memorable, and suitable for actual use.");
+  } else if (track === "symbol_fusion") {
+    parts.push(brandIntro);
+    parts.push("Create a symbol fusion logo where the brand's core concept is fused into a bold abstract mark. The symbol and letter become one — a hybrid where a letterform becomes an icon or the icon becomes a letterform. Push past conventional logo assembly into genuine invented mark-making.");
+    if (conceptAngle)      parts.push(`${conceptAngle} This direction should look visually distinct from the other logo concepts.`);
+    if (industryCue)       parts.push(industryCue);
+    if (referenceStyleCue) parts.push(referenceStyleCue);
+    if (targetSubjectCue)  parts.push(targetSubjectCue);
+    if (userBriefPart)     parts.push(userBriefPart);
+    parts.push(textLock);
+    if (colorDir)          parts.push(`Color direction: ${colorDir}.`);
+    if (paletteCue)        parts.push(paletteCue);
+    parts.push("Make it feel polished, memorable, and suitable for actual use.");
+  } else {
+    // commercial — current behavior unchanged
+    parts.push(brandIntro);
+    if (referenceStyleCue) parts.push(referenceStyleCue);
+    if (targetSubjectCue)  parts.push(targetSubjectCue);
+    if (userBriefPart)     parts.push(userBriefPart);
+    parts.push(textLock);
+    if (styles)            parts.push(`Style: ${styles}.`);
+    if (colorDir)          parts.push(`Color direction: ${colorDir}.`);
+    if (paletteCue)        parts.push(paletteCue);
+    if (typographyDir)     parts.push(`Typography: ${typographyDir}.`);
+    if (iconDir)           parts.push(`Icon direction: ${iconDir}.`);
+    if (detail)            parts.push(`Detail level: ${detail}.`);
+    if (conceptAngle)      parts.push(`${conceptAngle} This direction should look visually distinct from the other logo concepts.`);
+    if (industryCue)       parts.push(industryCue);
+    parts.push("Make it feel polished, memorable, and suitable for actual use.");
+  }
 
   return parts.join(" ");
 }
 
-function buildIdeogramPrompt(input = {}, groupIndex = 0) {
+function buildIdeogramPrompt(input = {}, groupIndex = 0, track = "commercial") {
   const CONCEPT_PROMPT_KEYS = ["recommended", "wordmark", "app_icon", "symbol_mark"];
   const conceptKey = CONCEPT_PROMPT_KEYS[groupIndex];
   if (
@@ -887,20 +920,21 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0) {
     typeof input.conceptPrompts[conceptKey] === "string" &&
     input.conceptPrompts[conceptKey].trim()
   ) {
+    const TRACK_MAGIC = { commercial: "OFF", creative: "AUTO", symbol_fusion: "AUTO" };
     const parts = [
-      buildMinimalConceptPrompt(input, conceptKey, null),
+      buildMinimalConceptPrompt(input, conceptKey, null, track),
       MINIMAL_CONCEPT_SUFFIX,
     ];
 
     if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
-      console.log("[prompt-debug] path=conceptPrompts conceptKey=%s promptPreview=%j",
-        conceptKey, dbgSlice(parts.join(" "), 600));
+      console.log("[prompt-debug] path=conceptPrompts conceptKey=%s track=%s promptPreview=%j",
+        conceptKey, track, dbgSlice(parts.join(" "), 600));
     }
     return {
       prompt: parts.join(" "),
       style_name: "logofunny",
       conceptLabel: conceptKey,
-      magicPromptOverride: "OFF",
+      magicPromptOverride: TRACK_MAGIC[track] ?? "OFF",
     };
   }
 
@@ -1248,7 +1282,13 @@ async function generateIdeogramLogos(input = {}) {
 
   const groups = await Promise.all(
     Array.from({ length: conceptCount }, (_, i) => i).map(async (conceptIndex) => {
-      let { prompt, style_name, conceptLabel, magicPromptOverride } = buildIdeogramPrompt(input, conceptIndex);
+      const creativeTracks = process.env.LOGOFUNNY_IDEOGRAM_CREATIVE_TRACKS === "true";
+      const TRACK_ASSIGNMENTS = ["commercial", "commercial", "creative", "symbol_fusion"];
+      const track = creativeTracks ? (TRACK_ASSIGNMENTS[conceptIndex] || "commercial") : "commercial";
+      if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
+        console.log("[ideogram-track] conceptIndex=%d track=%s creativeTracks=%s", conceptIndex, track, creativeTracks);
+      }
+      let { prompt, style_name, conceptLabel, magicPromptOverride } = buildIdeogramPrompt(input, conceptIndex, track);
       if (hasStyleReference) {
         prompt = prompt + " Use the uploaded reference image as a strong visual style guide only. Strongly follow its overall visual language, such as shape language, composition, color mood, line weight, simplicity level, icon or mascot feel, and layout. Create a new original logo for the requested brand. Do not copy exact artwork, text, brand names, trademarks, or protected logos from the reference.";
       }
