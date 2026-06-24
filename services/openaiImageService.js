@@ -86,7 +86,6 @@ async function generateOpenAILogoConcept(input = {}, conceptKey = "app_icon") {
       n: 1,
       size: "1024x1024",
       quality,
-      response_format: "b64_json",
     }),
   });
 
@@ -98,7 +97,8 @@ async function generateOpenAILogoConcept(input = {}, conceptKey = "app_icon") {
   const data = await response.json();
   const b64  = data?.data?.[0]?.b64_json;
   if (!b64) {
-    throw new Error("OpenAI returned no image data");
+    const availableKeys = JSON.stringify(Object.keys(data?.data?.[0] || {}));
+    throw new Error(`OpenAI returned no b64_json image data. Available keys in data[0]: ${availableKeys}`);
   }
 
   const buffer = Buffer.from(b64, "base64");
