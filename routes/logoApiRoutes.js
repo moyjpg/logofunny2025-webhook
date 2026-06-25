@@ -630,7 +630,7 @@ router.post('/generate-logo-hybrid-test', async (req, res) => {
   const [ideogramOutcome, openaiSlot2Outcome, openaiSlot3Outcome] = await Promise.allSettled([
     generateIdeogramLogos(input),
     generateOpenAILogoConcept(input, 'symbol_mark'),
-    generateOpenAILogoConcept(input, 'recommended'),
+    generateOpenAILogoConcept(input, 'wordmark'),
   ]);
 
   const results = [];
@@ -690,20 +690,20 @@ router.post('/generate-logo-hybrid-test', async (req, res) => {
     results.push({ slot: 2, model: 'openai', conceptLabel: 'symbol_mark', error: errMsg });
   }
 
-  // Slot 3 — OpenAI recommended
+  // Slot 3 — OpenAI wordmark
   if (openaiSlot3Outcome.status === 'fulfilled') {
     const r = openaiSlot3Outcome.value;
     results.push({
       slot: 3,
       model: 'openai',
       imageUrl: r.imageUrl ?? null,
-      conceptLabel: r.conceptLabel ?? 'recommended',
+      conceptLabel: r.conceptLabel ?? 'wordmark',
       prompt: r.prompt ?? null,
     });
   } else {
-    const errMsg = openaiSlot3Outcome.reason?.message || 'OpenAI recommended failed.';
+    const errMsg = openaiSlot3Outcome.reason?.message || 'OpenAI wordmark failed.';
     console.error('[hybrid-test] OpenAI slot 3 error:', errMsg);
-    results.push({ slot: 3, model: 'openai', conceptLabel: 'recommended', error: errMsg });
+    results.push({ slot: 3, model: 'openai', conceptLabel: 'wordmark', error: errMsg });
   }
 
   const durationMs = Date.now() - t0;
@@ -721,7 +721,7 @@ router.post('/generate-logo-hybrid-test', async (req, res) => {
         0: 'ideogram-commercial',
         1: 'ideogram-commercial',
         2: 'openai-symbol_mark',
-        3: 'openai-recommended',
+        3: 'openai-wordmark',
       },
     },
   });

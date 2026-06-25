@@ -72,8 +72,8 @@ function getConceptTerritory(industryRaw, conceptKey, brandName) {
     if (isTech) {
       const picks = [
         `The mark is an abstract fusion of the first letter of "${brandName}" with a directional concept — letterform and idea become one geometric shape, readable as both simultaneously.`,
-        `The mark is an intelligent signal — not a spark or node, but the moment of transmission: a geometric form implying information traveling with purpose. Minimal, specific, unmistakable.`,
-        `The mark is a neural path — a single elegant geometric stroke implying structured decision-making: a path that branches once and resolves. A geometric abstraction of precision thinking, not a brain illustration.`,
+        `The mark is a single parenthesis — one curved stroke, slightly open, implying containment. The brand name sits outside it. The form implies wrapping, like brackets around a concept, not an arrow going anywhere.`,
+        `The mark is a Y drawn at a precise angle — the fork deliberate, the proportions architectural. Read it as a branch point, read it as a structural form. The ambiguity is the idea.`,
         `The mark has a dual reading: at first glance one geometric form; on closer inspection it contains a second idea. A shape that reveals itself to the viewer who looks twice.`,
         `The mark is a modular unit seen up close — a small set of identical geometric elements arranged to imply a larger system, like seeing the underlying logic of a platform.`,
       ];
