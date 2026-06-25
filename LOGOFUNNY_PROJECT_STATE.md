@@ -322,6 +322,54 @@ Hybrid should combine Ideogram commercial strength with OpenAI cleanliness and c
 
 Do not connect Hybrid to production yet.
 
+3.8 Hybrid v1.4 Step 1 — Deployment and Test Result
+
+Commit be1e4fa "Add hybrid quality metadata and project state doc" was pushed to origin/main.
+
+Render deploy for be1e4fa confirmed live.
+
+/generate-logo-hybrid-test was tested with brand Nexora after deploy.
+
+Test input:
+
+* Brand: Nexora
+* Industry: SaaS / Tech
+* Subtitle: AI Workflow Studio
+* Color: Blue
+* Style: Symbol + Wordmark, Minimal & Modern, Geometric & Simple
+* Icon: Abstract Symbol, Simple Icon
+* Detail: Balanced
+
+Test result — all 4 slots returned hasImageUrl: true and include qualityStatus, qualityWarnings, and isSafeForLead:
+
+slot 0 — Ideogram Lead concept
+  qualityStatus: pass
+  qualityWarnings: []
+  isSafeForLead: true
+
+slot 1 — Ideogram Custom wordmark
+  qualityStatus: needs_review
+  qualityWarnings: ["May include trademark-like symbols"]
+  isSafeForLead: false
+
+slot 2 — OpenAI symbol_mark
+  qualityStatus: pass
+  qualityWarnings: []
+  isSafeForLead: true
+
+slot 3 — OpenAI wordmark
+  qualityStatus: pass
+  qualityWarnings: []
+  isSafeForLead: true
+
+Conclusion:
+
+Hybrid v1.4 Step 1 is verified successful.
+
+Important:
+
+This test only verified metadata behavior. It did not change production /generate-logo and did not start Step 2 prompt work.
+
 ⸻
 
 4. Current Task / Active Work
@@ -979,48 +1027,44 @@ bb64ec3 Add OpenAI concept territory prompts
 7cffd8b Add internal hybrid generation test route
 f04573e Persist Ideogram hybrid test slots to R2
 aa529f9 Adjust hybrid OpenAI creative slots
+be1e4fa Add hybrid quality metadata and project state doc
 
-Current deployed commit before active uncommitted Step 1:
+Current deployed commit:
 
-aa529f9 Adjust hybrid OpenAI creative slots
+be1e4fa Add hybrid quality metadata and project state doc
 
 Current uncommitted local change:
 
-M routes/logoApiRoutes.js
+None — working tree is clean.
 
 ⸻
 
 12. Last Known State
 
-Last known state at the time this document was created:
+Last known state updated 2026-06-25:
 
 Project: LogoFunny backend
 Backend path: /Volumes/MOY WorkSSD/AI_WORK/logofunny-backend
 Frontend path: /Volumes/MOY WorkSSD/AI_WORK/v0-logo-funny-landing-page
 Latest pushed backend commit:
-aa529f9 Adjust hybrid OpenAI creative slots
+be1e4fa Add hybrid quality metadata and project state doc
 Deploy:
-aa529f9 was confirmed deployed successfully on Render.
-Current active task:
-Hybrid v1.4 Step 1 only — quality metadata for /generate-logo-hybrid-test.
+be1e4fa was confirmed deployed successfully on Render.
+Hybrid v1.4 Step 1 status:
+VERIFIED COMPLETE — all 4 slots return quality metadata (qualityStatus, qualityWarnings, isSafeForLead).
+Test result summary (brand: Nexora):
+slot 0 Ideogram Lead: pass / [] / isSafeForLead true
+slot 1 Ideogram Wordmark: needs_review / ["May include trademark-like symbols"] / isSafeForLead false
+slot 2 OpenAI symbol_mark: pass / [] / isSafeForLead true
+slot 3 OpenAI wordmark: pass / [] / isSafeForLead true
 Current local git status:
-M routes/logoApiRoutes.js
-Current uncommitted change:
-routes/logoApiRoutes.js was edited to add quality metadata to /generate-logo-hybrid-test results.
-Verification already done:
-node -c routes/logoApiRoutes.js passed.
-git status --short shows only:
-M routes/logoApiRoutes.js
-Current terminal state:
-Claude is stopped at a commit confirmation prompt:
-Commit only routes/logoApiRoutes.js — message: "Add quality gate to hybrid test route"
-Current instruction:
-Do not confirm commit yet.
-First manually inspect diff.
-If satisfied, commit with preferred message:
-Add quality metadata to hybrid test route
+Clean — no uncommitted changes.
+Current active task:
+Step 1 is complete. Step 2 has not started.
+Next planned work:
+Hybrid v1.4 Step 2 — OpenAI creative slot prompt improvements (requires analysis first, separate task).
 Current no-touch areas:
-Do not modify services/openaiImageService.js.
+Do not modify services/openaiImageService.js until Step 2 is explicitly approved.
 Do not modify services/openaiJudge.js.
 Do not modify services/ideogramService.js.
 Do not modify services/r2Upload.js.
@@ -1029,7 +1073,6 @@ Do not modify live /generate-logo.
 Do not modify /generate-logo-openai-test.
 Do not modify payments / Dodo / credits / refund / referral / Supabase.
 Do not connect Hybrid to production.
-Do not continue OpenAI prompt work until Step 1 is verified.
 
 ⸻
 
