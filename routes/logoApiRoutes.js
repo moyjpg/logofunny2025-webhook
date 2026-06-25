@@ -746,13 +746,29 @@ router.post('/generate-logo-hybrid-test', async (req, res) => {
     return { ...item, qualityStatus, qualityWarnings: warnings, isSafeForLead };
   });
 
+  // Lead recommendation — prefer first isSafeForLead slot in slot order
+  const recommendedItem = annotatedResults.find((r) => r.isSafeForLead) ?? null;
+  const recommendedSlot = recommendedItem?.slot ?? null;
+  const recommendation = {
+    slot:   recommendedSlot,
+    reason: recommendedSlot !== null
+      ? 'First slot where isSafeForLead is true'
+      : 'No slot passed quality gate',
+    mode:   recommendedSlot !== null ? 'quality_gate' : 'none',
+  };
+  const finalResults = annotatedResults.map((r) => ({
+    ...r,
+    isRecommended: r.slot === recommendedSlot,
+  }));
+
   const durationMs = Date.now() - t0;
   console.log('[hybrid-test] done brandName=%j slots=%d durationMs=%d',
     brandName, annotatedResults.filter((r) => r.imageUrl).length, durationMs);
 
   return res.status(200).json({
     success: true,
-    results: annotatedResults,
+    results: finalResults,
+    recommendation,
     meta: {
       brandName,
       industry: String(req.body?.industry || ''),
