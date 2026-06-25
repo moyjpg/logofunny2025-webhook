@@ -20,9 +20,9 @@ function getConceptTerritory(industryRaw, conceptKey, brandName) {
   if (conceptKey === "wordmark") {
     if (isTech) {
       const picks = [
-        `The wordmark's defining move: the first letter of "${brandName}" is redrawn with a modified terminal that implies direction — as if the letterform itself is moving forward. The remaining letters are set with precise, even spacing.`,
+        `The wordmark's defining move: the first letter of "${brandName}" has its terminal removed and the stroke ends with a clean diagonal cut — an angled exit. The rest of the letters are set in matching weight with even spacing. The cut is the only custom element.`,
         `The wordmark turns "${brandName}" into a visual system: one letter has an open counter that creates a deliberate pocket of negative space, giving the name an architectural quality — built, not typed.`,
-        `One character in "${brandName}" carries a subtle geometric extension — a stem or stroke that reaches slightly further than expected, adding tension and direction to an otherwise clean wordmark.`,
+        `One letter in "${brandName}" has its crossbar extended past its natural boundary — the horizontal stroke runs longer on one side, adding deliberate asymmetry to an otherwise balanced wordmark. The extension is structural, not decorative.`,
         `The wordmark for "${brandName}" plays with rhythm: letter-spacing opens progressively from left to right, as if the word is expanding — a typographic metaphor for growth and forward motion.`,
       ];
       return picks[offset % picks.length];
@@ -71,11 +71,11 @@ function getConceptTerritory(industryRaw, conceptKey, brandName) {
   if (conceptKey === "symbol_mark") {
     if (isTech) {
       const picks = [
-        `The mark is an abstract fusion of the first letter of "${brandName}" with a directional concept — letterform and idea become one geometric shape, readable as both simultaneously.`,
+        `The mark begins as the first letter of "${brandName}" and ends differently — one stroke is extended past its natural endpoint, making the letterform complete itself in an unexpected direction. Read it as a letter; read it as a geometric idea. One form, two meanings.`,
         `The mark is a single parenthesis — one curved stroke, slightly open, implying containment. The brand name sits outside it. The form implies wrapping, like brackets around a concept, not an arrow going anywhere.`,
         `The mark is a Y drawn at a precise angle — the fork deliberate, the proportions architectural. Read it as a branch point, read it as a structural form. The ambiguity is the idea.`,
         `The mark has a dual reading: at first glance one geometric form; on closer inspection it contains a second idea. A shape that reveals itself to the viewer who looks twice.`,
-        `The mark is a modular unit seen up close — a small set of identical geometric elements arranged to imply a larger system, like seeing the underlying logic of a platform.`,
+        `The mark is three right-angle fragments arranged to imply a closed square that never closes — the fourth corner is missing, and the eye completes it. Precise, systematic, one deliberate absence.`,
       ];
       return picks[offset % picks.length];
     }
