@@ -635,16 +635,31 @@ router.post('/generate-logo-hybrid-test', async (req, res) => {
 
   const results = [];
 
-  // Slots 0 and 1 — Ideogram Commercial
+  // Slots 0 and 1 — Ideogram Commercial (persisted to R2)
   if (ideogramOutcome.status === 'fulfilled') {
     const ideogramResults = ideogramOutcome.value || [];
+    const r0 = ideogramResults[0];
+    const r1 = ideogramResults[1];
+
+    const [r2Upload0, r2Upload1] = await Promise.allSettled([
+      r0?.imageUrl ? uploadLogoImageToR2(r0.imageUrl) : Promise.resolve(null),
+      r1?.imageUrl ? uploadLogoImageToR2(r1.imageUrl) : Promise.resolve(null),
+    ]);
+
     for (let i = 0; i < 2; i++) {
       const r = ideogramResults[i];
+      const r2Outcome = i === 0 ? r2Upload0 : r2Upload1;
       if (r) {
+        const persistedUrl = r2Outcome?.status === 'fulfilled' && r2Outcome.value?.publicUrl
+          ? r2Outcome.value.publicUrl
+          : r.imageUrl ?? null;
+        if (r2Outcome?.status === 'rejected') {
+          console.error(`[hybrid-test] Ideogram slot ${i} R2 upload failed:`, r2Outcome.reason?.message);
+        }
         results.push({
           slot: i,
           model: 'ideogram',
-          imageUrl: r.imageUrl ?? null,
+          imageUrl: persistedUrl,
           conceptLabel: r.conceptLabel ?? r.label ?? `ideogram-${i}`,
           prompt: r.prompt ?? null,
         });
