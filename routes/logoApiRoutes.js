@@ -5,7 +5,7 @@ const { uploadLogoImageToR2, uploadLogoSvgTextToR2, uploadBufferToR2 } = require
 const { generateDesignDecision, buildPromptFromDesignDecision, generateBrandInsight } = require('../services/designDecision');
 const { generateIdeogramLogos } = require('../services/ideogramService');
 const { analyzeReferenceImage } = require('../services/referenceVisionService');
-const { judgeLogo } = require('../services/openaiJudge');
+const { judgeLogo, isCommercialLogoPass } = require('../services/openaiJudge');
 const { generateOpenAILogoConcept } = require('../services/openaiImageService');
 // const { runLogoPipeline } = require('../services/logoPipeline'); // temporarily disabled: single-candidate mode
 
@@ -706,13 +706,53 @@ router.post('/generate-logo-hybrid-test', async (req, res) => {
     results.push({ slot: 3, model: 'openai', conceptLabel: 'wordmark', error: errMsg });
   }
 
+  // Quality gate — judge all slots with imageUrl in parallel, annotate results
+  const HYBRID_VIOLATION_WARNINGS = {
+    hasTrademarkSymbol: 'May include trademark-like symbols',
+    hasFakeText: 'May include small unreadable or extra text',
+    hasPresentationLayout: 'May look like a presentation board rather than a single logo',
+  };
+  const judgeSettled = await Promise.allSettled(
+    results.map((item) =>
+      item.imageUrl ? judgeLogo(item.imageUrl, input) : Promise.resolve(null)
+    )
+  );
+  const annotatedResults = results.map((item, i) => {
+    const settled = judgeSettled[i];
+    const judgeResult = settled?.status === 'fulfilled' ? settled.value : null;
+
+    if (!item.imageUrl) {
+      return { ...item, qualityStatus: 'unchecked', qualityWarnings: [], isSafeForLead: false };
+    }
+    if (!judgeResult) {
+      console.log('[hybrid-test] quality check unavailable slot=%d', item.slot);
+      return { ...item, qualityStatus: 'unchecked', qualityWarnings: ['Quality check unavailable'], isSafeForLead: false };
+    }
+
+    const v = judgeResult.violations || {};
+    const warnings = [...new Set(
+      Object.entries(HYBRID_VIOLATION_WARNINGS)
+        .filter(([flag]) => v[flag])
+        .map(([, label]) => label)
+    )];
+
+    const qualityStatus = warnings.length > 0 ? 'needs_review' : 'pass';
+    const isSafeForLead = isCommercialLogoPass(judgeResult);
+
+    if (warnings.length > 0) {
+      console.log('[hybrid-test] slot=%d needs_review warnings=%j', item.slot, warnings);
+    }
+
+    return { ...item, qualityStatus, qualityWarnings: warnings, isSafeForLead };
+  });
+
   const durationMs = Date.now() - t0;
   console.log('[hybrid-test] done brandName=%j slots=%d durationMs=%d',
-    brandName, results.filter((r) => r.imageUrl).length, durationMs);
+    brandName, annotatedResults.filter((r) => r.imageUrl).length, durationMs);
 
   return res.status(200).json({
     success: true,
-    results,
+    results: annotatedResults,
     meta: {
       brandName,
       industry: String(req.body?.industry || ''),
