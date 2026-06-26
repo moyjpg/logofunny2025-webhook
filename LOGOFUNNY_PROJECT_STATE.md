@@ -1041,38 +1041,178 @@ None — working tree is clean.
 
 12. Last Known State
 
-Last known state updated 2026-06-25:
+Last known state updated 2026-06-26:
 
-Project: LogoFunny backend
+Project: LogoFunny backend + frontend
 Backend path: /Volumes/MOY WorkSSD/AI_WORK/logofunny-backend
 Frontend path: /Volumes/MOY WorkSSD/AI_WORK/v0-logo-funny-landing-page
 Latest pushed backend commit:
-be1e4fa Add hybrid quality metadata and project state doc
-Deploy:
-be1e4fa was confirmed deployed successfully on Render.
-Hybrid v1.4 Step 1 status:
-VERIFIED COMPLETE — all 4 slots return quality metadata (qualityStatus, qualityWarnings, isSafeForLead).
-Test result summary (brand: Nexora):
-slot 0 Ideogram Lead: pass / [] / isSafeForLead true
-slot 1 Ideogram Wordmark: needs_review / ["May include trademark-like symbols"] / isSafeForLead false
-slot 2 OpenAI symbol_mark: pass / [] / isSafeForLead true
-slot 3 OpenAI wordmark: pass / [] / isSafeForLead true
-Current local git status:
+ec35459 Add lead recommendation to hybrid test route
+Latest pushed frontend commit:
+e8b85d3 Align free plan value copy
+Backend deploy:
+ec35459 was confirmed deployed successfully on Render.
+Hybrid v1.5 status:
+VERIFIED COMPLETE — recommendation object and isRecommended per result working.
+Frontend pricing/copy cleanup:
+COMPLETE — 7 frontend commits pushed and live.
+Current local git status (both repos):
 Clean — no uncommitted changes.
 Current active task:
-Step 1 is complete. Step 2 has not started.
-Next planned work:
-Hybrid v1.4 Step 2 — OpenAI creative slot prompt improvements (requires analysis first, separate task).
+None. Both backend Hybrid and frontend copy cleanup are complete for this session.
+Next recommended steps:
+1. Final live UI review of Hero, Pricing, FAQ, My Creations, out-of-credits modal.
+2. Decide whether to continue product-quality work or move to Amazon Ads Doctor P0 work.
+3. Do not connect /generate-logo-hybrid-test to production /generate-logo yet.
+4. Do not continue OpenAI prompt micro-tuning without a focused test plan.
 Current no-touch areas:
-Do not modify services/openaiImageService.js until Step 2 is explicitly approved.
 Do not modify services/openaiJudge.js.
 Do not modify services/ideogramService.js.
 Do not modify services/r2Upload.js.
-Do not modify frontend.
 Do not modify live /generate-logo.
 Do not modify /generate-logo-openai-test.
 Do not modify payments / Dodo / credits / refund / referral / Supabase.
 Do not connect Hybrid to production.
+
+⸻
+
+12b. Session Update — Hybrid Quality Gate + Pricing/Upgrade Copy Cleanup
+
+12b.1 Backend Hybrid Work Completed
+
+Hybrid v1.4 Step 1 — quality metadata:
+
+* Implemented, pushed, deployed, and verified.
+* Commit: be1e4fa Add hybrid quality metadata and project state doc
+* /generate-logo-hybrid-test results now include:
+    * qualityStatus
+    * qualityWarnings
+    * isSafeForLead
+* The metadata-only quality gate does not hide, reorder, regenerate, or change original slot results.
+* It remains internal-only and does not affect live /generate-logo.
+
+Project state doc verification:
+
+* Commit: cfe841d Update project state after hybrid metadata verification
+* LOGOFUNNY_PROJECT_STATE.md was added to GitHub after checking that no real secrets were present.
+* It should be used for cross-chat / Claude / Codex continuity.
+
+Hybrid v1.4 Step 2 — OpenAI creative prompt replacement:
+
+* Implemented, pushed, deployed, and tested.
+* Commit: 5a13e9f Improve OpenAI hybrid creative prompts
+* Only services/openaiImageService.js was changed.
+* Exactly 4 OpenAI hybrid creative prompt strings were replaced.
+* Visual test result:
+    * Technical behavior worked.
+    * OpenAI results remained clean.
+    * Visual improvement was limited.
+    * OpenAI still tends to produce generic sparkle / bracket / basic SaaS-style marks.
+    * Do not continue OpenAI prompt micro-tuning unless there is a focused test plan.
+
+Hybrid v1.5 — lead recommendation metadata:
+
+* Implemented, pushed, deployed, and verified.
+* Commit: ec35459 Add lead recommendation to hybrid test route
+* /generate-logo-hybrid-test now returns:
+    * top-level recommendation object
+    * per-result isRecommended
+* Recommendation logic:
+    * Selects the first result where isSafeForLead === true
+    * If no result is safe, recommendation is null / mode: 'none'
+* Verified:
+    * recommendation.slot returned correctly
+    * Exactly one result has isRecommended: true when a safe result exists
+* Still internal-only.
+* Hybrid route is not connected to production /generate-logo.
+
+Current backend Hybrid status:
+
+* Backend Hybrid has a working internal chain: generation → quality metadata → internal recommendation.
+* Do not connect Hybrid to live /generate-logo yet.
+* Do not modify payments / Dodo / credits / refund / referral / Supabase as part of Hybrid work.
+
+12b.2 Frontend Pricing / Credits / Upgrade Copy Cleanup Completed
+
+Purpose:
+
+* LogoFunny is already live for user testing.
+* Public-facing Free / Pro / Pricing / Upgrade copy needed to be clearer, more commercial, and less confusing.
+* We reduced confusion around "credits", "2 generations", referral rewards, and Pro gating.
+
+Completed frontend commits:
+
+* eb993ef Align free generation copy
+* bf88566 Soften referral reward copy
+* 1d5bfd7 Replace pro alert with inline upgrade banner
+* aaa6b0e Show pro upgrade banner inside preview modal
+* 5592150 Clean up FAQ pricing copy
+* c789dc6 Improve free usage and referral copy
+* e8b85d3 Align free plan value copy
+
+P0 — Free offer copy:
+
+* Previous wording created confusion: "Get 20 free credits" vs "2 free generations"
+* Updated public value framing to focus on user benefit: Create up to 8 logo concepts free
+* Reason: 20 credits = 2 generations × 4 concepts = up to 8 logo concepts.
+  "8 logo concepts" feels more valuable and clearer than "2 generations".
+  Credits remain an internal/account mechanic, not the main public CTA framing.
+
+Out-of-credits copy:
+
+* Updated from "You've used your free credits." to "You've used your free logo concepts."
+* Goal: Avoid confusing users with credit math. Keep the message clear when free usage is exhausted.
+
+Referral copy:
+
+* Reduced promise risk.
+* Current safer wording: "Referral rewards are coming soon."
+* Avoid wording that sounds like confirmed reward entitlement for early supporters.
+
+Pricing Free card:
+
+* Updated to align with Hero value framing.
+* Current Free card copy:
+    * Up to 8 logo concepts, free
+    * 2 generations · 4 concepts each
+* Leads with value, explains the real limit clearly.
+
+FAQ cleanup:
+
+* Commit: 5592150 Clean up FAQ pricing copy
+* FAQ now aligns with: Free preview downloads / Pro commercial-use downloads.
+* Removed confusing "higher-resolution PNG tied to paid plans" framing (inaccurate — difference is commercial use, not resolution).
+* Changed "Showcase Match this" to user-facing "Match this".
+
+My Creations Pro gate:
+
+* Native window.alert replaced with inline upgrade UI.
+* Commit: 1d5bfd7 Replace pro alert with inline upgrade banner
+* Preview modal also updated to show Pro upgrade banner inside the modal.
+* Commit: aaa6b0e Show pro upgrade banner inside preview modal
+* Verified: Free user clicking Make similar from list → upgrade banner visible.
+  Free user clicking Make similar inside preview modal → upgrade banner inside modal.
+  Upgrade link jumps to /#pricing. Dismiss × closes the banner.
+* No checkout, Dodo, credits, Supabase, or backend logic was changed.
+
+Current frontend public copy status:
+
+* Hero / signed-out CTA: Create up to 8 logo concepts free
+* Out-of-credits: You've used your free logo concepts.
+* Referral: Referral rewards are coming soon.
+* Pricing Free: Up to 8 logo concepts, free / 2 generations · 4 concepts each
+* FAQ: Free preview / Pro commercial-use wording aligned.
+* My Creations: Inline Pro upgrade banners replace browser alerts.
+
+12b.3 Doc Maintenance Rule
+
+LOGOFUNNY_PROJECT_STATE.md is a convenience handoff document, not extra daily work.
+
+* Do not update it after every small step.
+* Update it at the end of a work session or after major milestones only.
+* Use it to continue across new ChatGPT / Claude / Codex sessions.
+* Suggested continuation prompt:
+    Bro，读取 /Volumes/MOY WorkSSD/AI_WORK/logofunny-backend/LOGOFUNNY_PROJECT_STATE.md，继续 LogoFunny 项目。
 
 ⸻
 
