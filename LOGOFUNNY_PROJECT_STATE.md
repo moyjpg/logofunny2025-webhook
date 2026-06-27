@@ -1314,6 +1314,146 @@ Phase 0 quality (deferred):
 
 ⸻
 
+12d. Session Update — 2026-06-28: Shadow Ledger Production Verification + Free Signup Backfill Migration + Four-Card Pricing
+
+12d.1 Shadow Ledger Production Verification
+
+Production Supabase tables manually created from migration file:
+
+  20260627000000_create_credit_ledger_shadow_tables.sql
+
+All 5 tables confirmed present: credit_grants, generation_charges, generation_charge_allocations, dodo_webhook_events, designer_orders.
+
+All required custom indexes verified; pg_indexes returned 16 rows including primary key and unique indexes.
+
+service_role GRANT and RLS settings applied manually via Supabase SQL Editor (captured in migration 20260627000001).
+
+Real generation test (after permission fix):
+
+  * One real generation completed on logofunny.com.
+  * generation_charges row confirmed: route = /generate-logo, credits_charged = 10, status = success.
+  * Shadow write fired and landed correctly.
+
+Reconciliation query results after real generation:
+
+  Step 4  generation_charges        1 row, status=success, credits_charged=10  PASS
+  Step 5  generation_charge_allocations  0 rows                                EXPECTED (no grant backfill yet)
+  Step 6  credit_grants             0 rows                                     EXPECTED (old free user, no backfill)
+  Step 8  live_used=2, shadow_success=1, shadow_refunded=0                     MISMATCH EXPECTED
+
+Step 8 mismatch reason: test user had one generation before shadow tables existed. That generation was never captured. Cold-start gap is permanent for this user and expected. Shadow writes are correct from the moment permissions were in place.
+
+Shadow mode contract confirmed still in effect:
+
+  * Shadow writes do not block live generation.
+  * generations_limit / generations_used remain sole live billing gate.
+  * Shadow write failures are silent and fire-and-forget.
+
+12d.2 Backend Migration Commits Pushed
+
+Commit 1509e40 — Add shadow ledger RLS grants migration
+
+  File: migrations/20260627000001_shadow_tables_rls_grants.sql
+  Content: GRANT USAGE ON SCHEMA public TO service_role; GRANT SELECT/INSERT/UPDATE/DELETE on all 5 shadow tables; ALTER TABLE ... ENABLE ROW LEVEL SECURITY.
+  All statements idempotent.
+  Captures the manual Supabase SQL Editor state so it is reproducible on any fresh environment.
+
+Commit 8354cfe — Add free signup shadow grant backfill migration
+
+  File: migrations/20260627000002_backfill_free_signup_shadow_grants.sql
+  Content:
+    Step 1: CREATE UNIQUE INDEX IF NOT EXISTS credit_grants_user_free_signup_unique ON credit_grants (user_id) WHERE grant_type = 'free_signup'
+    Step 2: INSERT INTO credit_grants ... WHERE is_pro = false AND NOT EXISTS (existing free_signup grant) ON CONFLICT DO NOTHING
+  Credits: 20 (2 free generations × 10 credits = CREDIT_MULTIPLIER)
+  source_id: 'backfill_20260628' — surgical audit/rollback marker
+  Preflight results confirmed before writing: 9 users to backfill, 0 duplicate free_signup, 0 credit_grants rows at baseline, unique index not yet present.
+
+IMPORTANT: The backfill migration has NOT been applied to production yet.
+
+  Reason: end-of-session caution. Do not execute while tired.
+  Apply in next fresh session after verifying the deployed pricing page.
+
+Rollback if needed:
+  DELETE FROM credit_grants WHERE source_id = 'backfill_20260628';
+  DROP INDEX IF EXISTS credit_grants_user_free_signup_unique;
+
+12d.3 Frontend Pricing Commit Pushed
+
+Commit 6c91764 — Update pricing to four-card model
+
+Files changed:
+  components/pricing-cards.tsx
+  components/pricing-section.tsx
+  app/pricing/page.tsx
+
+Four-card layout:
+
+  1. Free
+     Price: Free
+     Features: 20 credits / Generate up to 8 logo concepts / PNG preview downloads / Save 1 generated logo set
+     CTA: Start Free → scrolls to #studio-start (existing)
+
+  2. One-time Pack
+     Price: $14.90
+     Features: 200 credits / One-time purchase / No subscription / Use credits at your own pace / Good for one brand or a small project
+     CTA: "Available soon" — button disabled (amber style), intentionally upcoming, NOT wired to Dodo
+
+  3. Pro Monthly
+     Price: $9.90/month
+     Features: 150 credits monthly / Credits refresh monthly / Best for ongoing projects / Save unlimited creations and inspirations
+     CTA: "Upgrade to Pro" — existing Dodo checkout behavior UNCHANGED
+
+  4. Designer Service
+     Price: From $49
+     Features: Human polish for your chosen logo / Final logo files for brand use / Best when you want a more finished result / Quote before payment
+     CTA: "Request a quote" — mailto:hello@logofunny.com?subject=LogoFunny%20Designer%20Service%20inquiry
+
+Grid: sm:grid-cols-2 xl:grid-cols-4 — 2 columns on tablet, 4 on wide screens.
+Max-width: max-w-6xl on section and pricing page.
+Subtitle: "Start free with 20 credits. Upgrade when you need more credits, saved creations, or human polish."
+
+No live billing logic, Dodo webhook, Supabase, or backend code touched.
+
+12d.4 What Was NOT Done This Session
+
+  * Free signup backfill NOT applied to production — deferred to next session.
+  * Dodo one-time pack checkout NOT wired — future work.
+  * Designer Service booking/payment flow NOT implemented — future work.
+  * Dodo webhook shadow path NOT tested with a real/sandbox event — pending.
+  * Generation quality / color-follows-prompt issue NOT addressed — deferred.
+  * Hybrid route NOT connected to live /generate-logo — still internal only.
+
+12d.5 Next Recommended Steps
+
+Immediate (next session start):
+
+  1. Verify deployed pricing at logofunny.com/pricing — confirm 4-card layout is live.
+  2. Apply the free_signup backfill in Supabase SQL Editor:
+       Run migrations/20260627000002_backfill_free_signup_shadow_grants.sql
+       Then verify: SELECT count(*) FROM credit_grants WHERE source_id = 'backfill_20260628';
+       Expect: 9 rows.
+  3. After backfill: run one generation as the test user and confirm allocation row now appears in generation_charge_allocations.
+
+Commercial mainline (in priority order after above):
+
+  a. Dodo one-time pack checkout — wire One-time Pack to a Dodo one-time payment product
+  b. Designer Service flow — booking/inquiry/payment system
+  c. Generation quality — color not following prompt; investigate and fix prompt or post-processing
+
+No-touch areas (unchanged from before):
+
+  * Do not modify live /generate-logo.
+  * Do not modify services/ideogramService.js without a quality test plan.
+  * Do not connect /generate-logo-hybrid-test to live /generate-logo.
+  * Do not touch referral, Stripe, auth, or existing Supabase billing gate without explicit approval.
+
+Current git state (both repos):
+
+  Backend:  main @ 8354cfe — working tree clean.
+  Frontend: main @ 6c91764 — pricing commit pushed. Working tree still has old untracked local preview files not committed or pushed: app/generate-preview/ and components/generate-page-preview.tsx.
+
+⸻
+
 13. How to Continue in a New Chat
 
 Copy this opening message into a new ChatGPT conversation:
