@@ -1216,6 +1216,104 @@ LOGOFUNNY_PROJECT_STATE.md is a convenience handoff document, not extra daily wo
 
 ⸻
 
+12c. Session Update — 2026-06-27: Phase 0 Three-Track Test + Phase 2.1 Shadow Credit Ledger Migration
+
+12c.1 Phase 0 — Ideogram Three-Track Local Test
+
+Confirmed that LOGOFUNNY_IDEOGRAM_CREATIVE_TRACKS env flag and all three-track prompt logic already existed in services/ideogramService.js behind the flag. No new code was written.
+
+Local test:
+
+* LOGOFUNNY_IDEOGRAM_CREATIVE_TRACKS=true added to local .env only.
+* LOGOFUNNY_DEBUG_PROMPT=true added to local .env only.
+* POST /generate-logo-ideogram-test called with conceptPrompts body to force Path A.
+* 4 image URLs returned successfully.
+
+Tracks confirmed from server logs:
+
+* conceptIndex=0 → commercial
+* conceptIndex=1 → commercial
+* conceptIndex=2 → creative
+* conceptIndex=3 → symbol_fusion
+
+Track assignment in ideogramService.js (line 1296):
+
+  const TRACK_ASSIGNMENTS = ["commercial", "commercial", "creative", "symbol_fusion"];
+
+This is local-only. Render production env was not touched. Live /generate-logo was not touched.
+
+Generation quality improvement (prompt tuning for creative / symbol_fusion tracks) is deferred. Do not continue quality tuning without a separate scoped decision.
+
+12c.2 Phase 2.1 — Shadow Credit Ledger Migration
+
+Created, committed, and pushed a schema-only Supabase migration for the credit ledger shadow-mode tables.
+
+Commit:
+
+  ffefe48 Add shadow credit ledger migration
+
+Migration file:
+
+  migrations/20260627000000_create_credit_ledger_shadow_tables.sql
+
+Tables created (all CREATE TABLE IF NOT EXISTS — safe to re-run, no existing tables altered):
+
+* credit_grants — every credit allocation per user; grant_type controls expiry and spend order
+* generation_charges — every generation attempt (success / failed / refunded)
+* generation_charge_allocations — maps each charge across one or more grants
+* dodo_webhook_events — idempotent log of inbound Dodo webhook events; deduplicated on event_id
+* designer_orders — future designer service tier; schema defined now for clean FK references
+
+credit_grants.grant_type values:
+
+  free_signup              — 20 credits on account creation (2 free generations)
+  monthly_pro              — credits on each Dodo subscription renewal; expires at Dodo renewal_date
+  one_time_pack            — credits from a Dodo one-time credit pack purchase; does not expire
+  referral_bonus           — bonus credits from referral system (referral logic not touched)
+  failed_generation_refund — credits returned on generation failure; requires charge row first
+  admin_grant              — manual operational adjustment; metadata must record reason
+
+Spend order: monthly_pro (expiring) consumed first; then FIFO on created_at for non-expiring types.
+
+Shadow mode rules (still in effect):
+
+* New tables are written to in parallel with existing billing gate — NOT read for any live billing decision.
+* generations_limit / generations_used remain the sole source of truth for access control.
+* Any shadow write error is fire-and-forget — must never block generation response.
+* Cutover to ledger-as-truth requires a separate migration gated on reconciliation sign-off.
+
+No-touch areas (confirmed unchanged):
+
+* services/ideogramService.js
+* services/r2Upload.js
+* Dodo payment / webhook logic
+* Pricing UI / checkout
+* Frontend
+* generations_limit / generations_used schema
+* Live /generate-logo billing gate
+* Referral system
+
+Pre-push safety scan: no API keys, secrets, tokens, passwords, or credential values found in committed file.
+
+12c.3 Next Recommended Steps
+
+Phase 2.2 (not started):
+
+* Design the creditLedger.js shadow-write service (fire-and-forget functions only).
+* shadowChargeGeneration() — called after successful generation.
+* shadowGrantCredits() — called after Dodo webhook events.
+* shadowLogWebhookEvent() — called at start of Dodo webhook handler.
+* Do not connect to live billing gate yet.
+* Do not touch Dodo, pricing, or frontend.
+
+Phase 0 quality (deferred):
+
+* Evaluate creative / symbol_fusion track output quality vs commercial.
+* Tune prompts only after a dedicated quality review session.
+* Do not touch prompt logic during Phase 2 work.
+
+⸻
+
 13. How to Continue in a New Chat
 
 Copy this opening message into a new ChatGPT conversation:
