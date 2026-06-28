@@ -1454,6 +1454,101 @@ Current git state (both repos):
 
 ⸻
 
+12e. Launch Defect Cleanup — 2026-06-28
+
+Session goal: clear promotion-blocking defects found during post-launch review. No new features.
+
+12e.1 Completed Fixes
+
+Fix 1 — Live color direction prompt (P0)
+
+  Root cause: frontend API route (app/api/generate-logo/route.ts) always sends conceptPrompts
+  to backend. Backend detects their presence and takes the buildMinimalConceptPrompt path,
+  which bypasses the CD_MAP entirely. The color instruction was raw "Color direction: cool tech."
+  — meaningless to Ideogram.
+
+  Frontend fix (commit 8209a01 — Fix live color direction prompt handling):
+    Files: app/api/generate-logo/route.ts, components/hero-section.tsx
+
+    Added COLOR_DIRECTION_MAP to route.ts — maps every frontend color enum value to an
+    explicit Ideogram-ready instruction:
+      cool_tech       → bright saturated tech blue, vivid electric blue required
+      classic_mono    → strict black/white/grayscale only, no color
+      luxury_black_gold → matte black + warm gold
+      soft_natural    → sage/forest/olive green + earth tones
+      warm_bright     → warm orange/amber dominant
+      bold_vibrant    → bold saturated dominant color
+
+    buildImagePrompt now does: COLOR_DIRECTION_MAP[colorDirection] lookup first,
+    then custom palette text if colorDirection === "custom" and customColor is present,
+    then raw fallback.
+
+    customColor (user-typed palette description for Custom Color option) was previously
+    silently dropped — never included in genFields. Added to genFields in hero-section.tsx
+    and threaded through to buildImagePrompt and buildConceptPrompts in route.ts.
+
+  Backend fix (commit 92ad36a — Fix blue color not appearing in generated logo):
+    File: services/ideogramService.js
+
+    COOL_TECH_BLUE rewrote to require vivid electric blue explicitly (not dark navy/steel/indigo).
+    classic_mono added to CD_MAP.
+    Note: this code path (CD_MAP) is only reached when conceptPrompts is NOT sent.
+    Currently dead in live flow but preserved as safety fallback.
+
+Fix 2 — Dodo Pro shadow grant credits mismatch (commit a685c9a):
+  File: app/api/dodo/webhook/route.ts
+  Changed: monthly_pro shadow grant 200 → 150 to match public pricing page (150 credits/month).
+
+Fix 3 — Legacy Stripe routes disabled (commit 1504495):
+  Files: app/api/stripe/create-checkout/route.ts,
+         app/api/stripe/create-portal/route.ts,
+         app/api/stripe/webhook/route.ts
+  All three replaced with minimal POST handlers returning 410 Gone.
+  No Stripe imports, no env reads, no external calls.
+  Production smoke test confirmed: all three return 410/410/410.
+
+12e.2 Verified Non-Issues
+
+  Black & White / classic_mono: already covered by COLOR_DIRECTION_MAP fix. No extra work needed.
+  Legacy Stripe user-facing exposure: zero — no component or page called /api/stripe/*.
+
+12e.3 Still Pending (NOT done this session)
+
+  * free_signup backfill NOT applied — migration exists at
+    migrations/20260627000002_backfill_free_signup_shadow_grants.sql, pushed to backend repo.
+    Apply in Supabase SQL Editor when ready. Verify with:
+    SELECT count(*) FROM credit_grants WHERE source_id = 'backfill_20260628'; → expect 9 rows.
+
+  * Online generation test NOT run — intentionally deferred to save credits.
+    Test plan: generate one logo with Blue selected, confirm blue is visible in output.
+
+  * Dodo one-time pack checkout NOT wired — future work.
+  * Designer Service booking/payment NOT implemented — future work.
+  * lib/stripe/ NOT deleted — dead code but harmless. Delete in a future cleanup pass.
+
+12e.4 Current Git State (both repos)
+
+  Backend:  main @ 92ad36a — no tracked changes before this state-file update. All code changes pushed.
+  Frontend: main @ 1504495 — no tracked changes; old preview files remain intentionally uncommitted. All code changes pushed.
+  Untracked (intentionally uncommitted): app/generate-preview/, components/generate-page-preview.tsx.
+
+12e.5 Next Recommended Steps
+
+  1. Apply free_signup backfill in Supabase SQL Editor (see 12d.5 step 2 above).
+  2. After backfill: run one generation as test user to confirm shadow allocation row appears.
+  3. Run color online test: generate with Blue selected, verify blue is visible in output.
+  4. Dodo one-time pack checkout — wire to Dodo one-time payment product.
+  5. Designer Service inquiry/booking flow.
+
+No-touch areas (unchanged):
+
+  * Do not modify live /generate-logo without a quality test plan.
+  * Do not connect /generate-logo-hybrid-test to live /generate-logo.
+  * Do not touch existing Supabase billing gate (generations_limit / generations_used).
+  * Do not delete lib/stripe/ without confirming no package.json import issues.
+
+⸻
+
 13. How to Continue in a New Chat
 
 Copy this opening message into a new ChatGPT conversation:
