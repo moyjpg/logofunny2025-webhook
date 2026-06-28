@@ -1137,11 +1137,12 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0, track = "commercial") {
   })();
 
   const COOL_TECH_BLUE =
-    "Two-color logo. The symbol or one key letterform must use a bright saturated modern tech blue (vivid electric blue, not dark navy, not steel, not indigo). The wordmark uses dark charcoal or dark navy. Do not create a fully black, fully charcoal, or monochrome-only logo. Tech blue must be clearly visible as a distinct color in the final image.";
+    "Color palette: bright saturated tech blue as the dominant anchor color. Use vivid electric blue (not dark navy, not steel, not indigo) prominently in the symbol mark and/or wordmark. Supporting tones may include off-white or cool light gray only. Do not create a monochrome, charcoal-only, or black-only logo. Blue must be clearly visible in the final image.";
 
   /** @type {Record<string, string>} */
   const CD_MAP = {
     black_white_first: "Color palette: monochrome-first, black and white friendly.",
+    classic_mono:      "Color palette: monochrome-first, black and white friendly.",
     cool_tech: COOL_TECH_BLUE,
     tech_blue: COOL_TECH_BLUE,
     blue: COOL_TECH_BLUE,
