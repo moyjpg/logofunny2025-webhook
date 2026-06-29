@@ -1549,6 +1549,70 @@ No-touch areas (unchanged):
 
 ⸻
 
+12f. Logo Credit Pack Checkout — 2026-06-28
+
+12f.1 Completed
+
+  Frontend commit 91a75be — Wire Logo Credit Pack checkout
+
+  Files changed:
+    components/pricing-cards.tsx
+    app/api/dodo/create-checkout/route.ts
+    app/api/dodo/webhook/route.ts
+
+  Pricing card:
+    - "One-time Pack" renamed to "Logo Credit Pack"
+    - Description changed from "Credits when you need them." to "Pay once. Use anytime."
+    - CTA changed from "Available soon" (disabled) to "Buy Credit Pack" (active)
+    - Button wired: POST /api/dodo/create-checkout with { product: "credit_pack" }
+    - packLoading / packError states added; amber disabled styling removed
+
+  Checkout route (create-checkout/route.ts):
+    - Reads body.product field
+    - If product === "credit_pack": uses DODO_CREDIT_PACK_PRODUCT_ID env var
+    - Sets Dodo metadata: { userId, product: "logofunny_credit_pack" }
+    - Pro Monthly path unchanged (DODO_PRO_MONTHLY_PRODUCT_ID)
+
+  Webhook route (webhook/route.ts):
+    - New case "payment.succeeded" added
+    - Guards on metadata.product === "logofunny_credit_pack"
+    - Shadow-only: shadowGrantCredits(userId, "one_time_pack", 200, sourceId, null, ...)
+    - Idempotent via shadowLogWebhookEvent
+    - No live user_profiles write — generations_limit / generations_used unchanged
+
+12f.2 Verified
+
+  Deployment confirmed: /pricing shows "Logo Credit Pack" and "Buy Credit Pack" (commit 91a75be live).
+  Unauthenticated POST /api/dodo/create-checkout returns 401 — route is live and auth-gated.
+  Manual browser test (logged in): Buy Credit Pack opens Dodo checkout with Logo Credit Pack, $14.90, 200 credits copy.
+  No payment made.
+
+12f.3 Pending
+
+  * payment.succeeded webhook not yet verified end-to-end.
+    Pending: test with a real or sandbox Dodo payment to confirm shadow grant of 200 one_time_pack credits fires.
+  * DODO_CREDIT_PACK_PRODUCT_ID is set in Vercel Production. Not stored here (secret).
+  * free_signup backfill still NOT applied to production Supabase.
+  * Online color generation test still NOT run.
+  * Designer Service inquiry/booking flow not implemented.
+  * lib/stripe/ not deleted (harmless dead code).
+
+12f.4 Current Git State
+
+  Frontend: main @ 91a75be — no tracked changes; old preview files remain intentionally uncommitted. All code changes pushed.
+  Backend:  main @ 8aba4ae — no tracked changes before this state-file update. Last state update pushed; this new state-file update is pending commit.
+  Untracked (intentionally uncommitted): app/generate-preview/, components/generate-page-preview.tsx.
+
+12f.5 Next Recommended Steps
+
+  1. Apply free_signup backfill in Supabase SQL Editor.
+  2. Run one generation as test user to confirm shadow allocation row appears.
+  3. Run color online test: generate with Blue selected, verify blue is visible in output.
+  4. Verify payment.succeeded webhook with a real or sandbox purchase.
+  5. Designer Service inquiry/booking flow.
+
+⸻
+
 13. How to Continue in a New Chat
 
 Copy this opening message into a new ChatGPT conversation:
