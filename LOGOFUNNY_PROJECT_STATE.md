@@ -1613,6 +1613,81 @@ No-touch areas (unchanged):
 
 ⸻
 
+12g. Session Update — 2026-06-29: Frontend Pricing + UX Polish + Director Command
+
+12g.1 Frontend Deployment State
+
+  Frontend commit b3d9e52 — Add LogoFunny director command — confirmed Ready on Vercel.
+  This is the current live frontend HEAD.
+
+  Git state (frontend repo):
+    main @ b3d9e52 — working tree clean (tracked files only).
+    Untracked (intentionally NOT committed): app/generate-preview/, components/generate-page-preview.tsx.
+    These two preview files are local-only reference material. Do not commit them until a deliberate decision is made.
+
+12g.2 Pricing Page Changes (already live)
+
+  Pricing cards updated to the current four-card model:
+
+    1. Free               — outline CTA "Start Free"
+    2. Logo Credit Pack   — gradient CTA "Buy 200 Credits" (highlighted: true)
+                           Badge: "BEST FOR FIRST PROJECT" (teal)
+                           Price: $14.90 one-time
+                           Note below price: "One-time · No subscription"
+    3. Pro Monthly        — solid blue CTA "Upgrade Monthly" (secondary)
+                           Badge: "BEST FOR ONGOING" (blue)
+                           Price: $9.90/month
+    4. Designer Service   — outline CTA "Request a Quote"
+                           mailto:hello@logofunny.com
+
+  Logo Credit Pack is the visually dominant primary card (gradient button, teal border glow).
+  Headline: "Create your first logo for free."
+  Subtitle: "Start with 20 free credits. Upgrade only when you need more ideas, more saves, or a polished final logo."
+
+12g.3 Navbar + Homepage Pricing Sync
+
+  Navbar "Pricing" link now points to /pricing (was /#pricing).
+  Homepage pricing section headline synced with /pricing page headline.
+
+12g.4 Generate Page UX — Recommended Guidance Compact by Default
+
+  Recommended Guidance section is now collapsed by default.
+  "Need ideas?" chips are visible in the collapsed state.
+  Keywords, Color direction, Font style, Special requirements are hidden until "Show guidance fields" is clicked.
+  Form state is preserved when toggling.
+
+12g.5 Claude Code Director Command Added
+
+  File: .claude/commands/logofunny-director.md (frontend repo)
+  Commit: b3d9e52 Add LogoFunny director command
+  Purpose: Project-local Claude Code slash command for auditing logo output quality, prompt quality, generate page UX, and pricing conversion in one structured report.
+
+  Command structure:
+    - Hard safety rules near top (no .env read, no generation, no migrations, no payment flows, no commit/push without explicit instruction)
+    - Default report: 6 sections (Verdict, What is Good, Critical Issues, Next Action, Prompt/UI Improvements, Safe Implementation Notes)
+    - Optional detailed sections: Prompt Quality Audit, Failure Mode Risk, Per-Slot Assessment, Commercial Quality Checklist, UX/Conversion Checklist, Regeneration Decision
+    - Argument modes: logo, prompt, ux, pricing, full
+
+  Invoke with /logofunny-director in any Claude Code session inside the frontend repo.
+
+12g.6 Still Pending (carry-forward, NOT done)
+
+  * payment.succeeded webhook — real E2E test not yet run (sandbox or live purchase).
+  * free_signup backfill — migration exists (migrations/20260627000002_backfill_free_signup_shadow_grants.sql), NOT applied to production.
+    Apply in Supabase SQL Editor. Verify: SELECT count(*) FROM credit_grants WHERE source_id = 'backfill_20260628'; → expect 9 rows.
+  * Shadow allocation row generation check — run one generation as test user after backfill to confirm generation_charge_allocations row appears.
+  * Blue color online test — generate one logo with Blue selected; confirm blue is visible in output.
+  * Designer Service inquiry/booking flow — not implemented.
+  * lib/stripe/ dead code — not deleted (harmless, defer to cleanup pass).
+  * Hybrid route — still internal only. Do NOT connect /generate-logo-hybrid-test to live /generate-logo.
+
+12g.7 Current Git State (both repos)
+
+  Frontend: main @ b3d9e52 — working tree clean. Untracked preview files intentionally uncommitted.
+  Backend:  main @ 8aba4ae (or most recent state-file commit) — working tree should be clean. Verify with git status before starting work.
+
+⸻
+
 13. How to Continue in a New Chat
 
 Copy this opening message into a new ChatGPT conversation:
