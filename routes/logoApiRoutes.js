@@ -547,7 +547,7 @@ router.post('/generate-logo-pipeline', requireInternalKey, async (req, res) => {
 // Internal manual test route for Phase 1.0 OpenAI image service.
 // Disabled unless LOGOFUNNY_OPENAI_IMAGE_ENABLED=true and LOGOFUNNY_INTERNAL_TEST_SECRET is set.
 // Does not charge credits, trigger refund logic, or trigger referral logic.
-router.post('/generate-logo-openai-test', async (req, res) => {
+router.post('/generate-logo-openai-test', requireInternalKey, async (req, res) => {
   // Guard 1: feature flag
   if (process.env.LOGOFUNNY_OPENAI_IMAGE_ENABLED !== 'true') {
     return res.status(200).json({ success: false, data: null, error: 'OpenAI image generation is disabled.' });
@@ -595,7 +595,7 @@ router.post('/generate-logo-openai-test', async (req, res) => {
 // Internal 2 Ideogram + 2 OpenAI hybrid inspection route.
 // Does not charge credits, trigger refund, or trigger referral.
 // Requires LOGOFUNNY_HYBRID_TEST_ENABLED=true and LOGOFUNNY_OPENAI_IMAGE_ENABLED=true.
-router.post('/generate-logo-hybrid-test', async (req, res) => {
+router.post('/generate-logo-hybrid-test', requireInternalKey, async (req, res) => {
   const t0 = Date.now();
 
   // Guard 1: hybrid test must be explicitly enabled
