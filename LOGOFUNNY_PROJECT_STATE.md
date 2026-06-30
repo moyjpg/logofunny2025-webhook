@@ -1953,6 +1953,119 @@ No-touch areas (unchanged):
 
 ⸻
 
+12k. Backend Batch 2B — Test Route Auth Hardening (2026-07-01)
+
+12k.1 Summary
+
+  Commit: 898f633
+  Message: Add requireInternalKey to test routes
+  Branch: main (logofunny-backend)
+  Files changed: 1 (routes/logoApiRoutes.js, 2 insertions, 2 deletions)
+  Syntax check: node --check passed.
+  Payment/webhook/credits: not touched.
+  Migrations: not touched.
+  No generation or external API calls made.
+
+12k.2 Changes
+
+  routes/logoApiRoutes.js — added requireInternalKey as first middleware on both test routes
+
+  Problem: /generate-logo-openai-test and /generate-logo-hybrid-test only checked
+  LOGOFUNNY_INTERNAL_TEST_SECRET via an internal x-logofunny-test-secret header check.
+  All other internal routes use requireInternalKey middleware first (LOGOFUNNY_INTERNAL_API_KEY).
+  The two test routes had weaker auth — single key only.
+
+  Fix: requireInternalKey added as the FIRST middleware on both routes.
+  Callers must now supply both:
+    x-logofunny-internal-key  — checked by requireInternalKey (LOGOFUNNY_INTERNAL_API_KEY)
+    x-logofunny-test-secret   — checked internally in each route handler
+
+  Internal test-secret check unchanged — still present inside each handler.
+  Route handlers and response shapes unchanged.
+  Live /generate-logo not touched.
+
+12k.3 Current Git State (at commit)
+
+  Frontend: main @ 49104d4 — working tree clean.
+  Backend:  main @ 898f633 — working tree clean.
+
+⸻
+
+12l. Backend Batch 3A — Pipeline Route Removal + R2 Observability (2026-07-01)
+
+12l.1 Summary
+
+  Commit: 15bdb0a
+  Message: Remove pipeline route and improve R2 logging
+  Branch: main (logofunny-backend)
+  Files changed: 1 (routes/logoApiRoutes.js, 10 insertions, 74 deletions)
+  Syntax check: node --check passed.
+  No response shape changes. No success:true/false behavior changes.
+  Payment/webhook/credits: not touched.
+  Migrations: not touched.
+  No generation or external API calls made.
+
+12l.2 Changes
+
+  routes/logoApiRoutes.js — deleted /generate-logo-pipeline
+
+  Route: POST /generate-logo-pipeline (64 lines removed)
+  Reason: route called generateLogoMock() — the mock generator, not Ideogram.
+  Was permanently marked with comment: "TEMP: disable multi-candidate pipeline".
+  Zero frontend callers confirmed via grep. Protected by requireInternalKey.
+  Response shape (top/candidates/rankingMethod) was completely different from all other routes.
+  git history retains the full deleted content.
+
+  routes/logoApiRoutes.js — threaded requestId into R2 upload failure logs
+
+  normalizeResultToItem(result) → normalizeResultToItem(result, reqId = null)
+  Three console.error catch blocks for R2 upload failures now append 'requestId=', reqId.
+  runDualTrackPipeline(mapped) → runDualTrackPipeline(mapped, requestId = null)
+  All 5 internal normalizeResultToItem call sites now pass requestId.
+  /generate-logo and /generate-logo-dual now pass their local requestId to runDualTrackPipeline.
+  /generate-logo-fast calls normalizeResultToItem(result) unchanged — default reqId = null is correct.
+  All changes backward compatible. No behavior change. No response shape change.
+
+12l.3 Backend Batch 3 Remaining Items (deferred)
+
+  Completed this batch:
+  * /generate-logo-pipeline: deleted.
+  * requestId threading to R2 error logs: done.
+
+  Still deferred:
+  * R2 all-null imageUrl — if all slots return imageUrl: null due to R2 failure,
+    response still returns success: true. Deferred: requires frontend null-slot handling
+    confirmation before changing response semantics.
+  * /generate-logo-dual — zero frontend callers, still protected by requireInternalKey.
+    Low urgency. Deferred to future cleanup pass.
+  * buildPrompts require in index.js — appears unused. Deferred to P3 cleanup pass.
+  * requestId format (switch to uuid) — low priority, deferred.
+
+12l.4 Pending Operational Items (full carry-forward)
+
+  * Vercel deployment check — confirm commit 49104d4 is Ready on Vercel.
+  * payment.succeeded webhook — real E2E test not yet run (sandbox or live purchase).
+  * free_signup backfill — NOT applied to production.
+    File: migrations/20260627000002_backfill_free_signup_shadow_grants.sql
+    Apply in Supabase SQL Editor.
+    Verify: SELECT count(*) FROM credit_grants WHERE source_id = 'backfill_20260628'; → expect 9 rows.
+  * Shadow allocation row check — run one generation as test user after backfill to confirm
+    generation_charge_allocations row appears.
+  * Blue color online test — generate one logo with Blue selected; confirm blue is visible.
+  * Designer Service inquiry/booking flow — not implemented.
+  * Dedicated OG/social preview image (1200×630) — not urgent, no code change needed now.
+  * lib/stripe/ dead code — not deleted. Defer to cleanup pass.
+  * Hybrid route — internal only. Do NOT connect /generate-logo-hybrid-test to live /generate-logo.
+
+12l.5 Current Git State (both repos)
+
+  Frontend: main @ 49104d4 — working tree clean.
+            Untracked preview files (app/generate-preview/, components/generate-page-preview.tsx)
+            intentionally uncommitted.
+  Backend:  main @ 15bdb0a — working tree clean.
+
+⸻
+
 13. How to Continue in a New Chat
 
 Copy this opening message into a new ChatGPT conversation:
