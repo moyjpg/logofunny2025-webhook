@@ -24,7 +24,7 @@ function safePreview(str, max = 120) {
  * Normalize one generateLogoMock result to a dual-track item (imageUrl, svgUrl, prompt, model, mode, r2Key).
  * Uploads to R2 when needed. Never logs raw SVG.
  */
-async function normalizeResultToItem(result) {
+async function normalizeResultToItem(result, reqId = null) {
   let imageUrl = null;
   let svgUrl = null;
   let r2Key = null;
@@ -41,7 +41,7 @@ async function normalizeResultToItem(result) {
       imageUrl = uploaded.svgUrl;
       r2Key = uploaded.r2Key;
     } catch (e) {
-      console.error('[dual-track] SVG R2 upload failed:', e?.message);
+      console.error('[dual-track] SVG R2 upload failed:', e?.message, 'requestId=', reqId);
     }
   } else if (typeof result === 'string' && result.includes('<svg')) {
     try {
@@ -50,7 +50,7 @@ async function normalizeResultToItem(result) {
       imageUrl = uploaded.svgUrl;
       r2Key = uploaded.r2Key;
     } catch (e) {
-      console.error('[dual-track] SVG R2 upload failed:', e?.message);
+      console.error('[dual-track] SVG R2 upload failed:', e?.message, 'requestId=', reqId);
     }
   } else {
     const raw = typeof result === 'string' ? result : (result?.imageUrl ?? null);
@@ -60,7 +60,7 @@ async function normalizeResultToItem(result) {
         imageUrl = uploaded.publicUrl;
         r2Key = uploaded.key;
       } catch (e) {
-        console.error('[dual-track] R2 upload failed:', e?.message);
+        console.error('[dual-track] R2 upload failed:', e?.message, 'requestId=', reqId);
       }
     }
   }
@@ -73,7 +73,7 @@ async function normalizeResultToItem(result) {
  * @param {Object} mapped - mapped user input
  * @returns {Promise<{ basedOnUser: Array, recommended: Array, designDecision: Object, brandInsight: string }>}
  */
-async function runDualTrackPipeline(mapped) {
+async function runDualTrackPipeline(mapped, requestId = null) {
   const designDecision = generateDesignDecision(mapped);
   const brandInsight = generateBrandInsight(designDecision);
 
@@ -97,7 +97,7 @@ async function runDualTrackPipeline(mapped) {
     const ideogramResults = await generateIdeogramLogos(mapped);
     console.log(`[Ideogram] generated count=${ideogramResults.length}`);
 
-    const normalized = await Promise.all(ideogramResults.slice(0, 4).map((item) => normalizeResultToItem(item)));
+    const normalized = await Promise.all(ideogramResults.slice(0, 4).map((item) => normalizeResultToItem(item, requestId)));
 
     // Quality gate: judge all concepts in parallel, annotate with qualityStatus/qualityWarnings,
     // then rank clean concepts first. All concepts are always returned — nothing is removed.
@@ -185,8 +185,8 @@ async function runDualTrackPipeline(mapped) {
     sysResult2Promise,
   ]);
 
-  const basedOnUser = await Promise.all([normalizeResultToItem(userResult1), normalizeResultToItem(userResult2)]);
-  const recommended = await Promise.all([normalizeResultToItem(sysResult1), normalizeResultToItem(sysResult2)]);
+  const basedOnUser = await Promise.all([normalizeResultToItem(userResult1, requestId), normalizeResultToItem(userResult2, requestId)]);
+  const recommended = await Promise.all([normalizeResultToItem(sysResult1, requestId), normalizeResultToItem(sysResult2, requestId)]);
   const results = [...basedOnUser, ...recommended];
 
   return { basedOnUser, recommended, designDecision, brandInsight, results };
@@ -324,7 +324,7 @@ router.post('/generate-logo', requireInternalKey, handleReferenceUpload, async (
       });
     }
 
-    const data = await runDualTrackPipeline(mapped);
+    const data = await runDualTrackPipeline(mapped, requestId);
     const firstUserUrl = data.basedOnUser[0]?.imageUrl ?? data.basedOnUser[0]?.svgUrl ?? null;
     const tEnd = Date.now();
     console.log('[RESULT] /generate-logo success=true', 'requestId=', requestId, 'ms=', tEnd - requestStart);
@@ -400,7 +400,7 @@ router.post('/generate-logo-dual', requireInternalKey, async (req, res) => {
       });
     }
 
-    const data = await runDualTrackPipeline(mapped);
+    const data = await runDualTrackPipeline(mapped, requestId);
     const tEnd = Date.now();
     console.log('[RESULT] /generate-logo-dual success=true', 'requestId=', requestId, 'ms=', tEnd - requestStart);
 
@@ -479,70 +479,6 @@ router.post('/generate-logo-ideogram-test', requireInternalKey, async (req, res)
   }
 });
 
-// POST /generate-logo-pipeline  (temporarily: single-candidate, no multi-model pipeline)
-router.post('/generate-logo-pipeline', requireInternalKey, async (req, res) => {
-  try {
-    const mapped = mapElementorToAI(req.body);
-    const hasText = (mapped.brandName && mapped.brandName.trim()) || (mapped.keywords && mapped.keywords.trim());
-    if (!hasText) {
-      return res.status(200).json({
-        success: false,
-        data: null,
-        error: 'Missing required fields: please provide Brand Name or Keywords.',
-      });
-    }
-
-    // TEMP: disable multi-candidate pipeline, generate 1 logo via generateLogoMock
-    const result = await generateLogoMock(mapped);
-
-    let imageUrl = null;
-    if (typeof result === 'string') {
-      imageUrl = result;
-    } else if (result && typeof result.imageUrl === 'string') {
-      imageUrl = result.imageUrl;
-    } else if (result && result.data && typeof result.data.imageUrl === 'string') {
-      imageUrl = result.data.imageUrl;
-    }
-
-    let finalImageUrl = imageUrl;
-    let r2Key = null;
-    if (imageUrl) {
-      try {
-        const uploaded = await uploadLogoImageToR2(imageUrl);
-        finalImageUrl = uploaded.publicUrl;
-        r2Key = uploaded.key;
-      } catch (uploadErr) {
-        console.error('[generate-logo-pipeline] R2 upload failed:', uploadErr);
-      }
-    }
-
-    const candidate = {
-      imageUrl: finalImageUrl,
-      r2Key,
-      prompt: result?.prompt || null,
-      model: result?.model || 'mock',
-      mode: result?.mode || (mapped.uploadImage ? 'img2img' : 'text2img'),
-    };
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        top: candidate,
-        candidates: [candidate],
-        rankingMethod: 'single_candidate_direct',
-        mapped,
-      },
-      error: null,
-    });
-  } catch (err) {
-    console.error('[generate-logo-pipeline] error:', err);
-    return res.status(200).json({
-      success: false,
-      data: null,
-      error: err?.message || 'Internal error',
-    });
-  }
-});
 // POST /generate-logo-openai-test
 // Internal manual test route for Phase 1.0 OpenAI image service.
 // Disabled unless LOGOFUNNY_OPENAI_IMAGE_ENABLED=true and LOGOFUNNY_INTERNAL_TEST_SECRET is set.
