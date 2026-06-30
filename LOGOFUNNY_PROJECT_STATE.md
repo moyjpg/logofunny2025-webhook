@@ -2066,6 +2066,82 @@ No-touch areas (unchanged):
 
 ⸻
 
+12m. Backend Batch 3B — Dual Route + Dead Import Removal (2026-07-01)
+
+12m.1 Summary
+
+  Commit: 810768a
+  Message: Remove dual route and dead import
+  Branch: main (logofunny-backend)
+  Files changed: 2 (index.js: 2 deletions; routes/logoApiRoutes.js: 39 deletions)
+  Syntax check: node --check index.js and node --check routes/logoApiRoutes.js both passed.
+  No R2 all-null imageUrl response semantics changed.
+  No response shape changes.
+  Payment/webhook/credits: not touched.
+  Migrations: not touched.
+  No generation or external API calls made.
+
+12m.2 Changes
+
+  routes/logoApiRoutes.js — deleted /generate-logo-dual (39 lines)
+
+  Route: POST /generate-logo-dual
+  Reason: zero frontend callers (grep confirmed), zero internal script callers.
+  Functionally identical to /generate-logo minus reference image support:
+  called runDualTrackPipeline() with the same logic but wrapped data directly
+  without the top-level imageUrl or referenceApplied fields.
+  Protected by requireInternalKey — never exposed publicly.
+  git history retains the full deleted content.
+
+  index.js — removed unused buildPrompts require (2 lines)
+
+  Line removed: const { buildPrompts } = require("./utils/promptEngine");
+  Reason: buildPrompts was imported in index.js but never called in index.js scope.
+  Active callers (routes/aiRoutes.js and routes/debugRoutes.js) each require
+  promptEngine directly — unchanged. utils/promptEngine.js unchanged.
+  Zero behavior change; pure dead-import cleanup.
+
+12m.3 Backend Batch 3 Status
+
+  All three originally queued Batch 3 items are now resolved:
+
+  Completed:
+  * /generate-logo-pipeline: deleted (Batch 3A, commit 15bdb0a).
+  * requestId threading to R2 error logs: done (Batch 3A, commit 15bdb0a).
+  * /generate-logo-dual: deleted (Batch 3B, commit 810768a).
+  * buildPrompts dead import in index.js: deleted (Batch 3B, commit 810768a).
+
+  Still deferred (not blocking):
+  * R2 all-null imageUrl — backend returns success: true when all slots have null
+    imageUrl. Frontend already handles this correctly (deliverableResults filter +
+    refund + 502 if empty). Changing backend response semantics is optional and
+    deferred until a deliberate decision is made.
+  * requestId format (switch to uuid) — low priority, deferred.
+
+12m.4 Pending Operational Items (full carry-forward)
+
+  * Vercel deployment check — confirm commit 49104d4 is Ready on Vercel.
+  * payment.succeeded webhook — real E2E test not yet run (sandbox or live purchase).
+  * free_signup backfill — NOT applied to production.
+    File: migrations/20260627000002_backfill_free_signup_shadow_grants.sql
+    Apply in Supabase SQL Editor.
+    Verify: SELECT count(*) FROM credit_grants WHERE source_id = 'backfill_20260628'; → expect 9 rows.
+  * Shadow allocation row check — run one generation as test user after backfill.
+  * Blue color online test — generate one logo with Blue selected; confirm blue is visible.
+  * Designer Service inquiry/booking flow — not implemented.
+  * Dedicated OG/social preview image (1200×630) — not urgent.
+  * lib/stripe/ dead code — not deleted. Defer to cleanup pass.
+  * Hybrid route — internal only. Do NOT connect /generate-logo-hybrid-test to live /generate-logo.
+
+12m.5 Current Git State (both repos)
+
+  Frontend: main @ 49104d4 — working tree clean.
+            Untracked preview files (app/generate-preview/, components/generate-page-preview.tsx)
+            intentionally uncommitted.
+  Backend:  main @ 810768a — working tree clean.
+
+⸻
+
 13. How to Continue in a New Chat
 
 Copy this opening message into a new ChatGPT conversation:
