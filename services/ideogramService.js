@@ -304,6 +304,7 @@ function buildTypographyDirection(typographyDir, industry, keywords) {
     luxury_minimal:         "luxury minimal letterforms with refined calm spacing and premium restraint",
     rounded_friendly:       "soft rounded letterforms with friendly warmth and clear readability",
     handcrafted_expressive: "expressive custom lettering with handcrafted character and natural rhythm",
+    handcrafted_organic:    "expressive custom lettering with handcrafted character and natural rhythm",
   };
   if (typographyDir && TYPO_MAP[typographyDir]) return TYPO_MAP[typographyDir];
 

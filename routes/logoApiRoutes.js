@@ -102,9 +102,14 @@ async function runDualTrackPipeline(mapped) {
     // Quality gate: judge all concepts in parallel, annotate with qualityStatus/qualityWarnings,
     // then rank clean concepts first. All concepts are always returned — nothing is removed.
     const VIOLATION_WARNINGS = {
-      hasTrademarkSymbol: 'May include trademark-like symbols',
-      hasFakeText: 'May include small unreadable or extra text',
+      hasTrademarkSymbol:    'May include trademark-like symbols',
+      hasFakeText:           'May include small unreadable or extra text',
       hasPresentationLayout: 'May look like a presentation board rather than a single logo',
+      hasPeople:             'May include people or human figures',
+      hasHuman:              'May include human figures',
+      hasMascot:             'May include a mascot or character figure',
+      hasScene:              'May include a scene or background rather than a clean logo',
+      tooIllustrative:       'May be too illustrative rather than a clean standalone logo',
     };
     const RANK_ORDER = { pass: 0, unchecked: 1, needs_review: 2 };
 
