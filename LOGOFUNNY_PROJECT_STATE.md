@@ -1871,6 +1871,88 @@ No-touch areas (unchanged):
 
 ⸻
 
+12j. Backend Batch 2A — Legacy Prototype & Dead Stub Removal (2026-07-01)
+
+12j.1 Summary
+
+  Commit: 87afdcc
+  Message: Remove legacy server and elementor stub
+  Branch: main (logofunny-backend)
+  Files changed: 2 (2 insertions, 561 deletions)
+  Syntax check: node --check index.js passed.
+  Test routes: not changed.
+  Payment/webhook/credits: not touched.
+  Migrations: not touched.
+  No generation or external API calls made.
+
+12j.2 Changes
+
+  server.js — deleted via git rm
+    510-line ESM prototype (`import` syntax) in a CJS repo (no "type": "module").
+    Was never the production entry point: package.json scripts pointed to index.js.
+    Would crash immediately with SyntaxError if run directly.
+    No other file in the repo referenced it; no frontend reference found.
+    Contained: EJS frontend, cookie-based auth bypass, Stripe key read, mock SVG
+    generator, PDF export, ZIP export, i18n — a completely separate application.
+    Deletion is zero-risk; git history retains the full content.
+
+  index.js — /webhook/elementor stub removed
+    Route: POST /webhook/elementor
+    Handler called normalizeElementorForm(), logged body/files, returned { ok: true }
+    unconditionally. Code comment confirmed it was a debug stub:
+    "先只返回成功，确认 webhook 真正打通".
+    No callers found in frontend or external config. No Elementor form still pointed
+    at this address. Real generation path is /generate-logo in logoApiRoutes.js
+    (requireInternalKey protected).
+
+  index.js — normalizeElementorForm() removed
+    Helper used exclusively by the /webhook/elementor stub.
+    Mapped Elementor form_fields to a normalized input object.
+    Removed together with the stub; no other callers.
+
+  index.js — multer require and upload initialization removed
+    const multer = require("multer") and const upload = multer() were only used
+    by the /webhook/elementor route (upload.any()). Removed after stub deletion
+    confirmed they had no remaining uses.
+
+12j.3 Pending Items (carry-forward from 12i.3 + new)
+
+  Carry-forward operational items:
+  * Vercel deployment check — confirm commit 49104d4 is Ready on Vercel.
+  * payment.succeeded webhook — real E2E test not yet run (sandbox or live purchase).
+  * free_signup backfill — migration exists at
+    migrations/20260627000002_backfill_free_signup_shadow_grants.sql, NOT applied.
+    Apply in Supabase SQL Editor. Verify: SELECT count(*) FROM credit_grants
+    WHERE source_id = 'backfill_20260628'; → expect 9 rows.
+  * Shadow allocation row generation check — run one generation after backfill.
+  * Blue color online test — generate one logo with Blue selected.
+  * Designer Service inquiry/booking flow — not implemented.
+  * Dedicated OG/social preview image (1200×630) — not urgent.
+  * lib/stripe/ dead code — not deleted, defer to cleanup pass.
+  * Hybrid route — internal only. Do NOT connect /generate-logo-hybrid-test to live /generate-logo.
+
+  Backend Batch 2B (queued, not started):
+  * /generate-logo-hybrid-test and /generate-logo-openai-test — double-key auth
+    inconsistency. Both use LOGOFUNNY_INTERNAL_TEST_SECRET only; all other internal
+    routes use LOGOFUNNY_INTERNAL_API_KEY via requireInternalKey. Decision pending:
+    add requireInternalKey as first middleware on both test routes (requires callers
+    to carry both keys), or accept current single-key model.
+
+  Backend Batch 3 (queued, not started):
+  * R2 upload failure handling — logo uploads silently return null imageUrl.
+  * /generate-logo-pipeline stub and /generate-logo-dual redundancy review.
+  * buildPrompts require in index.js — appears unused; defer to P3 cleanup pass.
+  * requestId format cleanup (optional, low priority).
+
+12j.4 Current Git State (both repos)
+
+  Frontend: main @ 49104d4 — working tree clean.
+            Untracked preview files (app/generate-preview/, components/generate-page-preview.tsx)
+            intentionally uncommitted.
+  Backend:  main @ 87afdcc — working tree clean.
+
+⸻
+
 13. How to Continue in a New Chat
 
 Copy this opening message into a new ChatGPT conversation:
