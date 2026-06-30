@@ -1773,6 +1773,104 @@ No-touch areas (unchanged):
 
 ⸻
 
+12i. Backend Batch 1 — Security & Quality Alignment (2026-07-01)
+
+12i.1 Summary
+
+  Commit: 5d0fbf2
+  Message: Remove legacy generation routes and align quality mapping
+  Branch: main (logofunny-backend)
+  Files changed: 3 (8 insertions, 182 deletions)
+  Syntax check: node --check passed on all three files.
+  Payment/webhook/credits: not touched.
+  Migrations: not touched.
+  No generation or external API calls made.
+
+12i.2 Changes
+
+  P1-A — index.js
+    Removed three unauthenticated legacy Replicate routes:
+      /generate__legacy  — called replicate.run() with any prompt, no auth
+      /generate-svg      — same, also fetched and returned raw SVG
+      /generate-png      — same, converted SVG to PNG via sharp
+    Risk removed: these routes had no requireInternalKey middleware. Any caller
+    knowing the backend URL could trigger paid Replicate API calls indefinitely.
+
+    Also removed route-only dead code (safe because nothing else in index.js used them):
+      require("replicate")             — Replicate SDK import
+      require("node-fetch")            — fetch import (index.js scope only)
+      require("sharp")                 — sharp import (index.js scope only)
+      const replicate = new Replicate  — instance initialization
+      function buildLogoPrompt()       — 79-line prompt template used only by removed routes
+
+    Not removed (still in use):
+      normalizeElementorForm()         — used by /webhook/elementor stub
+      buildPrompts require             — deferred to P3 cleanup pass
+
+  P1-B — routes/logoApiRoutes.js
+    Expanded VIOLATION_WARNINGS in runDualTrackPipeline from 3 items to 8 items.
+    Before (3 items):
+      hasTrademarkSymbol, hasFakeText, hasPresentationLayout
+    After (8 items — matches isCommercialLogoPass coverage):
+      hasTrademarkSymbol, hasFakeText, hasPresentationLayout
+      hasPeople, hasHuman, hasMascot, hasScene, tooIllustrative
+    Reason: logos with people, mascots, or illustrative scenes were getting
+    qualityStatus: 'pass' in the main pipeline because the shorter list did
+    not check these fields. isCommercialLogoPass (used in hybrid-test route)
+    already checked all 8. The two paths are now consistent.
+    Score threshold (score < 70) intentionally NOT added — it would change
+    the main pipeline quality semantics beyond the scope of this fix.
+    Recommendation ranking order unchanged.
+
+  P2-A — services/ideogramService.js
+    Added handcrafted_organic to TYPO_MAP with the same description as
+    handcrafted_expressive:
+      handcrafted_organic: "expressive custom lettering with handcrafted character and natural rhythm"
+    Reason: the frontend fix in commit 49104d4 changed the hero-section.tsx
+    TYPOGRAPHY_VIBE_TO_BACKEND mapping from handcrafted_expressive: "luxury_minimal"
+    to handcrafted_expressive: "handcrafted_organic". The Next.js route.ts path
+    (free-text injection) handled this correctly. However the Elementor webhook
+    path (logoApiRoutes.js → generateIdeogramLogos → buildTypographyDirection)
+    looked up the key in TYPO_MAP, which did not contain handcrafted_organic,
+    causing silent fallback to keyword inference. Key now resolves correctly on
+    both code paths.
+
+12i.3 Pending Items (carry-forward from 12h.5 + new)
+
+  Carry-forward from 12h.5:
+  * Vercel deployment check — confirm commit 49104d4 is Ready on Vercel.
+  * payment.succeeded webhook — real E2E test not yet run (sandbox or live purchase).
+  * free_signup backfill — migration exists at
+    migrations/20260627000002_backfill_free_signup_shadow_grants.sql, NOT applied.
+    Apply in Supabase SQL Editor. Verify: SELECT count(*) FROM credit_grants
+    WHERE source_id = 'backfill_20260628'; → expect 9 rows.
+  * Shadow allocation row generation check — run one generation after backfill.
+  * Blue color online test — generate one logo with Blue selected.
+  * Designer Service inquiry/booking flow — not implemented.
+  * Dedicated OG/social preview image (1200×630) — not urgent.
+  * lib/stripe/ dead code — not deleted, defer to cleanup pass.
+  * Hybrid route — internal only. Do NOT connect /generate-logo-hybrid-test to live /generate-logo.
+
+  Backend Batch 2 (queued, not started):
+  * server.js legacy ESM prototype — review and delete or archive.
+  * /webhook/elementor no-op stub in index.js — review and remove.
+  * /generate-logo-hybrid-test and /generate-logo-openai-test — review double-key
+    auth inconsistency (LOGOFUNNY_INTERNAL_TEST_SECRET vs LOGOFUNNY_INTERNAL_API_KEY).
+
+  Backend Batch 3 (queued, not started):
+  * R2 upload failure handling — logo uploads silently return null imageUrl.
+  * /generate-logo-pipeline stub and /generate-logo-dual redundancy review.
+  * requestId format cleanup (optional, low priority).
+
+12i.4 Current Git State (both repos)
+
+  Frontend: main @ 49104d4 — working tree clean.
+            Untracked preview files (app/generate-preview/, components/generate-page-preview.tsx)
+            intentionally uncommitted.
+  Backend:  main @ 5d0fbf2 — working tree clean.
+
+⸻
+
 13. How to Continue in a New Chat
 
 Copy this opening message into a new ChatGPT conversation:
