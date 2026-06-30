@@ -1688,6 +1688,91 @@ No-touch areas (unchanged):
 
 ⸻
 
+12h. Session Update — 2026-07-01: Frontend Auth + Cleanup Batch
+
+12h.1 Frontend Commit Pushed
+
+  Commit 49104d4 — Fix auth event and frontend cleanup
+  Branch: main
+  Repo: v0-logo-funny-landing-page
+  npx tsc --noEmit: passed, zero errors.
+
+12h.2 Fixes Included
+
+  P0 — components/auth-sync.tsx
+    Removed invalid SIGNED_UP auth event check.
+    Before: (event === "SIGNED_IN" || event === "SIGNED_UP") && session?.access_token
+    After:  event === "SIGNED_IN" && session?.access_token
+    Reason: Supabase AuthChangeEvent does not include SIGNED_UP. New user sign-up triggers
+    SIGNED_IN. The invalid event caused referral claim logic to silently never fire for new users.
+    Fix restores correct referral/auth sync for all sign-in and new-signup flows.
+
+  P1 — components/faq-section.tsx
+    FAQ "How many directions do I get per generation?" answer updated.
+    Before: "Free accounts include 2 generations; Pro includes 20 logo generations per month."
+    After:  "Free accounts include 20 credits — enough for 2 generations and 8 logo concepts.
+             Pro includes 150 credits every month."
+    Reason: FAQ was inconsistent with pricing cards. Users confused by "2 generations" vs
+    "8 logo concepts" vs "20 credits". Now unified under credits as the canonical unit.
+
+  P1 — components/pricing-cards.tsx
+    Removed unused yearly dead code.
+    Deleted: const [yearly] = useState(false)
+    Changed: body: JSON.stringify({ interval: yearly ? "yearly" : "monthly" })
+          →  body: JSON.stringify({ interval: "monthly" })
+    Reason: yearly state had no setter exposed in the UI. The checkout body always sent
+    "monthly" in practice. Dead state and dead conditional removed. Monthly Pro and
+    Credit Pack checkout behavior unchanged.
+
+  P2 — app/layout.tsx
+    themeColor changed from #0B0F19 (dark) to #FFFFFF (white).
+    Reason: Site design is light/white. Dark themeColor caused mobile browser chrome
+    to show a dark title bar inconsistent with the actual page appearance.
+
+  P2 — components/hero-section.tsx
+    Fixed TYPOGRAPHY_VIBE_TO_BACKEND mapping for Handmade / Artisan option.
+    Before: handcrafted_expressive: "luxury_minimal"
+    After:  handcrafted_expressive: "handcrafted_organic"
+    Reason: "luxury_minimal" is semantically opposite to "handmade / artisan".
+    The value is injected as free text into the image generation prompt via
+    typographyDirection.replace(/_/g, " ") in route.ts — no backend enum validation.
+    Fix corrects the prompt direction for this typography option.
+
+12h.3 Untracked Preview Files (intentionally NOT committed)
+
+  app/generate-preview/
+  components/generate-page-preview.tsx
+  Status: local-only. Do not commit until a deliberate decision is made.
+
+12h.4 Vercel Deployment
+
+  Commit 49104d4 pushed to origin main.
+  Vercel deployment status: pending confirmation.
+  Check Vercel dashboard to confirm 49104d4 is Ready before treating as live.
+
+12h.5 Pending Items (carry-forward, NOT done)
+
+  * Vercel deployment check — confirm 49104d4 is Ready on Vercel.
+  * payment.succeeded webhook — real E2E test not yet run (sandbox or live purchase).
+  * free_signup backfill — migration exists at
+    migrations/20260627000002_backfill_free_signup_shadow_grants.sql, NOT applied to production.
+    Apply in Supabase SQL Editor. Verify: SELECT count(*) FROM credit_grants WHERE source_id = 'backfill_20260628'; → expect 9 rows.
+  * Shadow allocation row generation check — run one generation as test user after backfill
+    to confirm generation_charge_allocations row appears.
+  * Blue color online test — generate one logo with Blue selected; confirm blue is visible in output.
+  * Designer Service inquiry/booking flow — not implemented.
+  * Dedicated OG/social preview image — current OG image is 6688×3418, recommend 1200×630
+    dedicated export later. Not urgent; no code change needed now.
+  * lib/stripe/ dead code — not deleted (harmless, defer to cleanup pass).
+  * Hybrid route — still internal only. Do NOT connect /generate-logo-hybrid-test to live /generate-logo.
+
+12h.6 Current Git State (both repos)
+
+  Frontend: main @ 49104d4 — working tree clean. Untracked preview files intentionally uncommitted.
+  Backend:  main @ 8aba4ae (or most recent state-file commit) — verify with git status before starting work.
+
+⸻
+
 13. How to Continue in a New Chat
 
 Copy this opening message into a new ChatGPT conversation:
