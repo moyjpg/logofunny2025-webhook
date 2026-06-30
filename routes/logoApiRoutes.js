@@ -380,45 +380,6 @@ router.post('/generate-logo-fast', requireInternalKey, async (req, res) => {
   }
 });
 
-// POST /generate-logo-dual — dual-track: 2 user-driven + 2 system-recommended
-router.post('/generate-logo-dual', requireInternalKey, async (req, res) => {
-  const requestStart = Date.now();
-  const requestId = String(Date.now()) + Math.random().toString(16).slice(2);
-  const mapped = mapElementorToAI(req.body);
-  const mode = mapped.uploadImage ? 'img2img' : 'text2img';
-
-  console.log('[HIT] /generate-logo-dual route=generate-logo-dual', 'timestamp=', new Date(requestStart).toISOString(), 'requestId=', requestId, 'brandName=', safePreview(mapped.brandName).preview, 'mode=', mode);
-  console.log('[BODY]', 'brandNameLen=', safePreview(mapped.brandName).length, 'keywordsLen=', safePreview(mapped.keywords).length, 'hasUploadImage=', Boolean(mapped.uploadImage), 'colorThemeCount=', Array.isArray(mapped.colorTheme) ? mapped.colorTheme.length : 0);
-
-  try {
-    const hasText = (mapped.brandName && mapped.brandName.trim()) || (mapped.keywords && mapped.keywords.trim());
-    if (!hasText) {
-      return res.status(200).json({
-        success: false,
-        data: null,
-        error: 'Missing required fields: please provide Brand Name or Keywords.',
-      });
-    }
-
-    const data = await runDualTrackPipeline(mapped, requestId);
-    const tEnd = Date.now();
-    console.log('[RESULT] /generate-logo-dual success=true', 'requestId=', requestId, 'ms=', tEnd - requestStart);
-
-    return res.status(200).json({
-      success: true,
-      data,
-      error: null,
-    });
-  } catch (err) {
-    console.error('[generate-logo-dual] error:', err);
-    return res.status(200).json({
-      success: false,
-      data: null,
-      error: err?.message || 'Internal error',
-    });
-  }
-});
-
 router.post("/generate-logo-direct", requireInternalKey, async (req, res) => {
   try {
     const result = await generateLogoMock(req.body);

@@ -4,8 +4,6 @@ const express = require("express");        // 1
 const cors = require("cors");              // 2
 require("dotenv").config();                // 3
 
-const { buildPrompts } = require("./utils/promptEngine"); // 4
-
 const debugRoutes = require("./routes/debugRoutes");      // 7
 const aiRoutes = require("./routes/aiRoutes");            // 8
 const app = express();
