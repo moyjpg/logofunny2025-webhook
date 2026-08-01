@@ -139,6 +139,17 @@ async function runDualTrackPipeline(mapped, requestId = null) {
           .filter(([flag]) => v[flag])
           .map(([, label]) => label)
       )];
+      const colorCompliance = judgeResult.colorCompliance || {};
+      const requiresColor = Boolean(
+        mapped.colorDirection &&
+        !["classic_mono", "black_white_first"].includes(mapped.colorDirection)
+      );
+      if (requiresColor && colorCompliance.matchesRequestedColor === false) {
+        warnings.push("Does not visibly follow the selected color direction");
+      }
+      if (colorCompliance.hasPureWhiteCanvas === false) {
+        warnings.push("Canvas is not a clean pure-white background");
+      }
 
       if (warnings.length > 0) {
         console.log('[quality-gate] concept needs review label=%j warnings=%j', item.label ?? 'unknown', warnings);
@@ -224,7 +235,9 @@ function mapElementorToAI(body) {
     logoStructure: pickStr("logoStructure"),
     brandStyleRoute: pickStr("brandStyleRoute"),
     visualMood: f["visualMood"] || null,
-    colorDirection: pickStr("colorDirection"),
+    // The current Next.js Studio sends a single color direction string while
+    // older callers may send an array. Keep both representations aligned.
+    colorDirection: pickStr("colorDirection") || pickArr("colorTheme")[0] || "",
     typographyDirection: pickStr("typographyDirection"),
     styleCues: pickStr("styleCues"),
     style: pickStr("style"),

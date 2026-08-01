@@ -1138,7 +1138,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0, track = "commercial") {
   })();
 
   const COOL_TECH_BLUE =
-    "Color palette: bright saturated tech blue as the dominant anchor color. Use vivid electric blue (not dark navy, not steel, not indigo) prominently in the symbol mark and/or wordmark. Supporting tones may include off-white or cool light gray only. Do not create a monochrome, charcoal-only, or black-only logo. Blue must be clearly visible in the final image.";
+    "COLOR CONTRACT — bright saturated tech blue must be the dominant visible color in the final logo. Use vivid electric blue in the symbol mark and/or wordmark; it must cover a meaningful portion of the mark, not a tiny accent. Do not use dark navy, steel, indigo, monochrome, charcoal-only, or black-only treatment. Supporting tones may include white or cool light gray only.";
 
   /** @type {Record<string, string>} */
   const CD_MAP = {
@@ -1149,7 +1149,11 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0, track = "commercial") {
     blue: COOL_TECH_BLUE,
     "cool blue": COOL_TECH_BLUE,
     "Cool Tech Blue": COOL_TECH_BLUE,
+    luxury_black_gold: "COLOR CONTRACT — black and metallic gold only. Gold must be visibly present in the symbol mark and/or wordmark; do not return a black-only logo.",
     warm_neutral: "Color palette: warm neutral balance.",
+    soft_natural: "COLOR CONTRACT — natural green must be visibly present in the logo, supported by warm cream, natural brown, or muted sage. Do not return a black-only logo.",
+    warm_bright: "COLOR CONTRACT — warm orange or yellow must be visibly present in the logo, supported by cream or soft neutral tones. Do not return a black-only logo.",
+    bold_vibrant: "COLOR CONTRACT — use a visibly colorful, high-contrast palette with at least one saturated accent as a meaningful part of the logo. Do not return a black-only logo.",
     soft_premium: "Color palette: soft premium restraint.",
     bold_contrast: "Color palette: bold clean contrast.",
     earthy_natural: "Color palette: earthy natural warmth.",
@@ -1221,17 +1225,18 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0, track = "commercial") {
     Boolean(otherNotes || keywords)
   );
   const exclusionTag =
-    "Plain white background only. Standalone logo mark on white. " +
+    "Pure solid #FFFFFF white background only. Standalone logo mark on white. " +
     "No photo scene, no lifestyle imagery, no mockup, no product shot, no table, no cup, " +
     "no environment, no background texture, no gradient backdrop, no people, no hands, no mascots.";
 
-  const backgroundTag = "Centered composition on plain white background. Vector-style flat graphic design.";
+  const backgroundTag = "Canvas contract: centered logo on a uniform solid pure-white #FFFFFF square. No ivory, gray, paper texture, tint, shadow, or gradient. Vector-style flat graphic design.";
 
   const prompt = [
     `Flat vector logo design for "${brandName}".`,
+    colorTag,
+    backgroundTag,
     referenceStyleCue,
     targetSubjectCue,
-    colorTag,
     variationNote,
     industryBaseTag,
     `${structureTag}.`,
@@ -1243,7 +1248,6 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0, track = "commercial") {
     styleCuesTag,
     notesTag,
     textConstraintTag,
-    backgroundTag,
     exclusionTag,
   ]
     .filter(Boolean)

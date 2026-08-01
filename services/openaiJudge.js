@@ -16,6 +16,7 @@ function buildJudgePrompt(context) {
   const colorTheme = Array.isArray(context?.colorTheme)
     ? context.colorTheme.join(", ")
     : context?.colorTheme || "";
+  const colorDirection = context?.colorDirection || "";
 
   return [
     "You are a strict commercial logo compliance judge.",
@@ -40,6 +41,11 @@ function buildJudgePrompt(context) {
     `Keywords: ${keywords}`,
     `Industry: ${industry}`,
     `Preferred colors: ${colorTheme}`,
+    `Selected color direction: ${colorDirection}`,
+    "",
+    "Color and canvas checks:",
+    "- If a non-monochrome color direction was selected, colorCompliance.matchesRequestedColor must be false when the requested color is absent, merely a tiny accent, or the logo is black-only.",
+    "- colorCompliance.hasPureWhiteCanvas is true only when the logo is shown on a uniform white or near-white (#FFFFFF) canvas with no cream/gray tint, paper texture, gradient, shadow, or scene.",
   ].join("\n");
 }
 
@@ -47,10 +53,19 @@ function buildResponseSchema() {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["score", "breakdown", "notes", "violations"],
+    required: ["score", "breakdown", "notes", "violations", "colorCompliance"],
     properties: {
       score: { type: "number", minimum: 0, maximum: 100 },
       notes: { type: "string" },
+      colorCompliance: {
+        type: "object",
+        additionalProperties: false,
+        required: ["matchesRequestedColor", "hasPureWhiteCanvas"],
+        properties: {
+          matchesRequestedColor: { type: "boolean" },
+          hasPureWhiteCanvas: { type: "boolean" },
+        },
+      },
       violations: {
         type: "object",
         additionalProperties: false,
@@ -144,6 +159,10 @@ async function judgeLogo(imageUrl, context = {}, opts = {}) {
         hasTrademarkSymbol: false,
         hasFakeText: false,
         hasPresentationLayout: false,
+      },
+      colorCompliance: {
+        matchesRequestedColor: true,
+        hasPureWhiteCanvas: true,
       },
       breakdown: {
         brand_consistency: 5,
