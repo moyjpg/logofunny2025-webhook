@@ -7,6 +7,7 @@ const { generateIdeogramLogos } = require('../services/ideogramService');
 const { analyzeReferenceImage } = require('../services/referenceVisionService');
 const { judgeLogo, isCommercialLogoPass } = require('../services/openaiJudge');
 const { generateOpenAILogoConcept } = require('../services/openaiImageService');
+const { generateOpenAIBrandScene, SCENE_TEMPLATES } = require('../services/openaiBrandSceneService');
 // const { runLogoPipeline } = require('../services/logoPipeline'); // temporarily disabled: single-candidate mode
 
 const router = express.Router();
@@ -497,6 +498,37 @@ router.post('/generate-logo-openai-test', requireInternalKey, async (req, res) =
     return res.status(200).json({ success: true, data: result, error: null });
   } catch (err) {
     console.error('[openai-test] error:', err?.message || err);
+    return res.status(200).json({ success: false, data: null, error: err?.message || 'Internal error.' });
+  }
+});
+
+// POST /generate-brand-scene-openai-test
+// Internal visual evaluation only. It does not alter user credits, creations, or referral data.
+router.post('/generate-brand-scene-openai-test', requireInternalKey, async (req, res) => {
+  if (process.env.LOGOFUNNY_OPENAI_IMAGE_ENABLED !== 'true') {
+    return res.status(200).json({ success: false, data: null, error: 'OpenAI image generation is disabled.' });
+  }
+
+  const testSecret = process.env.LOGOFUNNY_INTERNAL_TEST_SECRET;
+  if (!testSecret || req.headers['x-logofunny-test-secret'] !== testSecret) {
+    return res.status(401).json({ success: false, data: null, error: 'Unauthorized.' });
+  }
+
+  const brandName = String(req.body?.brandName || '').trim();
+  const logoUrl = String(req.body?.logoUrl || '').trim();
+  const template = String(req.body?.template || 'editorial_launch').trim();
+  if (!brandName || !logoUrl) {
+    return res.status(400).json({ success: false, data: null, error: 'brandName and logoUrl are required.' });
+  }
+  if (!Object.prototype.hasOwnProperty.call(SCENE_TEMPLATES, template)) {
+    return res.status(400).json({ success: false, data: null, error: 'Unsupported scene template.' });
+  }
+
+  try {
+    const data = await generateOpenAIBrandScene({ brandName, logoUrl, template });
+    return res.status(200).json({ success: true, data, error: null });
+  } catch (err) {
+    console.error('[brand-scene-test] failed:', err?.message || err);
     return res.status(200).json({ success: false, data: null, error: err?.message || 'Internal error.' });
   }
 });
