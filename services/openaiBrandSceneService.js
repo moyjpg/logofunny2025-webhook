@@ -17,6 +17,10 @@ const SCENE_TEMPLATES = {
     "a premium flat-lay brand system with a poster, a business card, a social profile card, and a simple packaging card arranged in a deliberate editorial composition",
     "The supplied logo is the hero: place it at a generous readable size on the poster and preserve it exactly on the supporting flat materials.",
   ],
+  pet_brand_launch: [
+    "a lively, premium pet-brand launch composition: a front-facing hero pet-food or treat box with a large centered label, a supporting care-guide card, a small social-profile panel, and one playful pet accessory such as a collar tag or sticker sheet; use warm natural light and an art-directed colorful tabletop rather than a generic office scene",
+    "The supplied logo is the hero: place it large, complete, and unmodified on the front-facing package label. Use one smaller exact repeat on the social-profile avatar or a flat care-guide card only. Leave comfortable clear space around every logo placement.",
+  ],
 };
 
 function normalizeR2BaseUrl() {
