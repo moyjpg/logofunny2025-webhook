@@ -18,8 +18,8 @@ const SCENE_TEMPLATES = {
     "The supplied logo is the hero: place it at a generous readable size on the poster and preserve it exactly on the supporting flat materials.",
   ],
   pet_brand_launch: [
-    "a lively, premium pet-brand launch composition: a front-facing hero pet-food or treat box with a large centered label, a supporting care-guide card, a small social-profile panel, and one playful pet accessory such as a collar tag or sticker sheet; use warm natural light and an art-directed colorful tabletop rather than a generic office scene",
-    "The supplied logo is the hero: place it large, complete, and unmodified on the front-facing package label. Use one smaller exact repeat on the social-profile avatar or a flat care-guide card only. Leave comfortable clear space around every logo placement.",
+    "a premium direct-to-consumer pet-food launch still life in a warm sunlit home: an upright resealable pet-food bag with a large smooth front label, a ceramic food bowl with visible kibble, a small treat box and snack pouch, a rope toy and a tennis ball, plus a subtle collar or leash. Include a laptop in the back right showing an abstract ecommerce storefront and a phone showing an abstract social-profile layout. The product lineup must clearly read as modern pet supplies even if no animal is present. Compose it as an inviting pet-retail product shoot with cream, warm amber, and deep brown tones drawn from the supplied logo, not as an office desk, care-guide card, or generic stationery flat lay.",
+    "The supplied logo is the hero: place it large, complete, and unmodified on one flat rectangular label centered on the fully front-facing food bag. At most one smaller exact repeat may appear on a flat front-facing treat-box label or in the ecommerce header or social-profile avatar. Keep every logo fully visible with clear space. Do not put the supplied logo on the curved bowl, toy, ball, collar, leash, pouch folds, or any angled surface.",
   ],
 };
 
