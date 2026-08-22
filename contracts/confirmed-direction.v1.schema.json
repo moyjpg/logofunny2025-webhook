@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logofunny.com/contracts/confirmed-direction.v1.schema.json",
+  "title": "LogoFunny Confirmed Direction v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "request_id",
+    "facts",
+    "constraints",
+    "advanced_choices",
+    "provenance",
+    "confirmed_at"
+  ],
+  "properties": {
+    "contract_version": { "const": "confirmed_direction.v1" },
+    "request_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "brand_name",
+        "business_context",
+        "audience",
+        "desired_feelings",
+        "undesired_feelings",
+        "existing_visual_ideas",
+        "visual_style_leaning",
+        "main_direction"
+      ],
+      "properties": {
+        "brand_name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "business_context": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "audience": { "type": ["string", "null"], "maxLength": 1000 },
+        "desired_feelings": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 500 } },
+        "undesired_feelings": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 1200 } },
+        "existing_visual_ideas": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 1000 } },
+        "visual_style_leaning": { "type": ["string", "null"], "maxLength": 500 },
+        "main_direction": { "type": ["string", "null"], "maxLength": 1200 }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hard", "soft", "things_to_avoid"],
+      "properties": {
+        "hard": { "type": "array", "maxItems": 30, "items": { "type": "string", "maxLength": 1200 } },
+        "soft": { "type": "array", "maxItems": 30, "items": { "type": "string", "maxLength": 1200 } },
+        "things_to_avoid": { "type": "array", "maxItems": 30, "items": { "type": "string", "maxLength": 1200 } }
+      }
+    },
+    "advanced_choices": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visual_style",
+        "color_preference",
+        "color_description",
+        "existing_visual_idea_preference",
+        "logo_structure",
+        "icon_direction",
+        "detail_level",
+        "typography"
+      ],
+      "properties": {
+        "visual_style": { "type": "string", "maxLength": 120 },
+        "color_preference": { "type": "string", "maxLength": 120 },
+        "color_description": { "type": "string", "maxLength": 500 },
+        "existing_visual_idea_preference": { "type": "string", "maxLength": 120 },
+        "logo_structure": { "type": "string", "maxLength": 120 },
+        "icon_direction": { "type": "string", "maxLength": 120 },
+        "detail_level": { "type": "string", "maxLength": 120 },
+        "typography": { "type": "string", "maxLength": 120 }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_user_input",
+        "voluntary_extra_context",
+        "adaptive_answers",
+        "ai_inferences",
+        "user_summary_edits",
+        "resolved_conflicts"
+      ],
+      "properties": {
+        "raw_user_input": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["brand_name", "business_description", "rough_feeling"],
+          "properties": {
+            "brand_name": { "type": "string", "maxLength": 120 },
+            "business_description": { "type": "string", "maxLength": 2000 },
+            "rough_feeling": { "type": "string", "maxLength": 500 }
+          }
+        },
+        "voluntary_extra_context": { "type": "string", "maxLength": 12000 },
+        "adaptive_answers": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "question", "answer"],
+            "properties": {
+              "id": { "type": "string", "maxLength": 120 },
+              "question": { "type": "string", "maxLength": 300 },
+              "answer": { "type": "string", "maxLength": 1000 }
+            }
+          }
+        },
+        "ai_inferences": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "field", "value", "confidence", "status"],
+            "properties": {
+              "id": { "type": "string", "maxLength": 160 },
+              "field": { "type": "string", "maxLength": 120 },
+              "value": { "type": "string", "maxLength": 1200 },
+              "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+              "status": { "enum": ["active", "invalidated"] }
+            }
+          }
+        },
+        "user_summary_edits": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "previous_value", "previous_source", "new_value", "edited_at", "invalidated_inference_ids"],
+            "properties": {
+              "field": { "type": "string", "maxLength": 120 },
+              "previous_value": { "type": "string", "maxLength": 2000 },
+              "previous_source": { "enum": ["user", "ai_inferred", "user_edited", "advanced_choice"] },
+              "new_value": { "type": "string", "maxLength": 2000 },
+              "edited_at": { "type": "string", "format": "date-time" },
+              "invalidated_inference_ids": { "type": "array", "items": { "type": "string", "maxLength": 160 } }
+            }
+          }
+        },
+        "resolved_conflicts": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "field", "user_statement", "advanced_choice_label", "resolution", "resolved_at"],
+            "properties": {
+              "id": { "type": "string", "maxLength": 180 },
+              "field": { "type": "string", "maxLength": 120 },
+              "user_statement": { "type": "string", "maxLength": 1200 },
+              "advanced_choice_label": { "type": "string", "maxLength": 300 },
+              "resolution": { "enum": ["kept_user_statement", "used_advanced_choice"] },
+              "resolved_at": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    },
+    "confirmed_at": { "type": "string", "format": "date-time" }
+  }
+}

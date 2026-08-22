@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["assistant_message", "ready_to_review", "research", "questions"],
+  "properties": {
+    "assistant_message": { "type": "string" },
+    "ready_to_review": { "type": "boolean" },
+    "research": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offered", "reason", "confirmation_question"],
+      "properties": {
+        "offered": { "type": "boolean" },
+        "reason": { "type": "string" },
+        "confirmation_question": { "type": "string" }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "question", "reason", "target_field"],
+        "properties": {
+          "id": { "type": "string" },
+          "question": { "type": "string" },
+          "reason": { "type": "string" },
+          "target_field": {
+            "enum": ["audience", "existing_visual_idea", "things_to_avoid", "rough_feeling", "other"]
+          }
+        }
+      }
+    }
+  }
+}

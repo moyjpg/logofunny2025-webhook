@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logofunny.com/contracts/internal-brand-brief.v1.schema.json",
+  "title": "LogoFunny Internal Brand Brief v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "source_confirmed_direction_hash",
+    "business_context",
+    "brand_name",
+    "audience",
+    "desired_feelings",
+    "undesired_feelings",
+    "hard_constraints",
+    "soft_preferences",
+    "existing_visual_ideas",
+    "differentiator",
+    "things_to_avoid",
+    "unknowns",
+    "confidence",
+    "coverage"
+  ],
+  "properties": {
+    "contract_version": { "type": "string", "const": "internal_brand_brief.v1" },
+    "source_confirmed_direction_hash": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "business_context": { "type": "string", "minLength": 1, "maxLength": 3000 },
+    "brand_name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "audience": { "type": ["string", "null"], "maxLength": 1000 },
+    "desired_feelings": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 500 } },
+    "undesired_feelings": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 1200 } },
+    "hard_constraints": { "type": "array", "maxItems": 30, "items": { "type": "string", "maxLength": 1200 } },
+    "soft_preferences": { "type": "array", "maxItems": 30, "items": { "type": "string", "maxLength": 1200 } },
+    "existing_visual_ideas": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 1000 } },
+    "differentiator": { "type": ["string", "null"], "maxLength": 1200 },
+    "things_to_avoid": { "type": "array", "maxItems": 30, "items": { "type": "string", "maxLength": 1200 } },
+    "unknowns": { "type": "array", "maxItems": 30, "items": { "type": "string", "maxLength": 500 } },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overall", "by_field"],
+      "properties": {
+        "overall": { "type": "number", "minimum": 0, "maximum": 1 },
+        "by_field": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "confidence"],
+            "properties": {
+              "field": { "type": "string", "maxLength": 120 },
+              "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hard_constraints_preserved",
+        "negative_intent_preserved",
+        "user_corrections_preserved",
+        "unknowns_not_promoted_to_facts"
+      ],
+      "properties": {
+        "hard_constraints_preserved": { "type": "boolean" },
+        "negative_intent_preserved": { "type": "boolean" },
+        "user_corrections_preserved": { "type": "boolean" },
+        "unknowns_not_promoted_to_facts": { "type": "boolean" }
+      }
+    }
+  }
+}

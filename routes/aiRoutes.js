@@ -1,5 +1,6 @@
 // routes/aiRoutes.js
 const express = require("express");
+const multer = require("multer");
 const router = express.Router();
 
 const {
@@ -7,6 +8,36 @@ const {
   isAdvisorConfigured,
   attemptBrandAdvisorLLM,
 } = require("../services/brandAdvisorService");
+
+const {
+  generateOnboardingFollowup,
+} = require("../services/onboardingFollowupService");
+
+const {
+  runOnboardingResearch,
+} = require("../services/onboardingResearchService");
+
+const {
+  analyzeOnboardingImage,
+} = require("../services/onboardingImageAnalysisService");
+
+const {
+  generateOnboardingSummary,
+  normalizeOnboardingInput,
+  buildDeterministicDirectionDraft,
+} = require("../services/onboardingSummaryService");
+
+const {
+  normalizeConfirmedDirection,
+} = require("../services/confirmedDirectionContract");
+
+const {
+  generateInternalBrandBrief,
+} = require("../services/internalBrandBriefService");
+
+const {
+  generateCreativeDirections,
+} = require("../services/creativeDirectionsService");
 
 function requireInternalKey(req, res, next) {
   const serverKey = process.env.LOGOFUNNY_INTERNAL_API_KEY;
@@ -19,6 +50,26 @@ function requireInternalKey(req, res, next) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
   next();
+}
+
+const ONBOARDING_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const onboardingImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, callback) => {
+    const allowed = ONBOARDING_IMAGE_TYPES.has(file.mimetype);
+    callback(allowed ? null : new Error("Reference image must be PNG, JPEG, or WebP."), allowed);
+  },
+}).single("reference_image");
+
+function handleOnboardingImageUpload(req, res, next) {
+  onboardingImageUpload(req, res, (error) => {
+    if (!error) return next();
+    const message = error.code === "LIMIT_FILE_SIZE"
+      ? "Reference image must be 5 MB or smaller."
+      : (error.message || "Invalid reference image.");
+    return res.status(400).json({ ok: false, error: message });
+  });
 }
 
 function buildFallbackBrandPlan(body = {}) {
@@ -218,6 +269,246 @@ router.post("/generate__ai", requireInternalKey, async (req, res) => {
       ok: false,
       error: err?.message || String(err),
     });
+  }
+});
+
+// ===== Onboarding Brand Conversation (P0.4 preview) =====
+// Layer 1 -> Layer 2 only. Returns a short brand-guide response and at most
+// one plain-language follow-up. It never generates Creative Directions,
+// prompts, images, or credit-affecting work and always has a safe fallback.
+router.post("/onboarding-followup", requireInternalKey, async (req, res) => {
+  const body = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+
+  const toText = (v) => (typeof v === "string" ? v : v == null ? "" : String(v));
+
+  const input = {
+    brand_name: toText(body.brand_name).trim(),
+    business_description: toText(body.business_description).trim(),
+    rough_feeling: toText(body.rough_feeling).trim(),
+    primary_use: toText(body.primary_use).trim(),
+    voluntary_extra_context: toText(body.voluntary_extra_context).trim(),
+    latest_message: toText(body.latest_message).trim(),
+    conversation_language: ["en", "zh-CN", "es", "ja"].includes(body.conversation_language)
+      ? body.conversation_language
+      : "en",
+    adaptive_answers: Array.isArray(body.adaptive_answers) ? body.adaptive_answers : [],
+  };
+
+  if (!/[A-Za-z0-9]/.test(input.brand_name) || !/^[A-Za-z0-9 &'().,+\-]+$/.test(input.brand_name)) {
+    return res.status(400).json({
+      ok: false,
+      error: "Logo text currently supports English letters, numbers, and simple punctuation only.",
+    });
+  }
+
+  try {
+    const result = await generateOnboardingFollowup(input);
+    const questions = Array.isArray(result.questions)
+      ? result.questions.map((q) => ({ id: q.id, question: q.question, reason: q.reason }))
+      : [];
+
+    return res.status(200).json({
+      ok: true,
+      data: {
+        source: result.source === "ai" ? "ai" : "deterministic_fallback",
+        assistant_message: toText(result.assistant_message).trim(),
+        ready_to_review: result.ready_to_review === true,
+        research: result.research && typeof result.research === "object"
+          ? result.research
+          : { offered: false, reason: "", confirmation_question: "" },
+        needs_followup: questions.length > 0,
+        questions,
+      },
+    });
+  } catch (err) {
+    console.error("[onboarding-followup] handler error:", err?.message || err);
+    return res.status(200).json({
+      ok: true,
+      data: {
+        source: "deterministic_fallback",
+        assistant_message: "I can help you think through the idea, not just record it. Tell me the one thing people should remember after seeing the brand once.",
+        ready_to_review: true,
+        research: { offered: false, reason: "", confirmation_question: "" },
+        needs_followup: false,
+        questions: [],
+      },
+    });
+  }
+});
+
+// ===== Onboarding Public Research =====
+// The authenticated frontend owns end-user confirmation and credit charging.
+// This internal route only performs the approved public-web research and
+// returns the answer plus the exact source URLs supplied by OpenAI.
+router.post("/onboarding-research", requireInternalKey, async (req, res) => {
+  const body = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+  try {
+    const result = await runOnboardingResearch(body);
+    return res.status(200).json({
+      ok: true,
+      data: {
+        summary: result.summary,
+        sources: result.sources,
+        model: result.model,
+        response_id: result.response_id,
+      },
+    });
+  } catch (err) {
+    const notConfigured = err?.code === "RESEARCH_NOT_CONFIGURED";
+    console.error("[onboarding-research] failed:", err?.message || err);
+    return res.status(notConfigured ? 503 : 502).json({
+      ok: false,
+      error: notConfigured
+        ? "Public research is not configured."
+        : "Public research is temporarily unavailable.",
+    });
+  }
+});
+
+// ===== Onboarding Visual Reference Analysis =====
+// The authenticated frontend obtains the user's explicit consent before this
+// route is called. The image is processed in memory, is not persisted here,
+// and this route never charges credits or starts generation.
+router.post(
+  "/onboarding-image-analysis",
+  requireInternalKey,
+  handleOnboardingImageUpload,
+  async (req, res) => {
+    if (req.body?.image_analysis_consent !== "true") {
+      return res.status(412).json({ ok: false, error: "Confirm image analysis before continuing." });
+    }
+    if (!req.file) {
+      return res.status(400).json({ ok: false, error: "A reference image is required." });
+    }
+
+    try {
+      const result = await analyzeOnboardingImage({
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        source_type: req.body?.source_type,
+        brand_name: req.body?.brand_name,
+        business_description: req.body?.business_description,
+        rough_feeling: req.body?.rough_feeling,
+      });
+      return res.status(200).json({
+        ok: true,
+        data: {
+          analysis: result.analysis,
+          model: result.model,
+          response_id: result.response_id,
+        },
+      });
+    } catch (error) {
+      const notConfigured = error?.code === "IMAGE_ANALYSIS_NOT_CONFIGURED";
+      console.error("[onboarding-image-analysis] failed:", error?.message || error);
+      return res.status(notConfigured ? 503 : 502).json({
+        ok: false,
+        error: notConfigured
+          ? "Image analysis is not configured."
+          : "Image analysis is temporarily unavailable.",
+      });
+    }
+  }
+);
+
+// ===== Onboarding Direction Summary (P0.4 isolated preview) =====
+// Layer 1 -> editable Layer 2 only. Never generates an Internal Brand Brief,
+// Creative Directions, prompts, images, or credit-affecting work.
+router.post("/onboarding-summary", requireInternalKey, async (req, res) => {
+  const body = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+  const input = normalizeOnboardingInput(body);
+
+  if (!input.brand_name || !input.business_description) {
+    return res.status(400).json({
+      ok: false,
+      error: "brand_name and business_description are required.",
+    });
+  }
+  if (!/[A-Za-z0-9]/.test(input.brand_name) || !/^[A-Za-z0-9 &'().,+\-]+$/.test(input.brand_name)) {
+    return res.status(400).json({
+      ok: false,
+      error: "Logo text currently supports English letters, numbers, and simple punctuation only.",
+    });
+  }
+
+  try {
+    const result = await generateOnboardingSummary(input);
+    if (result.source === "ai") console.log("[onboarding-summary] ai_success");
+    else console.log(`[onboarding-summary] fallback_used reason=${result.failure || "unknown"}`);
+
+    return res.status(200).json({
+      ok: true,
+      data: {
+        source: result.source,
+        draft: result.draft,
+      },
+    });
+  } catch (err) {
+    console.error("[onboarding-summary] handler error:", err?.message || err);
+    return res.status(200).json({
+      ok: true,
+      data: {
+        source: "deterministic_fallback",
+        draft: buildDeterministicDirectionDraft(input),
+      },
+    });
+  }
+});
+
+// ===== Internal Brand Brief (Layer 3 isolated preview) =====
+// Consumes only a user-approved confirmed_direction.v1. It does not build
+// Creative Directions, prompts, images, or touch credits/generation.
+router.post("/onboarding-brief", requireInternalKey, async (req, res) => {
+  const raw = req.body?.confirmed_direction;
+  const confirmedDirection = normalizeConfirmedDirection(raw);
+  if (!confirmedDirection) {
+    return res.status(400).json({ ok: false, error: "Invalid confirmed_direction.v1." });
+  }
+
+  try {
+    const result = await generateInternalBrandBrief(confirmedDirection);
+    if (result.source === "ai") console.log("[onboarding-brief] strategist_success");
+    else console.log(`[onboarding-brief] fallback_used reason=${result.failure || "unknown"}`);
+    return res.status(200).json({
+      ok: true,
+      data: {
+        source: result.source,
+        coverage_passed: result.coveragePassed,
+        brief: result.brief,
+      },
+    });
+  } catch (err) {
+    console.error("[onboarding-brief] handler error:", err?.message || err);
+    return res.status(500).json({ ok: false, error: "Internal Brand Brief is temporarily unavailable." });
+  }
+});
+
+// ===== Creative Directions (Layer 4 isolated preview) =====
+// Consumes only a verified internal_brand_brief.v1 and returns four distinct
+// strategic routes. It never creates provider prompts or generated assets.
+router.post("/onboarding-creative-directions", requireInternalKey, async (req, res) => {
+  try {
+    const result = await generateCreativeDirections(req.body?.internal_brand_brief);
+    if (!result.ok) {
+      if (result.failure === "invalid_brief") {
+        return res.status(400).json({ ok: false, error: "Invalid internal_brand_brief.v1." });
+      }
+      console.log(`[onboarding-creative-directions] unavailable reason=${result.failure || "unknown"}`);
+      return res.status(503).json({
+        ok: false,
+        error: "Creative Directions are not configured for this isolated preview.",
+        code: result.failure || "unavailable",
+      });
+    }
+
+    console.log("[onboarding-creative-directions] strategist_success");
+    return res.status(200).json({
+      ok: true,
+      data: { source: result.source, creative_directions: result.directions },
+    });
+  } catch (err) {
+    console.error("[onboarding-creative-directions] handler error:", err?.message || err);
+    return res.status(500).json({ ok: false, error: "Creative Directions are temporarily unavailable." });
   }
 });
 

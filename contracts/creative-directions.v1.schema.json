@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://logofunny.com/contracts/creative-directions.v1.schema.json",
+  "title": "LogoFunny Creative Directions v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "source_internal_brand_brief_hash",
+    "brand_name",
+    "directions",
+    "coverage"
+  ],
+  "properties": {
+    "contract_version": { "type": "string", "const": "creative_directions.v1" },
+    "source_internal_brand_brief_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "brand_name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "directions": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "core_idea",
+          "brand_signal",
+          "symbol_strategy",
+          "typography_strategy",
+          "color_strategy",
+          "composition_strategy",
+          "distinctive_move",
+          "constraints_applied",
+          "avoid",
+          "confidence"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^direction_[1-4]$" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "core_idea": { "type": "string", "minLength": 1, "maxLength": 700 },
+          "brand_signal": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "symbol_strategy": { "type": "string", "minLength": 1, "maxLength": 700 },
+          "typography_strategy": { "type": "string", "minLength": 1, "maxLength": 700 },
+          "color_strategy": { "type": "string", "minLength": 1, "maxLength": 700 },
+          "composition_strategy": { "type": "string", "minLength": 1, "maxLength": 700 },
+          "distinctive_move": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "constraints_applied": {
+            "type": "array",
+            "maxItems": 30,
+            "items": { "type": "string", "minLength": 1, "maxLength": 1200 }
+          },
+          "avoid": {
+            "type": "array",
+            "maxItems": 50,
+            "items": { "type": "string", "minLength": 1, "maxLength": 1200 }
+          },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_brief_verified",
+        "hard_constraints_applied_to_every_direction",
+        "negative_intent_applied_to_every_direction",
+        "directions_are_distinct"
+      ],
+      "properties": {
+        "source_brief_verified": { "type": "boolean" },
+        "hard_constraints_applied_to_every_direction": { "type": "boolean" },
+        "negative_intent_applied_to_every_direction": { "type": "boolean" },
+        "directions_are_distinct": { "type": "boolean" }
+      }
+    }
+  }
+}
