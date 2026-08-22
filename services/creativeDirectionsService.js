@@ -150,7 +150,14 @@ function allIncluded(required, actual) {
 }
 
 function normalizeForDistinctness(value) {
-  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  // Keep letters and numbers from every writing system. The former ASCII-only
+  // filter reduced Chinese/Japanese/Spanish routes to an empty signature, so
+  // valid non-English directions were incorrectly rejected as duplicates.
+  return String(value || "")
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
 }
 
 function directionsAreDistinct(directions) {

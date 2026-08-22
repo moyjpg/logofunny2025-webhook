@@ -5,6 +5,7 @@ const {
 const {
   normalizeInternalBrandBrief,
   hashInternalBrandBrief,
+  directionsAreDistinct,
   normalizeCreativeDirections,
 } = require("../services/creativeDirectionsService");
 const { normalizeConfirmedDirection } = require("../services/confirmedDirectionContract");
@@ -106,6 +107,14 @@ assert(phorkBrief);
 const duplicate = mockedModelOutput(phorkBrief);
 duplicate.directions[1] = { ...duplicate.directions[0], id: "direction_2" };
 assert.equal(normalizeCreativeDirections(duplicate, phorkBrief), null);
+
+const chineseRoutes = [
+  { name: "清晰路径", core_idea: "用一条有节奏的路径表达从混乱到清楚。", symbol_strategy: "简化为可缩放的折线。", distinctive_move: "在转折处留出呼吸空间。" },
+  { name: "开放网格", core_idea: "以开放结构表达团队协作与灵活安排。", symbol_strategy: "使用不封闭的模块网格。", distinctive_move: "让一个模块轻微错位。" },
+  { name: "连续线程", core_idea: "用连续线条连接任务、成员与进度。", symbol_strategy: "形成单线连续图形。", distinctive_move: "在线条连接处形成独特节点。" },
+  { name: "安静窗口", core_idea: "用留白和窗口感表现专注与平静。", symbol_strategy: "建立带缺口的简洁框架。", distinctive_move: "让缺口成为方向提示。" },
+];
+assert.equal(directionsAreDistinct(chineseRoutes), true);
 
 const promptLeak = mockedModelOutput(phorkBrief);
 promptLeak.directions[0].prompt = "This field belongs to Layer 5 and must be rejected.";
