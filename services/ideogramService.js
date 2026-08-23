@@ -1,4 +1,5 @@
 const fetch = require("node-fetch");
+const FormData = require("form-data");
 
 // Two group art directions — each group generates 2 sibling outputs (2+2 = 4 total).
 // Group 0: typography-forward (wordmark + symbol). Group 1: mark-led (icon or monogram).
@@ -1273,7 +1274,14 @@ async function generateIdeogramLogos(input = {}) {
   const referenceImageUrl = (typeof input.referenceImageUrl === "string" && input.referenceImageUrl.trim())
     ? input.referenceImageUrl.trim()
     : null;
-  const hasStyleReference    = Boolean(referenceImageUrl);
+  const referenceImageBuffer = Buffer.isBuffer(input.referenceImageBuffer)
+    ? input.referenceImageBuffer
+    : null;
+  const referenceImageMimeType = ["image/png", "image/jpeg", "image/webp"].includes(input.referenceImageMimeType)
+    ? input.referenceImageMimeType
+    : "image/png";
+  const hasRawStyleReference = Boolean(referenceImageBuffer);
+  const hasStyleReference    = hasRawStyleReference || Boolean(referenceImageUrl);
   const hasReferenceAnalysis = Boolean(input?.referenceAnalysis?.safePromptFragment);
   const styleReferenceStrength = 0.75;
   console.log("[ideogram] hasStyleReference=%s styleReferenceStrength=%s hasReferenceAnalysis=%s", hasStyleReference, styleReferenceStrength, hasReferenceAnalysis);
@@ -1317,13 +1325,28 @@ async function generateIdeogramLogos(input = {}) {
           conceptIndex, numImages, resolvedMagicPrompt, hasStyleReference, dbgSlice(prompt, 600));
       }
 
-      const response = await fetch("https://api.ideogram.ai/v1/ideogram-v3/generate", {
-        method: "POST",
-        headers: {
-          "Api-Key": apiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      let requestBody;
+      let requestHeaders;
+      if (hasRawStyleReference) {
+        const form = new FormData();
+        form.append("prompt", prompt);
+        form.append("num_images", String(numImages));
+        form.append("magic_prompt", resolvedMagicPrompt);
+        form.append("aspect_ratio", "1x1");
+        form.append("rendering_speed", "QUALITY");
+        form.append("enable_copyright_detection", "true");
+        const extension = referenceImageMimeType === "image/jpeg"
+          ? "jpg"
+          : referenceImageMimeType.split("/")[1];
+        form.append("style_reference_images", referenceImageBuffer, {
+          filename: `reference.${extension}`,
+          contentType: referenceImageMimeType,
+          knownLength: referenceImageBuffer.length,
+        });
+        requestBody = form;
+        requestHeaders = form.getHeaders();
+      } else {
+        requestBody = JSON.stringify({
           prompt,
           num_images: numImages,
           magic_prompt: resolvedMagicPrompt,
@@ -1333,7 +1356,17 @@ async function generateIdeogramLogos(input = {}) {
           rendering_speed: "QUALITY",
           // Style reference: field name and strength can be adjusted if Ideogram schema changes.
           ...(hasStyleReference ? { style_reference: { url: referenceImageUrl, strength: styleReferenceStrength } } : {}),
-        }),
+        });
+        requestHeaders = { "Content-Type": "application/json" };
+      }
+
+      const response = await fetch("https://api.ideogram.ai/v1/ideogram-v3/generate", {
+        method: "POST",
+        headers: {
+          "Api-Key": apiKey,
+          ...requestHeaders,
+        },
+        body: requestBody,
       });
 
       if (!response.ok) {
@@ -1363,7 +1396,7 @@ async function generateIdeogramLogos(input = {}) {
         style_name,
         conceptLabel: conceptLabel ?? null,
         model: "ideogram",
-        mode: "text-to-image",
+        mode: hasRawStyleReference ? "image-guided" : "text-to-image",
       }));
     })
   );

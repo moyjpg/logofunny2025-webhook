@@ -248,6 +248,62 @@ function mapElementorToAI(body) {
     uploadImage: f["uploadLogo"] || null,
   };
 }
+
+function cleanReferenceText(value, max = 500) {
+  return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+
+function cleanReferenceList(value, maxItems = 8) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => cleanReferenceText(item, 180))
+    .filter(Boolean)
+    .slice(0, maxItems);
+}
+
+function parseConfirmedVisualAnalysis(value) {
+  let raw = value;
+  if (typeof raw === 'string') {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  if (raw.confirmed !== true || !cleanReferenceText(raw.confirmed_at, 80)) return null;
+
+  const observedSummary = cleanReferenceText(raw.observed_summary);
+  const inferredIntent = cleanReferenceText(raw.inferred_intent);
+  if (!observedSummary || !inferredIntent) return null;
+
+  const visibleElements = cleanReferenceList(raw.visible_elements);
+  const preserve = cleanReferenceList(raw.preserve);
+  const refine = cleanReferenceList(raw.refine);
+  const avoid = cleanReferenceList(raw.avoid);
+  const composition = cleanReferenceText(raw.composition);
+  const colorAndFinish = cleanReferenceText(raw.color_and_finish);
+  const safePromptFragment = [
+    `A logo featuring the confirmed abstract visual construction: ${observedSummary}.`,
+    composition ? `Use this composition approach: ${composition}.` : '',
+    preserve.length ? `Preserve these abstract traits: ${preserve.join('; ')}.` : '',
+    refine.length ? `Refine these areas: ${refine.join('; ')}.` : '',
+    `Express this user-confirmed intent: ${inferredIntent}.`,
+    avoid.length ? `Avoid: ${avoid.join('; ')}.` : '',
+    'Create a new original mark without copying exact artwork, readable text, brand identifiers, trademarks, or proprietary details.',
+  ].filter(Boolean).join(' ');
+
+  return {
+    shapeLanguage: visibleElements.join('; '),
+    composition,
+    colorPalette: colorAndFinish,
+    iconFeel: inferredIntent,
+    typographyFeel: '',
+    detailLevel: refine.length > 0 ? 'refined' : 'balanced',
+    styleDescription: observedSummary,
+    safePromptFragment,
+  };
+}
 const REFERENCE_ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const _referenceMulter = multer({
   storage: multer.memoryStorage(),
@@ -301,26 +357,40 @@ router.post('/generate-logo', requireInternalKey, handleReferenceUpload, async (
   const mapped = mapElementorToAI(req.body);
 
   if (req.file) {
-    // Run R2 upload and vision analysis in parallel; vision failure must never block generation.
-    const [r2Result, visionResult] = await Promise.allSettled([
-      uploadBufferToR2(req.file.buffer, req.file.mimetype, { prefix: 'references' }),
-      analyzeReferenceImage(req.file.buffer, req.file.mimetype),
-    ]);
+    const requestsConfirmedOnboarding = req.body?.imageGuidedSource === 'confirmed_onboarding';
+    const confirmedAnalysis = requestsConfirmedOnboarding
+      ? parseConfirmedVisualAnalysis(req.body?.confirmedVisualAnalysis)
+      : null;
 
-    if (r2Result.status === 'rejected') {
-      console.error('[generate-logo] R2 reference upload failed:', r2Result.reason?.message);
-      return res.status(500).json({ success: false, data: null, error: 'Reference image upload failed. Please try again.' });
+    if (requestsConfirmedOnboarding && !confirmedAnalysis) {
+      return res.status(400).json({ success: false, data: null, error: 'Confirmed image analysis is required.' });
     }
 
-    mapped.referenceImageUrl = r2Result.value.publicUrl;
+    if (confirmedAnalysis) {
+      // Internal confirmed flow: keep the original only in memory for this
+      // request and reuse the analysis the user already approved.
+      mapped.referenceImageBuffer = req.file.buffer;
+      mapped.referenceImageMimeType = req.file.mimetype;
+      mapped.referenceAnalysis = confirmedAnalysis;
+    } else {
+      // Preserve the existing Pro-upload path until it is migrated separately.
+      const [r2Result, visionResult] = await Promise.allSettled([
+        uploadBufferToR2(req.file.buffer, req.file.mimetype, { prefix: 'references' }),
+        analyzeReferenceImage(req.file.buffer, req.file.mimetype),
+      ]);
 
-    const visionAnalysis = visionResult.status === 'fulfilled' ? visionResult.value : null;
-    if (visionAnalysis) {
-      mapped.referenceAnalysis = visionAnalysis;
+      if (r2Result.status === 'rejected') {
+        console.error('[generate-logo] R2 reference upload failed:', r2Result.reason?.message);
+        return res.status(500).json({ success: false, data: null, error: 'Reference image upload failed. Please try again.' });
+      }
+
+      mapped.referenceImageUrl = r2Result.value.publicUrl;
+      const visionAnalysis = visionResult.status === 'fulfilled' ? visionResult.value : null;
+      if (visionAnalysis) mapped.referenceAnalysis = visionAnalysis;
     }
   }
 
-  const hasReferenceImage    = Boolean(mapped.referenceImageUrl);
+  const hasReferenceImage    = Boolean(mapped.referenceImageUrl) || Buffer.isBuffer(mapped.referenceImageBuffer);
   const hasReferenceAnalysis = Boolean(mapped.referenceAnalysis?.safePromptFragment);
   const mode = mapped.uploadImage ? 'img2img' : 'text2img';
 
