@@ -49,6 +49,21 @@ function cleanList(value, maxItems, maxLength) {
   return value.map((item) => cleanText(item, maxLength)).filter(Boolean).slice(0, maxItems);
 }
 
+function imageAnalysisError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
+function imageAnalysisProviderFailureCode(status) {
+  if (status === 401 || status === 403) return "IMAGE_ANALYSIS_PROVIDER_AUTH";
+  if (status === 404) return "IMAGE_ANALYSIS_MODEL_UNAVAILABLE";
+  if (status === 408 || status === 504) return "IMAGE_ANALYSIS_PROVIDER_TIMEOUT";
+  if (status === 429) return "IMAGE_ANALYSIS_PROVIDER_RATE_LIMITED";
+  if (status >= 500) return "IMAGE_ANALYSIS_PROVIDER_UNAVAILABLE";
+  return "IMAGE_ANALYSIS_PROVIDER_ERROR";
+}
+
 function extractOutputText(data) {
   if (typeof data?.output_text === "string" && data.output_text.trim()) return data.output_text.trim();
   if (!Array.isArray(data?.output)) return "";
@@ -131,37 +146,48 @@ async function analyzeOnboardingImage({ buffer, mimetype, source_type, brand_nam
       business_description: cleanText(business_description, 2_000),
       rough_feeling: cleanText(rough_feeling, 500),
     };
-    const response = await fetch(`${config.baseUrl}/responses`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: config.model,
-        store: false,
-        reasoning: { effort: "low" },
-        instructions: buildInstructions(),
-        input: [{
-          role: "user",
-          content: [
-            { type: "input_text", text: JSON.stringify(context) },
-            { type: "input_image", image_url: `data:${mimetype};base64,${buffer.toString("base64")}`, detail: "high" },
-          ],
-        }],
-        text: { format: { type: "json_schema", name: "visual_reference_analysis", schema: outputSchema, strict: true } },
-        max_output_tokens: 1_800,
-      }),
-      signal: controller.signal,
-    });
+    let response;
+    try {
+      response = await fetch(`${config.baseUrl}/responses`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: config.model,
+          store: false,
+          reasoning: { effort: "low" },
+          instructions: buildInstructions(),
+          input: [{
+            role: "user",
+            content: [
+              { type: "input_text", text: JSON.stringify(context) },
+              { type: "input_image", image_url: `data:${mimetype};base64,${buffer.toString("base64")}`, detail: "high" },
+            ],
+          }],
+          text: { format: { type: "json_schema", name: "visual_reference_analysis", schema: outputSchema, strict: true } },
+          max_output_tokens: 1_800,
+        }),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        throw imageAnalysisError("IMAGE_ANALYSIS_TIMEOUT", "Image analysis timed out.");
+      }
+      throw imageAnalysisError("IMAGE_ANALYSIS_PROVIDER_REQUEST_FAILED", "Image analysis provider request failed.");
+    }
     const raw = await response.text();
     let json = null;
     try { json = JSON.parse(raw); } catch { json = null; }
     if (!response.ok || !json) {
-      throw new Error(cleanText(json?.error?.message || raw, 500) || `Image analysis failed with HTTP ${response.status}.`);
+      throw imageAnalysisError(
+        imageAnalysisProviderFailureCode(response.status),
+        cleanText(json?.error?.message || raw, 500) || `Image analysis failed with HTTP ${response.status}.`
+      );
     }
     const outputText = extractOutputText(json);
     let parsed = null;
     try { parsed = JSON.parse(outputText); } catch { parsed = null; }
     const analysis = normalizeAnalysis(parsed, sourceType);
-    if (!analysis) throw new Error("Image analysis did not return a usable result.");
+    if (!analysis) throw imageAnalysisError("IMAGE_ANALYSIS_INVALID_RESPONSE", "Image analysis did not return a usable result.");
     return {
       analysis,
       model: cleanText(json.model || config.model, 120),

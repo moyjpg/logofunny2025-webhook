@@ -47,6 +47,7 @@ function requireInternalKey(req, res, next) {
   }
   const clientKey = req.headers['x-logofunny-internal-key'];
   if (!clientKey || clientKey !== serverKey) {
+    console.warn(`[security] invalid internal API key method=${req.method} path=${req.originalUrl || req.path || ""}`);
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
   next();
@@ -374,6 +375,7 @@ router.post(
   requireInternalKey,
   handleOnboardingImageUpload,
   async (req, res) => {
+    const requestId = String(req.body?.request_id || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 80);
     if (req.body?.image_analysis_consent !== "true") {
       return res.status(412).json({ ok: false, error: "Confirm image analysis before continuing." });
     }
@@ -400,12 +402,15 @@ router.post(
       });
     } catch (error) {
       const notConfigured = error?.code === "IMAGE_ANALYSIS_NOT_CONFIGURED";
-      console.error("[onboarding-image-analysis] failed:", error?.message || error);
+      const diagnosticCode = String(error?.code || "IMAGE_ANALYSIS_UNAVAILABLE").slice(0, 120);
+      console.error(`[onboarding-image-analysis] request_id=${requestId || "none"} code=${diagnosticCode} failed:`, error?.message || error);
       return res.status(notConfigured ? 503 : 502).json({
         ok: false,
         error: notConfigured
           ? "Image analysis is not configured."
           : "Image analysis is temporarily unavailable.",
+        diagnostic_code: diagnosticCode,
+        request_id: requestId || undefined,
       });
     }
   }
