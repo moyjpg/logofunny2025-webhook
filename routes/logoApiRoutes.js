@@ -181,6 +181,18 @@ async function runDualTrackPipeline(mapped, requestId = null) {
     promptOverride: userResultAltPrompt,
   });
 
+  // If the primary provider is temporarily unavailable, preserve the same
+  // product promise and credit contract: the focused mode creates only two
+  // results instead of silently producing four extra provider calls.
+  if (mapped.generationMode !== 'four_directions') {
+    const [userResult1, userResult2] = await Promise.all([userResult1Promise, userResult2Promise]);
+    const basedOnUser = await Promise.all([
+      normalizeResultToItem(userResult1, requestId),
+      normalizeResultToItem(userResult2, requestId),
+    ]);
+    return { basedOnUser, recommended: [], designDecision, brandInsight, results: basedOnUser };
+  }
+
   const sysPromptBase = buildPromptFromDesignDecision(designDecision, mapped.brandName);
   const sysInput = { ...mapped, promptOverride: sysPromptBase };
   const sysResult2AltPrompt = sysPromptBase + " Slight variation: balanced proportions.";
@@ -245,6 +257,7 @@ function mapElementorToAI(body) {
     detail: pickStr("detail"),
     promptOverride: pickStr("promptOverride") || pickStr("prompt"),
     conceptPrompts: f["conceptPrompts"] ?? null,
+    generationMode: pickStr("generationMode") === "four_directions" ? "four_directions" : "two_concepts",
     uploadImage: f["uploadLogo"] || null,
   };
 }

@@ -1286,31 +1286,22 @@ async function generateIdeogramLogos(input = {}) {
   const styleReferenceStrength = 0.75;
   console.log("[ideogram] hasStyleReference=%s styleReferenceStrength=%s hasReferenceAnalysis=%s", hasStyleReference, styleReferenceStrength, hasReferenceAnalysis);
 
-  // SaaS: 4 independent concept prompts × 1 image each (Lead, Custom wordmark, App icon, Modular mark).
-  // Non-SaaS: 2 group prompts × 2 sibling images each (unchanged GROUP_DIRECTIONS behavior).
-  const saasSearchableText = [
-    input?.industry   || "",
-    input?.keywords   || "",
-    input?.otherNotes || "",
-    input?.notes      || "",
-    input?.styleCues  || "",
-  ].join(" ").toLowerCase();
-  const saasRoute = String(input?.brandStyleRoute || "").trim();
-  const hasConceptPrompts =
-    input?.conceptPrompts != null &&
-    typeof input.conceptPrompts === "object" &&
-    !Array.isArray(input.conceptPrompts);
-  const isSaas = hasConceptPrompts || isSaasLikeIndustry(saasSearchableText, saasRoute);
-  const conceptCount = isSaas ? 4 : 2;
-  const numImages    = isSaas ? 1 : 2;
+  // The product, not an industry heuristic, decides the number of deliverable
+  // concepts. A focused start is always two distinct concepts; the separate
+  // four-direction choice deliberately explores four routes. One result is
+  // requested per route so billing and delivered-count checks stay exact.
+  const generationMode = input?.generationMode === "four_directions"
+    ? "four_directions"
+    : "two_concepts";
+  const conceptCount = generationMode === "four_directions" ? 4 : 2;
+  const numImages = 1;
 
   const groups = await Promise.all(
     Array.from({ length: conceptCount }, (_, i) => i).map(async (conceptIndex) => {
-      const creativeTracks = process.env.LOGOFUNNY_IDEOGRAM_CREATIVE_TRACKS === "true";
-      const TRACK_ASSIGNMENTS = ["commercial", "commercial", "creative", "symbol_fusion"];
-      const track = creativeTracks ? (TRACK_ASSIGNMENTS[conceptIndex] || "commercial") : "commercial";
+      const TRACK_ASSIGNMENTS = ["commercial", "creative", "symbol_fusion", "commercial"];
+      const track = TRACK_ASSIGNMENTS[conceptIndex] || "commercial";
       if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
-        console.log("[ideogram-track] conceptIndex=%d track=%s creativeTracks=%s", conceptIndex, track, creativeTracks);
+        console.log("[ideogram-track] conceptIndex=%d track=%s generationMode=%s", conceptIndex, track, generationMode);
       }
       let { prompt, style_name, conceptLabel, magicPromptOverride } = buildIdeogramPrompt(input, conceptIndex, track);
       if (hasStyleReference) {
