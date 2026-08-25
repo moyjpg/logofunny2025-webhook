@@ -777,6 +777,40 @@ function sanitizeUserNotes(text) {
     .trim();
 }
 
+// A direct choice from the Studio must survive the different creative tracks.
+// Tracks may vary the execution, but they cannot silently turn a requested
+// symbol-plus-name logo into a name-only mark (or the reverse).
+function buildRequestedStructureCue(input) {
+  const raw = String(input?.logoStructure || "").trim().toLowerCase();
+  const structure = {
+    wordmark: "wordmark_only",
+    lettermark: "monogram",
+    badge_emblem: "badge",
+  }[raw] || raw;
+
+  const cues = {
+    wordmark_only:
+      "STRUCTURE REQUIREMENT (non-negotiable): create a name-led logo. The brand name is the entire primary mark; do not add a separate icon, badge, or floating symbol.",
+    monogram:
+      "STRUCTURE REQUIREMENT (non-negotiable): create a compact initials-based mark paired with the full brand name. Do not replace the initials mark with an unrelated illustration.",
+    symbol_wordmark:
+      "STRUCTURE REQUIREMENT (non-negotiable): create one simple, original graphic symbol together with the exact brand name. Both the symbol and name must be clearly visible as one finished logo lockup; do not return a name-only logo.",
+    badge:
+      "STRUCTURE REQUIREMENT (non-negotiable): create a simple badge or seal composition containing the exact brand name. Keep it clean, flat, and readable; do not replace it with a loose wordmark.",
+  };
+  return cues[structure] || "";
+}
+
+function buildTrackVariationCue(track) {
+  if (track === "creative") {
+    return "Use a distinct visual idea from the other result, while fully preserving the requested logo structure.";
+  }
+  if (track === "symbol_fusion") {
+    return "Use a distinctive, compact construction with meaningful negative space, while fully preserving the requested logo structure.";
+  }
+  return "Use a refined, commercially clear execution while fully preserving the requested logo structure.";
+}
+
 function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "commercial") {
   const brandName     = String(input?.brandName || "Brand").trim();
   const industry      = String(input?.industry  || "").replace(/_/g, " ").trim();
@@ -827,24 +861,11 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
     ? `User brief (do not render as visible text in the logo): ${userDirection}.`
     : "";
 
-  const { descriptor } = buildAllowedVisibleTextCue(input);
+  const structureCue = buildRequestedStructureCue(input);
   const subtitleClause = (subtitle && track === "commercial")
     ? ` and the subtitle '${subtitle}' as smaller supporting text near the primary mark when suitable`
     : "";
-  let textLock;
-  if (conceptKey === "recommended") {
-    textLock = descriptor
-      ? `Use only the specified brand text: the brand name '${brandName}'${subtitleClause} and the descriptor '${descriptor}'. Do not add random extra words.`
-      : `Use only the specified brand text: the brand name '${brandName}'${subtitleClause}. Do not add random extra words.`;
-  } else if (conceptKey === "wordmark") {
-    textLock = `Use only the specified brand text: the brand name '${brandName}'${subtitleClause}. The wordmark is the complete design. Do not add random extra words.`;
-  } else if (conceptKey === "app_icon") {
-    textLock = `Use only the specified brand text: the brand name '${brandName}'${subtitleClause}. Keep it clean and readable. Do not add random extra words.`;
-  } else if (conceptKey === "symbol_mark") {
-    textLock = `Use only the specified brand text: the brand name '${brandName}'${subtitleClause}, or just the symbol if it stands alone. Do not add random extra words.`;
-  } else {
-    textLock = `Use only the specified brand text: the brand name '${brandName}'${subtitleClause}. Do not add random extra words.`;
-  }
+  const textLock = `The only visible readable text is the exact brand name '${brandName}'${subtitleClause}. Do not add a descriptor, tagline, translation, random extra words, tiny text, legal marks, or trademark symbols.`;
 
   const paletteCue = buildPaletteVariationCue(input);
 
@@ -858,11 +879,13 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
     keywords
   );
   const industryConceptAngle = industryConceptDirections[conceptKey] || "";
-  const conceptAngle = conceptOverride
-    || (referenceStyleCue && buildAnimalConceptAngle(conceptKey, animalKey))
-    || industryConceptAngle
-    || CONCEPT_ANGLES[conceptKey]
-    || "";
+  const conceptAngle = structureCue
+    ? buildTrackVariationCue(track)
+    : conceptOverride
+      || (referenceStyleCue && buildAnimalConceptAngle(conceptKey, animalKey))
+      || industryConceptAngle
+      || CONCEPT_ANGLES[conceptKey]
+      || "";
 
   const industryCue = buildMinimalIndustryCue(input);
 
@@ -877,6 +900,7 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
   if (track === "creative") {
     parts.push(brandIntro);
     parts.push(CREATIVE_SAFETY);
+    if (structureCue)     parts.push(structureCue);
     parts.push("Approach this with maximum creative freedom. Express the brand's concept through unexpected visual ideas, bold symbolism, and original mark-making.");
     if (conceptAngle)      parts.push(`${conceptAngle} This direction should look visually distinct from the other logo concepts.`);
     if (industryCue)       parts.push(industryCue);
@@ -891,6 +915,7 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
   } else if (track === "symbol_fusion") {
     parts.push(brandIntro);
     parts.push(CREATIVE_SAFETY);
+    if (structureCue)     parts.push(structureCue);
     parts.push("Create a symbol fusion logo where the brand's core concept is fused into a bold abstract mark. The symbol and letter become one — a hybrid where a letterform becomes an icon or the icon becomes a letterform. The creative challenge is in the invented form of the mark itself. The result is one finished logo on a clean white background — not a brand board, not a style guide, not a presentation.");
     if (conceptAngle)      parts.push(`${conceptAngle} This direction should look visually distinct from the other logo concepts.`);
     if (industryCue)       parts.push(industryCue);
@@ -904,6 +929,7 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
   } else {
     // commercial — current behavior unchanged
     parts.push(brandIntro);
+    if (structureCue)     parts.push(structureCue);
     if (referenceStyleCue) parts.push(referenceStyleCue);
     if (targetSubjectCue)  parts.push(targetSubjectCue);
     if (userBriefPart)     parts.push(userBriefPart);

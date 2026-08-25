@@ -293,6 +293,9 @@ router.post("/onboarding-followup", requireInternalKey, async (req, res) => {
       ? body.conversation_language
       : "en",
     adaptive_answers: Array.isArray(body.adaptive_answers) ? body.adaptive_answers : [],
+    guided_choices: body.guided_choices && typeof body.guided_choices === "object" && !Array.isArray(body.guided_choices)
+      ? body.guided_choices
+      : {},
   };
 
   if (!/[A-Za-z0-9]/.test(input.brand_name) || !/^[A-Za-z0-9 &'().,+\-]+$/.test(input.brand_name)) {
@@ -305,7 +308,7 @@ router.post("/onboarding-followup", requireInternalKey, async (req, res) => {
   try {
     const result = await generateOnboardingFollowup(input);
     const questions = Array.isArray(result.questions)
-      ? result.questions.map((q) => ({ id: q.id, question: q.question, reason: q.reason }))
+      ? result.questions.map((q) => ({ id: q.id, question: q.question, reason: q.reason, target_field: q.targetField }))
       : [];
 
     return res.status(200).json({

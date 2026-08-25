@@ -100,8 +100,10 @@ async function runDualTrackPipeline(mapped, requestId = null) {
 
     const normalized = await Promise.all(ideogramResults.slice(0, 4).map((item) => normalizeResultToItem(item, requestId)));
 
-    // Quality gate: judge all concepts in parallel, annotate with qualityStatus/qualityWarnings,
-    // then rank clean concepts first. All concepts are always returned — nothing is removed.
+    // Quality gate: judge all concepts in parallel. A result with extra text,
+    // legal marks, an off-white canvas, or a missed color requirement is never
+    // delivered as a usable logo. The caller's exact-count check then refunds
+    // a partial set automatically, rather than charging for unsafe output.
     const VIOLATION_WARNINGS = {
       hasTrademarkSymbol:    'May include trademark-like symbols',
       hasFakeText:           'May include small unreadable or extra text',

@@ -27,7 +27,7 @@
           "question": { "type": "string" },
           "reason": { "type": "string" },
           "target_field": {
-            "enum": ["audience", "existing_visual_idea", "things_to_avoid", "rough_feeling", "other"]
+            "enum": ["audience", "existing_visual_idea", "things_to_avoid", "rough_feeling", "visual_foundation", "other"]
           }
         }
       }

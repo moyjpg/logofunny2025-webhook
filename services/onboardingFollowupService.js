@@ -2,16 +2,16 @@
 //
 // Scope: LOGOFUNNY_STUDIO_INPUT_CONTRACT_V1.md, Layer 1 -> Layer 2 only.
 // Given the ongoing onboarding conversation, responds like a concise brand
-// guide: reflect what matters, explain one useful implication, give one
-// practical suggestion, and ask at most one plain-language question.
+// design director: reflect what matters, explain one useful implication, give
+// one practical suggestion, and ask at most one plain-language question.
 //
 // This service does NOT build Creative Directions, model-specific prompts, or
-// generate logos. It does NOT ask professional design vocabulary questions
-// (logo type, icon direction, detail level, typography, color) -- those are
-// Advanced Controls / internally-inferred per the contract, never AI-initiated
-// follow-up questions here.
+// generate logos. It does not use professional design vocabulary. It may ask
+// one everyday-language visual-foundation question when that answer would
+// materially change the generated logo: whether the name should lead, whether
+// a simple graphic should sit with the name, and whether a color family matters.
 //
-// P0.1a hardening: the "no professional design questions" rule is enforced
+// P0.1a hardening: the "no professional jargon questions" rule is enforced
 // twice -- once by instruction, in the system prompt (buildFollowupMessages),
 // and once deterministically in code (isProfessionalDesignQuestion /
 // filterProfessionalDesignQuestions), applied after parsing/normalization and
@@ -84,7 +84,7 @@ function buildFollowupMessages(structured) {
     es: "Spanish",
     ja: "Japanese",
   }[responseLanguage];
-  const system = `You are LogoFunny's brand guide. You are talking with an ordinary person who may know nothing about branding or design. Your job is to help them think, not merely collect fields.
+  const system = `You are LogoFunny's experienced brand design director. You are talking with an ordinary person who may know nothing about branding or design. Your job is to help them think, not merely collect fields.
 
 For every turn:
 - Directly respond to what the user just said or asked.
@@ -95,6 +95,8 @@ For every turn:
 - When there are two plausible directions, compare them briefly and recommend one, including why it better fits what the user has already said.
 - If a new idea conflicts with an earlier goal, name the tension gently and suggest a way to keep the useful part of both.
 - Ask at most one short question only when the answer would meaningfully improve the direction. Do not ask a question just to keep the chat going.
+- Once the name, business, and desired feeling are known, check whether the user has made a visual foundation clear. If neither their choices nor their answers say whether the name should lead or a simple graphic should appear with the name, ask one plain-language visual-foundation question before ending the conversation. You may include color in that same question only when color is also unknown.
+- Use ordinary language for that question. Good example: "For the logo itself, do you picture the name doing most of the work, or a simple graphic together with the name? Is there a color family you want me to keep in mind, or should I recommend one?" Do not use terms such as wordmark, monogram, layout, typography, serif, or logo type.
 - Keep assistant_message to 2-4 short sentences. Write assistant_message, research confirmation text, and any question in ${responseLanguageName}. Brand names and exact logo text must never be translated, transliterated, or renamed.
 
 Hard rules:
@@ -103,14 +105,14 @@ Hard rules:
 - If the user asks about online research, say it is possible with their permission, explain what public information would be compared, say clearly that no search has happened yet, set research.offered=true, and ask what they want researched first.
 - Never invent sources, competitors, customer facts, or market findings.
 - Never ask something already answered, implied, or covered by the conversation.
-- Never ask the user to choose professional design terms such as logo type, wordmark, lettermark, layout, detail level, typography, serif, or font category.
+- Never ask the user to choose professional design terms such as logo type, wordmark, lettermark, layout, detail level, typography, serif, or font category. Translate the underlying decision into everyday language instead.
 - A visual idea the user volunteers is welcome. Analyze whether it may feel memorable, too literal, generic, or hard to use, then suggest a simpler or more ownable direction in plain language.
 - Creative tension phrases such as "premium but playful" are useful direction, not a contradiction to resolve.
 - ready_to_review should be true once the brand name, what it does, and a rough direction are known. It may still be true while the user keeps chatting.
 - Return at most 1 question. "questions" may be empty.
 
 Output strict JSON only, no markdown, no code fences, no extra keys:
-{"assistant_message":"2-4 short helpful sentences","ready_to_review":true,"research":{"offered":false,"reason":"","confirmation_question":""},"questions":[{"id":"short_stable_snake_case_id","question":"one short everyday-language question","reason":"short internal reason","target_field":"one of: audience | existing_visual_idea | things_to_avoid | rough_feeling | other"}]}`;
+{"assistant_message":"2-4 short helpful sentences","ready_to_review":true,"research":{"offered":false,"reason":"","confirmation_question":""},"questions":[{"id":"short_stable_snake_case_id","question":"one short everyday-language question","reason":"short internal reason","target_field":"one of: audience | existing_visual_idea | things_to_avoid | rough_feeling | visual_foundation | other"}]}`;
 
   const user = `Onboarding conversation state:
 ${JSON.stringify(structured, null, 2)}
@@ -149,6 +151,7 @@ const ALLOWED_TARGET_FIELDS = new Set([
   "existing_visual_idea",
   "things_to_avoid",
   "rough_feeling",
+  "visual_foundation",
   "other",
 ]);
 
@@ -331,6 +334,39 @@ function buildFallbackAdvisorResponse(input = {}) {
   const chinese = language === "zh-CN";
   const asksForResearch = /(网上|搜索|调研|类似产品|竞品|竞争对手|research|search|similar products?|competitors?|investigar|buscar|competidores?|検索|調査|競合|類似製品)/i.test(latest);
   const sharesVisualIdea = /(叉子|勺子|字母|图形|符号|标志|logo|图标|symbol|icon|fork|spoon|letter|símbolo|icono|シンボル|文字|アイコン)/i.test(latest);
+  const choices = input.guided_choices && typeof input.guided_choices === "object" ? input.guided_choices : {};
+  const hasStructure = Boolean(choices.logo_structure && choices.logo_structure !== "auto");
+  const hasColor = Boolean(choices.color_preference && choices.color_preference !== "let_logofunny_decide");
+  const hasVisualAnswer = Array.isArray(input.adaptive_answers) && input.adaptive_answers.some((answer) =>
+    answer && (answer.target_field === "visual_foundation" || /name doing most|simple graphic|文字为主|图形.*名字|nombre.*gr[aá]fico|文字.*メイン|シンボル.*名前/i.test(String(answer.question || "")))
+  );
+  const needsVisualFoundation = !hasVisualAnswer && (!hasStructure || !hasColor);
+  const visualQuestion = language === "zh-CN"
+    ? "说到 Logo 本身，你更希望名字是主角，还是有一个简单图形和名字放在一起？颜色有想保留或避开的方向吗，也可以让我建议。"
+    : language === "es"
+      ? "Para el logo, ¿prefieres que el nombre sea el protagonista o que haya un gráfico sencillo junto al nombre? ¿Hay alguna familia de colores que quieras usar o evitar, o prefieres que te recomiende una?"
+      : language === "ja"
+        ? "ロゴ自体は、名前を主役にしたいですか、それとも名前と一緒にシンプルな図形を使いたいですか？使いたい・避けたい色があれば教えてください。お任せでも大丈夫です。"
+        : "For the logo itself, do you picture the name doing most of the work, or a simple graphic together with the name? Is there a color family you want me to keep in mind, avoid, or should I recommend one?";
+  const visualReason = language === "zh-CN"
+    ? "这会直接决定图形与文字的关系，以及生成时的颜色约束。"
+    : language === "es"
+      ? "Esto define la relación entre el gráfico, el nombre y el color al generar."
+      : language === "ja"
+        ? "図形と名前の関係、そして生成時の色の制約を決めるためです。"
+        : "This directly affects the relationship between the graphic, the name, and the color constraints used for generation.";
+
+  if (needsVisualFoundation && input.brand_name && input.business_description && input.rough_feeling) {
+    return {
+      source: "deterministic_fallback",
+      assistant_message: chinese
+        ? "你已经把品牌想传达的感觉说清楚了。下一步我会把它变成具体、可执行的 Logo 决定，而不是只做一套好看的字。"
+        : "You have made the feeling of the brand clear. The next useful step is to turn it into a concrete logo decision, not simply a nice-looking set of letters.",
+      ready_to_review: true,
+      research: { offered: false, reason: "", confirmation_question: "" },
+      questions: [{ id: "visual_foundation", question: visualQuestion, reason: visualReason, targetField: "visual_foundation" }],
+    };
+  }
 
   if (language === "es" || language === "ja") {
     const spanish = language === "es";
@@ -437,6 +473,7 @@ async function attemptOnboardingFollowupLLM(input = {}) {
     latest_message: input.latest_message,
     conversation_language: normalizeConversationLanguage(input.conversation_language, input.latest_message),
     adaptive_answers: Array.isArray(input.adaptive_answers) ? input.adaptive_answers : [],
+    guided_choices: input.guided_choices && typeof input.guided_choices === "object" ? input.guided_choices : {},
   };
   const messages = buildFollowupMessages(structured);
 
