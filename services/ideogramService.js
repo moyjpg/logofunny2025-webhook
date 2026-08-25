@@ -780,13 +780,17 @@ function sanitizeUserNotes(text) {
 // A direct choice from the Studio must survive the different creative tracks.
 // Tracks may vary the execution, but they cannot silently turn a requested
 // symbol-plus-name logo into a name-only mark (or the reverse).
-function buildRequestedStructureCue(input) {
+function normalizeRequestedLogoStructure(input) {
   const raw = String(input?.logoStructure || "").trim().toLowerCase();
-  const structure = {
+  return {
     wordmark: "wordmark_only",
     lettermark: "monogram",
     badge_emblem: "badge",
   }[raw] || raw;
+}
+
+function buildRequestedStructureCue(input) {
+  const structure = normalizeRequestedLogoStructure(input);
 
   const cues = {
     wordmark_only:
@@ -794,14 +798,20 @@ function buildRequestedStructureCue(input) {
     monogram:
       "STRUCTURE REQUIREMENT (non-negotiable): create a compact initials-based mark paired with the full brand name. Do not replace the initials mark with an unrelated illustration.",
     symbol_wordmark:
-      "STRUCTURE REQUIREMENT (non-negotiable): create one simple, original graphic symbol together with the exact brand name. Both the symbol and name must be clearly visible as one finished logo lockup; do not return a name-only logo.",
+      "STRUCTURE REQUIREMENT (non-negotiable): create one simple, original graphic symbol together with the exact brand name. The icon must be a standalone, clearly visible shape with its own silhouette, placed separately to the left of or above the wordmark. It must take meaningful visual space in the lockup. Do not hide the icon inside a letter, replace one letter with it, or return a name-only logo.",
     badge:
       "STRUCTURE REQUIREMENT (non-negotiable): create a simple badge or seal composition containing the exact brand name. Keep it clean, flat, and readable; do not replace it with a loose wordmark.",
   };
   return cues[structure] || "";
 }
 
-function buildTrackVariationCue(track) {
+function buildTrackVariationCue(track, structure) {
+  if (structure === "symbol_wordmark") {
+    if (track === "creative") {
+      return "Explore a second original icon idea in a vertical lockup: the independent symbol above, and the exact wordmark below. Keep the two elements visibly separate; do not fuse the icon into a letter.";
+    }
+    return "Use a horizontal lockup: the independent symbol on the left and the exact wordmark on the right. Keep the two elements visibly separate; do not fuse the icon into a letter.";
+  }
   if (track === "creative") {
     return "Use a distinct visual idea from the other result, while fully preserving the requested logo structure.";
   }
@@ -861,6 +871,7 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
     ? `User brief (do not render as visible text in the logo): ${userDirection}.`
     : "";
 
+  const structure = normalizeRequestedLogoStructure(input);
   const structureCue = buildRequestedStructureCue(input);
   const subtitleClause = (subtitle && track === "commercial")
     ? ` and the subtitle '${subtitle}' as smaller supporting text near the primary mark when suitable`
@@ -880,7 +891,7 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
   );
   const industryConceptAngle = industryConceptDirections[conceptKey] || "";
   const conceptAngle = structureCue
-    ? buildTrackVariationCue(track)
+    ? buildTrackVariationCue(track, structure)
     : conceptOverride
       || (referenceStyleCue && buildAnimalConceptAngle(conceptKey, animalKey))
       || industryConceptAngle
@@ -916,7 +927,9 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
     parts.push(brandIntro);
     parts.push(CREATIVE_SAFETY);
     if (structureCue)     parts.push(structureCue);
-    parts.push("Create a symbol fusion logo where the brand's core concept is fused into a bold abstract mark. The symbol and letter become one — a hybrid where a letterform becomes an icon or the icon becomes a letterform. The creative challenge is in the invented form of the mark itself. The result is one finished logo on a clean white background — not a brand board, not a style guide, not a presentation.");
+    parts.push(structure === "symbol_wordmark"
+      ? "Create a bold abstract mark with the icon and wordmark kept as two clearly separate elements. The result is one finished logo on a clean white background — not a brand board, not a style guide, not a presentation."
+      : "Create a symbol fusion logo where the brand's core concept is fused into a bold abstract mark. The symbol and letter become one — a hybrid where a letterform becomes an icon or the icon becomes a letterform. The creative challenge is in the invented form of the mark itself. The result is one finished logo on a clean white background — not a brand board, not a style guide, not a presentation.");
     if (conceptAngle)      parts.push(`${conceptAngle} This direction should look visually distinct from the other logo concepts.`);
     if (industryCue)       parts.push(industryCue);
     if (referenceStyleCue) parts.push(referenceStyleCue);
@@ -1324,7 +1337,9 @@ async function generateIdeogramLogos(input = {}) {
 
   const groups = await Promise.all(
     Array.from({ length: conceptCount }, (_, i) => i).map(async (conceptIndex) => {
-      const TRACK_ASSIGNMENTS = ["commercial", "creative", "symbol_fusion", "commercial"];
+      const TRACK_ASSIGNMENTS = normalizeRequestedLogoStructure(input) === "symbol_wordmark"
+        ? ["commercial", "creative", "commercial", "creative"]
+        : ["commercial", "creative", "symbol_fusion", "commercial"];
       const track = TRACK_ASSIGNMENTS[conceptIndex] || "commercial";
       if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
         console.log("[ideogram-track] conceptIndex=%d track=%s generationMode=%s", conceptIndex, track, generationMode);
@@ -1411,7 +1426,8 @@ async function generateIdeogramLogos(input = {}) {
         imageUrl,
         prompt,
         style_name,
-        conceptLabel: conceptLabel ?? null,
+        // This is an internal prompt route, never a customer-facing logo type.
+        conceptLabel: "logo_concept",
         model: "ideogram",
         mode: hasRawStyleReference ? "image-guided" : "text-to-image",
       }));

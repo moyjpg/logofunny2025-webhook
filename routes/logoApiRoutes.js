@@ -114,6 +114,7 @@ async function runDualTrackPipeline(mapped, requestId = null) {
       hasScene:              'May include a scene or background rather than a clean logo',
       tooIllustrative:       'May be too illustrative rather than a clean standalone logo',
     };
+    const requiresIndependentSymbol = String(mapped.logoStructure || '').trim().toLowerCase() === 'symbol_wordmark';
     const RANK_ORDER = { pass: 0, unchecked: 1, needs_review: 2 };
 
     const judgeSettled = await Promise.allSettled(
@@ -132,6 +133,14 @@ async function runDualTrackPipeline(mapped, requestId = null) {
         return { ...item, qualityStatus: 'unchecked', qualityWarnings: [] };
       }
       if (!judgeResult) {
+        if (requiresIndependentSymbol) {
+          console.warn('[quality-gate] cannot verify required independent symbol; withholding label=%j', item.label ?? 'unknown');
+          return {
+            ...item,
+            qualityStatus: 'needs_review',
+            qualityWarnings: ['Could not verify the required independent graphic symbol'],
+          };
+        }
         console.log('[quality-gate] concept unchecked; passing through label=%j', item.label ?? 'unknown');
         return { ...item, qualityStatus: 'unchecked', qualityWarnings: [] };
       }
@@ -153,6 +162,13 @@ async function runDualTrackPipeline(mapped, requestId = null) {
       if (colorCompliance.hasPureWhiteCanvas === false) {
         warnings.push("Canvas is not a clean pure-white background");
       }
+      const structureCompliance = judgeResult.structureCompliance || {};
+      if (structureCompliance.matchesRequestedStructure === false) {
+        warnings.push("Does not follow the selected logo structure");
+      }
+      if (requiresIndependentSymbol && structureCompliance.hasIndependentGraphicSymbol !== true) {
+        warnings.push("Missing the required independent graphic symbol");
+      }
 
       if (warnings.length > 0) {
         console.log('[quality-gate] concept needs review label=%j warnings=%j', item.label ?? 'unknown', warnings);
@@ -166,9 +182,13 @@ async function runDualTrackPipeline(mapped, requestId = null) {
       (a, b) => RANK_ORDER[a.qualityStatus] - RANK_ORDER[b.qualityStatus]
     );
 
-    const basedOnUser = ranked.slice(0, 2);
-    const recommended = ranked.slice(2, 4);
-    const results = ranked;
+    const results = ranked.filter((item) => item.qualityStatus !== 'needs_review');
+    const rejectedCount = ranked.length - results.length;
+    if (rejectedCount > 0) {
+      console.warn('[quality-gate] withholding %d non-compliant concept(s); deliverable=%d expected=%d', rejectedCount, results.length, normalized.length);
+    }
+    const basedOnUser = results.slice(0, 2);
+    const recommended = results.slice(2, 4);
 
     return { basedOnUser, recommended, designDecision, brandInsight, results };
   } catch (ideogramErr) {

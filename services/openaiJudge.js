@@ -17,6 +17,7 @@ function buildJudgePrompt(context) {
     ? context.colorTheme.join(", ")
     : context?.colorTheme || "";
   const colorDirection = context?.colorDirection || "";
+  const logoStructure = String(context?.logoStructure || "").trim().toLowerCase();
 
   return [
     "You are a strict commercial logo compliance judge.",
@@ -35,6 +36,10 @@ function buildJudgePrompt(context) {
     "- If there is body copy, paragraph text, captions, footnotes, taglines, descriptors, or any text block beyond the brand name => violations.hasFakeText = true",
     "- If the image is divided into panels or tiles, shows multiple logo versions, or resembles a brand board or style guide => violations.hasPresentationLayout = true",
     "",
+    "Structure checks:",
+    "- structureCompliance.matchesRequestedStructure must be false when the delivered composition does not follow the requested logo structure.",
+    "- When the selected structure is symbol_wordmark, structureCompliance.hasIndependentGraphicSymbol is true only if there is a clearly visible, standalone icon with its own silhouette separate from the wordmark. A small decoration hidden inside, replacing, or modifying a letter does not count.",
+    "",
     "Violations must be conservative: when unsure, mark the violation as true.",
     "",
     `Brand name: ${brand}`,
@@ -42,6 +47,7 @@ function buildJudgePrompt(context) {
     `Industry: ${industry}`,
     `Preferred colors: ${colorTheme}`,
     `Selected color direction: ${colorDirection}`,
+    `Selected logo structure: ${logoStructure}`,
     "",
     "Color and canvas checks:",
     "- If a non-monochrome color direction was selected, colorCompliance.matchesRequestedColor must be false when the requested color is absent, merely a tiny accent, or the logo is black-only.",
@@ -53,7 +59,7 @@ function buildResponseSchema() {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["score", "breakdown", "notes", "violations", "colorCompliance"],
+    required: ["score", "breakdown", "notes", "violations", "colorCompliance", "structureCompliance"],
     properties: {
       score: { type: "number", minimum: 0, maximum: 100 },
       notes: { type: "string" },
@@ -64,6 +70,15 @@ function buildResponseSchema() {
         properties: {
           matchesRequestedColor: { type: "boolean" },
           hasPureWhiteCanvas: { type: "boolean" },
+        },
+      },
+      structureCompliance: {
+        type: "object",
+        additionalProperties: false,
+        required: ["matchesRequestedStructure", "hasIndependentGraphicSymbol"],
+        properties: {
+          matchesRequestedStructure: { type: "boolean" },
+          hasIndependentGraphicSymbol: { type: "boolean" },
         },
       },
       violations: {
@@ -160,10 +175,14 @@ async function judgeLogo(imageUrl, context = {}, opts = {}) {
         hasFakeText: false,
         hasPresentationLayout: false,
       },
-      colorCompliance: {
-        matchesRequestedColor: true,
-        hasPureWhiteCanvas: true,
-      },
+    colorCompliance: {
+      matchesRequestedColor: true,
+      hasPureWhiteCanvas: true,
+    },
+    structureCompliance: {
+      matchesRequestedStructure: true,
+      hasIndependentGraphicSymbol: true,
+    },
       breakdown: {
         brand_consistency: 5,
         legibility: 5,
