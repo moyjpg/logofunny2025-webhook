@@ -6,6 +6,7 @@ require("dotenv").config();                // 3
 
 const debugRoutes = require("./routes/debugRoutes");      // 7
 const aiRoutes = require("./routes/aiRoutes");            // 8
+const modelEvaluationRoutes = require("./routes/modelEvaluationRoutes");
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -19,6 +20,7 @@ app.use(express.static(path.join(__dirname, "public")));
 // Debug + AI API
 app.use("/debug", debugRoutes);
 app.use("/api", aiRoutes);
+app.use("/internal/model-evaluations", modelEvaluationRoutes);
 app.get('/', (req, res) => {
   res.send('logofunny backend online');
 });
