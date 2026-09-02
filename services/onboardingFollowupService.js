@@ -111,6 +111,12 @@ Hard rules:
 - ready_to_review should be true once the brand name, what it does, and a rough direction are known. It may still be true while the user keeps chatting.
 - Return at most 1 question. "questions" may be empty.
 
+Conversation-stage rules:
+- When conversation_stage is "business", the user has just described what they are building but has not yet supplied exact logo text. Respond thoughtfully to the business first, then ask exactly which English name should appear on the logo. Do not pretend that a brand name is known.
+- When conversation_stage is "brand", the user has just supplied the exact logo text. Respond to both their business and name, then ask how they want the brand to feel. Do not ask for the name again.
+- At every later stage, continue the conversation from what is already known rather than restarting the intake.
+- For "business" and "brand" stages, put the required next question directly in assistant_message and return questions as an empty array. The interface uses the next message field for that answer.
+
 Output strict JSON only, no markdown, no code fences, no extra keys:
 {"assistant_message":"2-4 short helpful sentences","ready_to_review":true,"research":{"offered":false,"reason":"","confirmation_question":""},"questions":[{"id":"short_stable_snake_case_id","question":"one short everyday-language question","reason":"short internal reason","target_field":"one of: audience | existing_visual_idea | things_to_avoid | rough_feeling | visual_foundation | other"}]}`;
 
@@ -357,6 +363,30 @@ function buildFallbackAdvisorResponse(input = {}) {
         ? "図形と名前の関係、そして生成時の色の制約を決めるためです。"
         : "This directly affects the relationship between the graphic, the name, and the color constraints used for generation.";
 
+  if (input.conversation_stage === "business") {
+    return {
+      source: "deterministic_fallback",
+      assistant_message: chinese
+        ? `我明白 ${input.business_description || "你正在做的产品"} 的方向了。它需要让人一眼明白用途，同时不显得像又一个通用 SaaS。Logo 上希望出现的准确英文名称是什么？`
+        : `I understand the direction for ${input.business_description || "what you are building"}. It should make the purpose clear without looking like another generic SaaS. What exact English name should appear on the logo?`,
+      ready_to_review: false,
+      research: { offered: false, reason: "", confirmation_question: "" },
+      questions: [],
+    };
+  }
+
+  if (input.conversation_stage === "brand") {
+    return {
+      source: "deterministic_fallback",
+      assistant_message: chinese
+        ? `${input.brand_name} 很简洁，也适合成为一个好记的产品名称。现在更重要的是让它不止像一个功能名：你希望用户第一眼感到稳重可信、清爽友好，还是更有未来感？`
+        : `${input.brand_name} is concise and can make a memorable product name. The next step is making it feel like more than a feature label: should people first feel steady and trustworthy, clear and friendly, or more future-facing?`,
+      ready_to_review: false,
+      research: { offered: false, reason: "", confirmation_question: "" },
+      questions: [],
+    };
+  }
+
   if (needsVisualFoundation && input.brand_name && input.business_description && input.rough_feeling) {
     return {
       source: "deterministic_fallback",
@@ -486,6 +516,7 @@ async function attemptOnboardingFollowupLLM(input = {}) {
     primary_use: input.primary_use,
     voluntary_extra_context: input.voluntary_extra_context,
     latest_message: input.latest_message,
+    conversation_stage: input.conversation_stage,
     conversation_language: normalizeConversationLanguage(input.conversation_language, input.latest_message),
     adaptive_answers: Array.isArray(input.adaptive_answers) ? input.adaptive_answers : [],
     guided_choices: input.guided_choices && typeof input.guided_choices === "object" ? input.guided_choices : {},

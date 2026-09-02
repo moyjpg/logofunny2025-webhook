@@ -289,6 +289,9 @@ router.post("/onboarding-followup", requireInternalKey, async (req, res) => {
     primary_use: toText(body.primary_use).trim(),
     voluntary_extra_context: toText(body.voluntary_extra_context).trim(),
     latest_message: toText(body.latest_message).trim(),
+    conversation_stage: ["business", "brand", "feeling", "extra", "followup", "ready"].includes(body.conversation_stage)
+      ? body.conversation_stage
+      : "followup",
     conversation_language: ["en", "zh-CN", "es", "ja"].includes(body.conversation_language)
       ? body.conversation_language
       : "en",
@@ -298,7 +301,7 @@ router.post("/onboarding-followup", requireInternalKey, async (req, res) => {
       : {},
   };
 
-  if (!/[A-Za-z0-9]/.test(input.brand_name) || !/^[A-Za-z0-9 &'().,+\-]+$/.test(input.brand_name)) {
+  if (input.conversation_stage !== "business" && (!/[A-Za-z0-9]/.test(input.brand_name) || !/^[A-Za-z0-9 &'().,+\-]+$/.test(input.brand_name))) {
     return res.status(400).json({
       ok: false,
       error: "Logo text currently supports English letters, numbers, and simple punctuation only.",
