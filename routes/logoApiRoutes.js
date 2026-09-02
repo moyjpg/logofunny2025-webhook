@@ -133,16 +133,15 @@ async function runDualTrackPipeline(mapped, requestId = null) {
         return { ...item, qualityStatus: 'unchecked', qualityWarnings: [] };
       }
       if (!judgeResult) {
-        if (requiresIndependentSymbol) {
-          console.warn('[quality-gate] cannot verify required independent symbol; withholding label=%j', item.label ?? 'unknown');
-          return {
-            ...item,
-            qualityStatus: 'needs_review',
-            qualityWarnings: ['Could not verify the required independent graphic symbol'],
-          };
-        }
-        console.log('[quality-gate] concept unchecked; passing through label=%j', item.label ?? 'unknown');
-        return { ...item, qualityStatus: 'unchecked', qualityWarnings: [] };
+        // A reviewer outage must not turn a successfully generated concept
+        // into an invisible failure. Keep the concept available as unchecked;
+        // preserve the missing verification as metadata instead of charging
+        // then automatically refunding every symbol + name request.
+        const warnings = requiresIndependentSymbol
+          ? ['Could not verify the required independent graphic symbol']
+          : [];
+        console.warn('[quality-gate] concept unchecked; reviewer unavailable label=%j', item.label ?? 'unknown');
+        return { ...item, qualityStatus: 'unchecked', qualityWarnings: warnings };
       }
 
       const v = judgeResult.violations || {};

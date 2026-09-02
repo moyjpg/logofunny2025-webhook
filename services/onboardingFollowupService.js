@@ -636,7 +636,10 @@ async function generateOnboardingFollowup(input = {}) {
     };
   }
   const fallback = buildFallbackAdvisorResponse(input);
-  return { ...fallback, needs_followup: false };
+  // Keep the deterministic response available to non-interactive callers,
+  // but preserve why the model was unavailable. The web client uses this
+  // provenance to avoid presenting a template as an AI reply.
+  return { ...fallback, needs_followup: false, failure: result.failure };
 }
 
 module.exports = {

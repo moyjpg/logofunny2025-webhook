@@ -310,6 +310,11 @@ router.post("/onboarding-followup", requireInternalKey, async (req, res) => {
 
   try {
     const result = await generateOnboardingFollowup(input);
+    if (result.source !== "ai") {
+      console.warn("[onboarding-followup] model unavailable; returning fallback to internal caller", {
+        failure: result.failure || "unknown",
+      });
+    }
     const questions = Array.isArray(result.questions)
       ? result.questions.map((q) => ({ id: q.id, question: q.question, reason: q.reason, target_field: q.targetField }))
       : [];
