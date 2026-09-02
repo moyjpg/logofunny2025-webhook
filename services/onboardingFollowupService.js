@@ -333,6 +333,7 @@ function buildFallbackAdvisorResponse(input = {}) {
   const language = normalizeConversationLanguage(input.conversation_language, latest);
   const chinese = language === "zh-CN";
   const asksForResearch = /(网上|搜索|调研|类似产品|竞品|竞争对手|research|search|similar products?|competitors?|investigar|buscar|competidores?|検索|調査|競合|類似製品)/i.test(latest);
+  const asksForAdvice = /(有什么建议|给我.*建议|给.*参考|怎么.*好|应该.*吗|怎么做|建议.*吗|what.*suggest|any advice|recommend|how should)/i.test(latest);
   const sharesVisualIdea = /(叉子|勺子|字母|图形|符号|标志|logo|图标|symbol|icon|fork|spoon|letter|símbolo|icono|シンボル|文字|アイコン)/i.test(latest);
   const choices = input.guided_choices && typeof input.guided_choices === "object" ? input.guided_choices : {};
   const hasStructure = Boolean(choices.logo_structure && choices.logo_structure !== "auto");
@@ -419,6 +420,20 @@ function buildFallbackAdvisorResponse(input = {}) {
           ? "你希望我先研究产品定位、视觉感觉，还是目标顾客？"
           : "Should I focus first on the product, the visual feel, or the audience?",
       },
+      questions: [],
+    };
+  }
+
+  if (asksForAdvice) {
+    const subject = String(input.brand_name || (chinese ? "这个品牌" : "the brand")).trim();
+    const business = String(input.business_description || (chinese ? "它正在做的产品" : "what it is building")).trim();
+    return {
+      source: "deterministic_fallback",
+      assistant_message: chinese
+        ? `对于 ${subject} 这样的 ${business}，我不建议把“专业、可信、可靠、智能”都当成四个并列口号；它们会让 Logo 很像通用 SaaS。更好的做法是先让“可信”成为第一印象，再用简洁、带一点未来感的细节表达智能。你希望它更偏稳重，还是更偏有未来感？`
+        : `For ${subject} and ${business}, I would not try to make “professional, trustworthy, reliable, and intelligent” four equal messages; that can make the logo feel like a generic SaaS brand. I would lead with trust, then use one clean, slightly forward-looking detail to signal intelligence. Should it feel more established or more future-facing?`,
+      ready_to_review: true,
+      research: { offered: false, reason: "", confirmation_question: "" },
       questions: [],
     };
   }
