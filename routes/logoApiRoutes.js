@@ -100,10 +100,11 @@ async function runDualTrackPipeline(mapped, requestId = null) {
 
     const normalized = await Promise.all(ideogramResults.slice(0, 4).map((item) => normalizeResultToItem(item, requestId)));
 
-    // Quality gate: judge all concepts in parallel. A result with extra text,
-    // legal marks, an off-white canvas, or a missed color requirement is never
-    // delivered as a usable logo. The caller's exact-count check then refunds
-    // a partial set automatically, rather than charging for unsafe output.
+    // Quality review: judge all concepts in parallel. The judge remains useful
+    // for ranking and surfacing possible issues, but it is not an image
+    // generation provider and its visual warnings are advisory. Do not turn a
+    // complete, provider-generated set into an invisible failure solely because
+    // the reviewer prefers a different background or composition.
     const VIOLATION_WARNINGS = {
       hasTrademarkSymbol:    'May include trademark-like symbols',
       hasFakeText:           'May include small unreadable or extra text',
@@ -181,10 +182,16 @@ async function runDualTrackPipeline(mapped, requestId = null) {
       (a, b) => RANK_ORDER[a.qualityStatus] - RANK_ORDER[b.qualityStatus]
     );
 
-    const results = ranked.filter((item) => item.qualityStatus !== 'needs_review');
-    const rejectedCount = ranked.length - results.length;
-    if (rejectedCount > 0) {
-      console.warn('[quality-gate] withholding %d non-compliant concept(s); deliverable=%d expected=%d', rejectedCount, results.length, normalized.length);
+    // The image provider has already returned a complete set. Deliver every
+    // usable image while retaining `qualityStatus` and `qualityWarnings` for
+    // the client to display or use in a later refinement step. Filtering here
+    // made both 2- and 4-logo purchases fail whenever the reviewer produced a
+    // false-positive (for example, an off-white canvas), triggering a refund
+    // despite successful image generation.
+    const results = ranked.filter((item) => item.imageUrl || item.svgUrl);
+    const reviewCount = ranked.filter((item) => item.qualityStatus === 'needs_review').length;
+    if (reviewCount > 0) {
+      console.warn('[quality-gate] delivering %d concept(s) with advisory review metadata', reviewCount);
     }
     const basedOnUser = results.slice(0, 2);
     const recommended = results.slice(2, 4);
