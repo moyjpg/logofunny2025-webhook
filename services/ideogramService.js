@@ -1,5 +1,6 @@
 const fetch = require("node-fetch");
 const FormData = require("form-data");
+const { createHash } = require("node:crypto");
 
 // Two group art directions — each group generates 2 sibling outputs (2+2 = 4 total).
 // Group 0: typography-forward (wordmark + symbol). Group 1: mark-led (icon or monogram).
@@ -843,10 +844,10 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
     input?.detail || input?.detailLevel || input?.detailPreference || ""
   ).trim();
   const subtitle = String(input?.subtitle || input?.tagline || "").trim();
-  // The user explicitly approved passing this AI-synthesized brand direction
-  // to Ideogram. Bound it because it is provider input, but never silently
-  // discard it: each distinct direction must affect its drawing instruction.
-  const confirmedDirection = sanitizeUserNotes(String(conceptOverride || "").trim()).slice(0, 2400);
+  // Preserve confirmed constraints verbatim, including "no tagline"/"no
+  // presentation board". The legacy note sanitizer deletes entire clauses.
+  const confirmedDirection = String(conceptOverride || "").trim();
+  if (confirmedDirection.length > 6000) throw new Error("BRAND_DIRECTION_TOO_LONG");
 
   const CONCEPT_ANGLES = {
     recommended: "Explore the strongest complete logo lockup with clear brand hierarchy.",
@@ -899,8 +900,7 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
   const industryConceptAngle = industryConceptDirections[conceptKey] || "";
   const conceptAngle = structureCue
     ? buildTrackVariationCue(track, structure)
-    : conceptOverride
-      || (referenceStyleCue && buildAnimalConceptAngle(conceptKey, animalKey))
+    : (referenceStyleCue && buildAnimalConceptAngle(conceptKey, animalKey))
       || industryConceptAngle
       || CONCEPT_ANGLES[conceptKey]
       || "";
@@ -968,6 +968,7 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
     parts.push("Make it feel polished, memorable, and suitable for actual use.");
   }
 
+  if (structureCue) parts.push(`Final required layout: ${structureCue}`);
   return parts.join(" ");
 }
 
@@ -1345,8 +1346,8 @@ async function generateIdeogramLogos(input = {}) {
   const conceptCount = generationMode === "four_directions" ? 4 : 2;
   const numImages = 1;
 
-  const groups = await Promise.all(
-    Array.from({ length: conceptCount }, (_, i) => i).map(async (conceptIndex) => {
+  // Compile/validate every prompt before starting any paid provider request.
+  const prepared = Array.from({ length: conceptCount }, (_, conceptIndex) => {
       const TRACK_ASSIGNMENTS = normalizeRequestedLogoStructure(input) === "symbol_wordmark"
         ? ["commercial", "creative", "commercial", "creative"]
         : ["commercial", "creative", "symbol_fusion", "commercial"];
@@ -1361,6 +1362,12 @@ async function generateIdeogramLogos(input = {}) {
       const resolvedMagicPrompt = VALID_MAGIC_PROMPT.has(magicPromptOverride ?? "")
         ? magicPromptOverride
         : globalMagicPrompt;
+      if (prompt.length > 14000) throw new Error("LOGO_PROMPT_TOO_LONG");
+      return { conceptIndex, prompt, style_name, conceptLabel, resolvedMagicPrompt };
+  });
+
+  const groups = await Promise.all(
+    prepared.map(async ({ conceptIndex, prompt, style_name, conceptLabel, resolvedMagicPrompt }) => {
 
       if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
         console.log("[ideogram-request] conceptIndex=%d num_images=%d magic_prompt=%s style_type=DESIGN aspect_ratio=1x1 rendering_speed=QUALITY hasStyleReference=%s promptPreview=%j",
@@ -1423,18 +1430,28 @@ async function generateIdeogramLogos(input = {}) {
         (Array.isArray(data?.results) && data.results) ||
         [];
 
-      const imageUrls = raw
-        .map((item) => item?.url || item?.image_url || item?.imageUrl || item?.image?.url)
-        .filter((u) => typeof u === "string" && u.trim())
+      const images = raw
+        .map((item) => ({ imageUrl: item?.url || item?.image_url || item?.imageUrl || item?.image?.url, providerPrompt: item?.prompt, seed: item?.seed, safe: item?.is_image_safe }))
+        .filter((item) => typeof item.imageUrl === "string" && item.imageUrl.trim() && item.safe !== false)
         .slice(0, numImages);
 
-      if (imageUrls.length < 1) {
-        throw new Error(`Ideogram returned ${imageUrls.length} images for concept ${conceptIndex}, expected ${numImages}`);
+      if (images.length < 1) {
+        throw new Error(`Ideogram returned ${images.length} usable images for concept ${conceptIndex}, expected ${numImages}`);
       }
 
-      return imageUrls.map((imageUrl) => ({
+      return images.map(({ imageUrl, providerPrompt, seed }) => ({
         imageUrl,
         prompt,
+        generationTrace: {
+          version: "brand-direction.v2",
+          provider: "ideogram-v3",
+          conceptKey: conceptLabel,
+          magicPrompt: resolvedMagicPrompt,
+          submittedPromptSha256: createHash("sha256").update(prompt).digest("hex"),
+          submittedPromptCharacters: prompt.length,
+          providerPrompt: typeof providerPrompt === "string" ? providerPrompt : null,
+          seed: Number.isInteger(seed) ? seed : null,
+        },
         style_name,
         // This is an internal prompt route, never a customer-facing logo type.
         conceptLabel: "logo_concept",

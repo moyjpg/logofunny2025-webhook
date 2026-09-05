@@ -289,6 +289,11 @@ router.post("/onboarding-followup", requireInternalKey, async (req, res) => {
     primary_use: toText(body.primary_use).trim(),
     voluntary_extra_context: toText(body.voluntary_extra_context).trim(),
     latest_message: toText(body.latest_message).trim(),
+    conversation_history: Array.isArray(body.conversation_history)
+      ? body.conversation_history.slice(-12)
+        .filter((entry) => entry && ["user", "assistant"].includes(entry.role) && typeof entry.content === "string")
+        .map((entry) => ({ role: entry.role, content: entry.content.slice(0, 1500) }))
+      : [],
     conversation_stage: ["business", "brand", "feeling", "extra", "followup", "ready"].includes(body.conversation_stage)
       ? body.conversation_stage
       : "followup",

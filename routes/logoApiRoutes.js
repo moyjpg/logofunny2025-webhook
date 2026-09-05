@@ -66,7 +66,7 @@ async function normalizeResultToItem(result, reqId = null) {
     }
   }
 
-  return { imageUrl, svgUrl, prompt, model, mode, r2Key, style_name, label };
+  return { imageUrl, svgUrl, prompt, model, mode, r2Key, style_name, label, generationTrace: result?.generationTrace ?? null };
 }
 
 /**
