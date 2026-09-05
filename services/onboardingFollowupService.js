@@ -40,7 +40,10 @@ function normalizeConversationLanguage(value, fallbackText = "") {
 }
 
 /** Default LLM HTTP timeout (ms). Override with ONBOARDING_FOLLOWUP_FETCH_TIMEOUT_MS if set. */
-const DEFAULT_FETCH_TIMEOUT_MS = 20_000;
+// The caller may be waking a cold backend instance before the model call can
+// begin. Keep this below the proxy budget, but do not fail a valid model turn
+// just because startup used most of the former 20-second allowance.
+const DEFAULT_FETCH_TIMEOUT_MS = 45_000;
 
 function getFetchTimeoutMs() {
   const n = Number.parseInt(process.env.ONBOARDING_FOLLOWUP_FETCH_TIMEOUT_MS || "", 10);
@@ -112,10 +115,10 @@ Hard rules:
 - Return at most 1 question. "questions" may be empty.
 
 Conversation-stage rules:
-- When conversation_stage is "business", the user has just described what they are building but has not yet supplied exact logo text. Respond thoughtfully to the business first, then ask exactly which English name should appear on the logo. Do not pretend that a brand name is known.
-- When conversation_stage is "brand", the user has just supplied the exact logo text. Respond to both their business and name, then ask how they want the brand to feel. Do not ask for the name again.
+- When conversation_stage is "business", the user has described what they are building but may not have supplied exact logo text. Respond thoughtfully to the business first. Do not pretend that a brand name is known. Ask for the exact English name only when it is the material missing item and the user has not asked another substantive question; it is fine to keep discussing the idea first.
+- When conversation_stage is "brand", the user has supplied exact logo text. Respond to both their business and name, and ask about the desired feeling only if that answer would materially improve the direction. Do not ask for the name again.
 - At every later stage, continue the conversation from what is already known rather than restarting the intake.
-- For "business" and "brand" stages, put the required next question directly in assistant_message and return questions as an empty array. The interface uses the next message field for that answer.
+- Do not force a question just because of a conversation stage. If one is useful, include it naturally in assistant_message and return questions as an empty array.
 
 Output strict JSON only, no markdown, no code fences, no extra keys:
 {"assistant_message":"2-4 short helpful sentences","ready_to_review":true,"research":{"offered":false,"reason":"","confirmation_question":""},"questions":[{"id":"short_stable_snake_case_id","question":"one short everyday-language question","reason":"short internal reason","target_field":"one of: audience | existing_visual_idea | things_to_avoid | rough_feeling | visual_foundation | other"}]}`;

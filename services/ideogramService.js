@@ -843,6 +843,10 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
     input?.detail || input?.detailLevel || input?.detailPreference || ""
   ).trim();
   const subtitle = String(input?.subtitle || input?.tagline || "").trim();
+  // The user explicitly approved passing this AI-synthesized brand direction
+  // to Ideogram. Bound it because it is provider input, but never silently
+  // discard it: each distinct direction must affect its drawing instruction.
+  const confirmedDirection = sanitizeUserNotes(String(conceptOverride || "").trim()).slice(0, 2400);
 
   const CONCEPT_ANGLES = {
     recommended: "Explore the strongest complete logo lockup with clear brand hierarchy.",
@@ -869,6 +873,9 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
   const userDirection = [keywords, notes].filter(Boolean).join(". ");
   const userBriefPart = userDirection
     ? `User brief (do not render as visible text in the logo): ${userDirection}.`
+    : "";
+  const confirmedDirectionPart = confirmedDirection
+    ? `Confirmed brand direction for this concept (visual guidance only; do not render this wording as visible text): ${confirmedDirection}.`
     : "";
 
   const structure = normalizeRequestedLogoStructure(input);
@@ -918,6 +925,7 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
     if (referenceStyleCue) parts.push(referenceStyleCue);
     if (targetSubjectCue)  parts.push(targetSubjectCue);
     if (userBriefPart)     parts.push(userBriefPart);
+    if (confirmedDirectionPart) parts.push(confirmedDirectionPart);
     parts.push(textLock);
     if (colorDir)          parts.push(`Color direction: ${colorDir}.`);
     if (paletteCue)        parts.push(paletteCue);
@@ -935,6 +943,7 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
     if (referenceStyleCue) parts.push(referenceStyleCue);
     if (targetSubjectCue)  parts.push(targetSubjectCue);
     if (userBriefPart)     parts.push(userBriefPart);
+    if (confirmedDirectionPart) parts.push(confirmedDirectionPart);
     parts.push(textLock);
     if (colorDir)          parts.push(`Color direction: ${colorDir}.`);
     if (paletteCue)        parts.push(paletteCue);
@@ -946,6 +955,7 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
     if (referenceStyleCue) parts.push(referenceStyleCue);
     if (targetSubjectCue)  parts.push(targetSubjectCue);
     if (userBriefPart)     parts.push(userBriefPart);
+    if (confirmedDirectionPart) parts.push(confirmedDirectionPart);
     parts.push(textLock);
     if (styles)            parts.push(`Style: ${styles}.`);
     if (colorDir)          parts.push(`Color direction: ${colorDir}.`);
@@ -973,7 +983,7 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0, track = "commercial") {
   ) {
     const TRACK_MAGIC = { commercial: "OFF", creative: "AUTO", symbol_fusion: "AUTO" };
     const parts = [
-      buildMinimalConceptPrompt(input, conceptKey, null, track),
+      buildMinimalConceptPrompt(input, conceptKey, input.conceptPrompts[conceptKey], track),
       MINIMAL_CONCEPT_SUFFIX,
     ];
 
