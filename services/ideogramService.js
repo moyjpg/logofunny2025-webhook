@@ -644,39 +644,106 @@ function buildPaletteVariationCue(input) {
   return "";
 }
 
-function buildAllowedVisibleTextCue(input) {
-  const brandName = String(input?.brandName || "Brand").trim();
-  const userText = [
-    String(input?.notes      || ""),
-    String(input?.otherNotes || ""),
-    String(input?.keywords   || ""),
-    String(input?.styleCues  || ""),
-  ];
-  if (input?.conceptPrompts && typeof input.conceptPrompts === "object") {
-    for (const val of Object.values(input.conceptPrompts)) {
-      if (typeof val === "string") userText.push(val);
-    }
+function buildHardColorContract(input) {
+  const direction = String(input?.colorDirection || input?.colorTheme || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+
+  const contracts = {
+    cool_tech: "COLOR CONTRACT (non-negotiable): use vivid LogoFunny-style blue prominently in the logo elements on a pure white background. Do not return a black-only, gray-only, or navy-only logo.",
+    tech_blue: "COLOR CONTRACT (non-negotiable): use vivid LogoFunny-style blue prominently in the logo elements on a pure white background. Do not return a black-only, gray-only, or navy-only logo.",
+    blue: "COLOR CONTRACT (non-negotiable): use vivid LogoFunny-style blue prominently in the logo elements on a pure white background. Do not return a black-only, gray-only, or navy-only logo.",
+    cool_blue: "COLOR CONTRACT (non-negotiable): use vivid LogoFunny-style blue prominently in the logo elements on a pure white background. Do not return a black-only, gray-only, or navy-only logo.",
+    soft_natural: "COLOR CONTRACT (non-negotiable): use deep forest green prominently in the logo elements on a pure white background. Do not return a black-only, gray-only, brown-only, cream-background, or beige-background logo.",
+    luxury_black_gold: "COLOR CONTRACT (non-negotiable): use matte black and warm gold in the logo elements on a pure white background. Gold must be visibly present.",
+    warm_bright: "COLOR CONTRACT (non-negotiable): use warm orange or amber prominently in the logo elements on a pure white background. Do not return a black-only or gray-only logo.",
+    bold_vibrant: "COLOR CONTRACT (non-negotiable): use a clearly visible saturated accent color in the logo elements on a pure white background. Do not return a black-only or gray-only logo.",
+  };
+
+  if (direction === "custom") {
+    const customColor = String(input?.customColor || "").trim();
+    return customColor
+      ? `COLOR CONTRACT (non-negotiable): use the user's exact selected color prominently in the logo elements on a pure white background: ${customColor}. Do not return a black-only or gray-only logo.`
+      : "";
   }
-  const userStr = userText.join(" ").toUpperCase();
-  const ALLOWED_DESCRIPTORS = [
-    "HOME + DECOR",
-    "HOME & DECOR",
-    "PETS",
-    "STUDIO",
-    "CAFE",
-    "BAKERY",
-    "WELLNESS",
-    "BEAUTY",
-    "SKINCARE",
+  return contracts[direction] || "";
+}
+
+function buildKnownSymbolRequirement(input, confirmedDirection) {
+  const explicit = String(
+    input?.iconDirection || input?.icon || input?.icons || input?.selectedIcons || input?.iconOptions || ""
+  ).trim();
+  const source = `${explicit} ${confirmedDirection || ""}`.toLowerCase();
+  const knownSymbols = [
+    { pattern: /(叶子|葉|leaf|leaves|hoja)/i, label: "one simple original leaf" },
+    { pattern: /(山|mountain|montaña|montana)/i, label: "one simple original mountain" },
+    { pattern: /(太阳|太陽|sun|sol)/i, label: "one simple original sun" },
+    { pattern: /(星星|星|star|estrella)/i, label: "one simple original star" },
+    { pattern: /(花|flower|flor)/i, label: "one simple original flower" },
+    { pattern: /(树|樹|tree|árbol|arbol)/i, label: "one simple original tree" },
+    { pattern: /(心形|爱心|愛心|heart|corazón|corazon)/i, label: "one simple original heart" },
+    { pattern: /(爪印|爪子|paw|huella)/i, label: "one simple original paw mark" },
   ];
-  let descriptor = null;
-  for (const d of ALLOWED_DESCRIPTORS) {
-    if (userStr.includes(d)) {
-      descriptor = d;
-      break;
-    }
+  const match = knownSymbols.find(({ pattern }) => pattern.test(source));
+  if (match) {
+    return `REQUIRED SYMBOL (non-negotiable): include ${match.label} as a clearly separate standalone icon. Do not substitute a different object or hide it inside a letter.`;
   }
-  return { brandName, descriptor };
+  if (explicit) {
+    return `REQUIRED SYMBOL (non-negotiable): use this exact user-selected icon direction as a clearly separate standalone icon: ${explicit}. Do not substitute a different object or hide it inside a letter.`;
+  }
+  return "";
+}
+
+/**
+ * Convert LogoFunny's selected color direction into Ideogram's native palette
+ * input. Prompt language remains useful, but the model needs this structured
+ * parameter as well for the selected color to meaningfully influence output.
+ *
+ * No palette is sent for intentionally monochrome directions. For custom
+ * colors we only send explicit user-provided hex values; descriptive text is
+ * still handled by the prompt rather than being guessed into a different hue.
+ */
+function buildIdeogramColorPalette(input) {
+  const direction = String(input?.colorDirection || input?.colorTheme || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+
+  const directionHexes = {
+    cool_tech: ["#2F6BFF", "#FFFFFF"],
+    tech_blue: ["#2F6BFF", "#FFFFFF"],
+    blue: ["#2F6BFF", "#FFFFFF"],
+    cool_blue: ["#2F6BFF", "#FFFFFF"],
+    luxury_black_gold: ["#111111", "#C69B45", "#FFFFFF"],
+    soft_natural: ["#3F6B4B", "#FFFFFF"],
+    warm_bright: ["#F2AA3B", "#FFFFFF"],
+    bold_vibrant: ["#C43772", "#5B5BF7", "#FFFFFF"],
+  };
+
+  let hexes = directionHexes[direction] || [];
+
+  if (direction === "custom") {
+    const customColor = String(input?.customColor || "");
+    hexes = Array.from(
+      new Set(
+        [...customColor.matchAll(/#[0-9a-fA-F]{6}\b/g)].map((match) => match[0].toUpperCase())
+      )
+    ).filter((hex) => hex !== "#FFFFFF").slice(0, 2);
+    if (hexes.length > 0) hexes.push("#FFFFFF");
+  }
+
+  if (hexes.length === 0) return null;
+
+  const equalWeight = Number((1 / hexes.length).toFixed(2));
+  return {
+    members: hexes.map((color_hex, index) => ({
+      color_hex,
+      color_weight: index === hexes.length - 1
+        ? Number((1 - equalWeight * (hexes.length - 1)).toFixed(2))
+        : equalWeight,
+    })),
+  };
 }
 
 function buildReferenceStyleCue(analysis) {
@@ -887,6 +954,8 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
   const textLock = `The only visible readable text is the exact brand name '${brandName}'${subtitleClause}. Do not add a descriptor, tagline, translation, random extra words, tiny text, legal marks, or trademark symbols.`;
 
   const paletteCue = buildPaletteVariationCue(input);
+  const hardColorContract = buildHardColorContract(input);
+  const hardSymbolRequirement = buildKnownSymbolRequirement(input, confirmedDirection);
 
   const animalKey    = detectLogoAnimal(subjectSearchText);
   const industryConceptDirections = planConceptDirections(
@@ -919,7 +988,7 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
     parts.push(brandIntro);
     parts.push(CREATIVE_SAFETY);
     if (structureCue)     parts.push(structureCue);
-    parts.push("Approach this with maximum creative freedom. Express the brand's concept through unexpected visual ideas, bold symbolism, and original mark-making.");
+    parts.push("Explore a visually distinct interpretation within the confirmed user requirements. The selected symbol, palette, text, structure, and exclusions are fixed; vary only the execution.");
     if (conceptAngle)      parts.push(`${conceptAngle} This direction should look visually distinct from the other logo concepts.`);
     if (industryCue)       parts.push(industryCue);
     if (referenceStyleCue) parts.push(referenceStyleCue);
@@ -968,6 +1037,11 @@ function buildMinimalConceptPrompt(input, conceptKey, conceptOverride, track = "
     parts.push("Make it feel polished, memorable, and suitable for actual use.");
   }
 
+  if (hardColorContract) parts.push(hardColorContract);
+  if (hardSymbolRequirement) parts.push(hardSymbolRequirement);
+  if (confirmedDirection) {
+    parts.push("PRIORITY RULE: every explicit requirement and exclusion in the confirmed brand direction is mandatory and overrides creative variation.");
+  }
   if (structureCue) parts.push(`Final required layout: ${structureCue}`);
   return parts.join(" ");
 }
@@ -982,7 +1056,9 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0, track = "commercial") {
     typeof input.conceptPrompts[conceptKey] === "string" &&
     input.conceptPrompts[conceptKey].trim()
   ) {
-    const TRACK_MAGIC = { commercial: "OFF", creative: "AUTO", symbol_fusion: "AUTO" };
+    // The product's AI conversation has already synthesized the user's brief.
+    // Keep Magic Prompt off so Ideogram cannot rewrite confirmed constraints.
+    const TRACK_MAGIC = { commercial: "OFF", creative: "OFF", symbol_fusion: "OFF" };
     const parts = [
       buildMinimalConceptPrompt(input, conceptKey, input.conceptPrompts[conceptKey], track),
       MINIMAL_CONCEPT_SUFFIX,
@@ -1345,6 +1421,11 @@ async function generateIdeogramLogos(input = {}) {
     : "two_concepts";
   const conceptCount = generationMode === "four_directions" ? 4 : 2;
   const numImages = 1;
+  const ideogramColorPalette = buildIdeogramColorPalette(input);
+
+  if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
+    console.log("[ideogram-palette] colorDirection=%j palette=%j", input?.colorDirection || input?.colorTheme || "", ideogramColorPalette);
+  }
 
   // Compile/validate every prompt before starting any paid provider request.
   const prepared = Array.from({ length: conceptCount }, (_, conceptIndex) => {
@@ -1374,46 +1455,48 @@ async function generateIdeogramLogos(input = {}) {
           conceptIndex, numImages, resolvedMagicPrompt, hasStyleReference, dbgSlice(prompt, 600));
       }
 
-      let requestBody;
-      let requestHeaders;
-      if (hasRawStyleReference) {
-        const form = new FormData();
-        form.append("prompt", prompt);
-        form.append("num_images", String(numImages));
-        form.append("magic_prompt", resolvedMagicPrompt);
-        form.append("aspect_ratio", "1x1");
-        form.append("rendering_speed", "QUALITY");
-        form.append("enable_copyright_detection", "true");
-        const extension = referenceImageMimeType === "image/jpeg"
-          ? "jpg"
-          : referenceImageMimeType.split("/")[1];
-        form.append("style_reference_images", referenceImageBuffer, {
-          filename: `reference.${extension}`,
-          contentType: referenceImageMimeType,
-          knownLength: referenceImageBuffer.length,
-        });
-        requestBody = form;
-        requestHeaders = form.getHeaders();
-      } else {
-        requestBody = JSON.stringify({
-          prompt,
-          num_images: numImages,
-          magic_prompt: resolvedMagicPrompt,
-          // Confirmed Ideogram v3 quality parameters.
-          style_type: "DESIGN",
-          aspect_ratio: "1x1",
-          rendering_speed: "QUALITY",
-          // Style reference: field name and strength can be adjusted if Ideogram schema changes.
-          ...(hasStyleReference ? { style_reference: { url: referenceImageUrl, strength: styleReferenceStrength } } : {}),
-        });
-        requestHeaders = { "Content-Type": "application/json" };
-      }
+      const requestBody = hasRawStyleReference
+        ? (() => {
+            const form = new FormData();
+            form.append("prompt", prompt);
+            form.append("num_images", String(numImages));
+            form.append("magic_prompt", resolvedMagicPrompt);
+            form.append("aspect_ratio", "1x1");
+            form.append("rendering_speed", "QUALITY");
+            form.append("enable_copyright_detection", "true");
+            if (ideogramColorPalette) {
+              form.append("color_palette", JSON.stringify(ideogramColorPalette));
+            }
+            const extension = referenceImageMimeType === "image/jpeg"
+              ? "jpg"
+              : referenceImageMimeType.split("/")[1];
+            form.append("style_reference_images", referenceImageBuffer, {
+              filename: `reference.${extension}`,
+              contentType: referenceImageMimeType,
+              knownLength: referenceImageBuffer.length,
+            });
+            return form;
+          })()
+        : JSON.stringify({
+            prompt,
+            num_images: numImages,
+            magic_prompt: resolvedMagicPrompt,
+            // Confirmed Ideogram v3 quality parameters.
+            style_type: "DESIGN",
+            aspect_ratio: "1x1",
+            rendering_speed: "QUALITY",
+            // Native Ideogram color guidance: this reinforces the prompt without
+            // adding a separate generation or changing credit accounting.
+            ...(ideogramColorPalette ? { color_palette: ideogramColorPalette } : {}),
+            // Preserve the existing URL-reference path until it is migrated separately.
+            ...(referenceImageUrl ? { style_reference: { url: referenceImageUrl, strength: styleReferenceStrength } } : {}),
+          });
 
       const response = await fetch("https://api.ideogram.ai/v1/ideogram-v3/generate", {
         method: "POST",
         headers: {
           "Api-Key": apiKey,
-          ...requestHeaders,
+          ...(hasRawStyleReference ? requestBody.getHeaders() : { "Content-Type": "application/json" }),
         },
         body: requestBody,
       });
@@ -1449,6 +1532,7 @@ async function generateIdeogramLogos(input = {}) {
           magicPrompt: resolvedMagicPrompt,
           submittedPromptSha256: createHash("sha256").update(prompt).digest("hex"),
           submittedPromptCharacters: prompt.length,
+          submittedColorPalette: ideogramColorPalette,
           providerPrompt: typeof providerPrompt === "string" ? providerPrompt : null,
           seed: Number.isInteger(seed) ? seed : null,
         },

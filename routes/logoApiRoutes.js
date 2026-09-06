@@ -279,6 +279,8 @@ function mapElementorToAI(body) {
     // The current Next.js Studio sends a single color direction string while
     // older callers may send an array. Keep both representations aligned.
     colorDirection: pickStr("colorDirection") || pickArr("colorTheme")[0] || "",
+    customColor: pickStr("customColor"),
+    iconDirection: pickStr("iconDirection"),
     typographyDirection: pickStr("typographyDirection"),
     styleCues: pickStr("styleCues"),
     style: pickStr("style"),
