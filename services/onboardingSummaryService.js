@@ -121,6 +121,7 @@ Hard rules:
 - Preserve brand_name and business_description exactly as user facts. Never rewrite or embellish them.
 - Write any inferred field in conversation_language, but never translate, transliterate, or rename brand_name.
 - A literal rough_feeling or adaptive answer is a user fact, not an AI inference.
+- how_it_should_feel must contain only emotional or experiential qualities explicitly stated by the user. If rough_feeling also contains layout, color, symbol, or exclusion instructions, keep those out of how_it_should_feel and place them in the appropriate fields without inventing details.
 - Infer audience, visual style leaning, or main direction only when grounded in the supplied text. Otherwise return null fields.
 - Never invent demographics, pricing position, geography, differentiators, or visual ideas.
 - Treat creative tensions such as "premium but playful" and "friendly but not cute" as valid combined intent.
@@ -196,7 +197,15 @@ function normalizeDirectionDraft(parsed, input) {
   fields.brand = userField(input.brand_name, INPUT_LIMITS.brand_name);
   fields.business_context = userField(input.business_description, INPUT_LIMITS.business_description);
   if (factOnly.audience.value) fields.audience = factOnly.audience;
-  if (factOnly.how_it_should_feel.value) fields.how_it_should_feel = factOnly.how_it_should_feel;
+  if (factOnly.how_it_should_feel.value) {
+    // The model may separate explicitly stated feelings from a compound reply
+    // that also contains colors, symbols, layout, and negative constraints.
+    // Keep that grounded user-field extraction; use the literal text only if
+    // the model did not return a usable user field.
+    if (fields.how_it_should_feel.source !== "user" || !fields.how_it_should_feel.value) {
+      fields.how_it_should_feel = factOnly.how_it_should_feel;
+    }
+  }
   if (factOnly.what_to_avoid.value) fields.what_to_avoid = factOnly.what_to_avoid;
 
   const seen = new Set();
