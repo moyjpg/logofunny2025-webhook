@@ -126,10 +126,7 @@ async function runDualTrackPipeline(mapped, requestId = null) {
       )
     );
 
-    const annotated = normalized.map((item, i) => {
-      const settled = judgeSettled[i];
-      const judgeResult = settled.status === 'fulfilled' ? settled.value : null;
-
+    const annotateItem = (item, judgeResult) => {
       if (!item.imageUrl) {
         return { ...item, qualityStatus: 'unchecked', qualityWarnings: [] };
       }
@@ -176,7 +173,49 @@ async function runDualTrackPipeline(mapped, requestId = null) {
       }
 
       return { ...item, qualityStatus: 'pass', qualityWarnings: [] };
+    };
+
+    let annotated = normalized.map((item, i) => {
+      const settled = judgeSettled[i];
+      const judgeResult = settled.status === 'fulfilled' ? settled.value : null;
+      return annotateItem(item, judgeResult);
     });
+
+    // The hybrid path owns the wordmark layer, so a correction pass can safely
+    // regenerate only the creative symbol without changing the user's exact
+    // brand text, typography, layout, or credit charge. Retry each visually
+    // non-compliant symbol at most once and keep the original if the retry is
+    // unavailable or does not reduce the warnings.
+    if (requiresIndependentSymbol) {
+      const retryIndexes = annotated
+        .map((item, index) => item.qualityStatus === 'needs_review' ? index : -1)
+        .filter((index) => index >= 0);
+      const retrySettled = await Promise.allSettled(
+        retryIndexes.map(async (conceptIndex) => {
+          const regenerated = await generateIdeogramLogos(mapped, {
+            conceptIndexes: [conceptIndex],
+            retryAttempt: 1,
+          });
+          const retryItem = await normalizeResultToItem(regenerated[0], requestId);
+          const retryJudge = retryItem.imageUrl
+            ? await judgeLogo(retryItem.imageUrl, mapped, { r2Key: retryItem.r2Key })
+            : null;
+          return { conceptIndex, item: annotateItem(retryItem, retryJudge) };
+        })
+      );
+      retrySettled.forEach((settled) => {
+        if (settled.status !== 'fulfilled') {
+          console.warn('[quality-gate] symbol correction pass unavailable:', settled.reason?.message || settled.reason);
+          return;
+        }
+        const { conceptIndex, item } = settled.value;
+        const originalWarningCount = annotated[conceptIndex]?.qualityWarnings?.length ?? Number.MAX_SAFE_INTEGER;
+        const retryWarningCount = item.qualityWarnings?.length ?? Number.MAX_SAFE_INTEGER;
+        if (item.qualityStatus === 'pass' || retryWarningCount < originalWarningCount) {
+          annotated[conceptIndex] = item;
+        }
+      });
+    }
 
     const ranked = [...annotated].sort(
       (a, b) => RANK_ORDER[a.qualityStatus] - RANK_ORDER[b.qualityStatus]

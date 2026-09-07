@@ -1,6 +1,7 @@
 const fetch = require("node-fetch");
 const FormData = require("form-data");
 const { createHash } = require("node:crypto");
+const sharp = require("sharp");
 
 // Two group art directions — each group generates 2 sibling outputs (2+2 = 4 total).
 // Group 0: typography-forward (wordmark + symbol). Group 1: mark-led (icon or monogram).
@@ -1387,7 +1388,189 @@ function buildIdeogramPrompt(input = {}, groupIndex = 0, track = "commercial") {
   return { prompt, style_name: route, conceptLabel: group.conceptLabel ?? null, magicPromptOverride: group.magicPrompt ?? null };
 }
 
-async function generateIdeogramLogos(input = {}) {
+function escapeRegExp(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function escapeXml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function sanitizeSymbolCreativeContext(value, brandName) {
+  let context = String(value || "").slice(0, 2500);
+  if (brandName) {
+    context = context.replace(new RegExp(escapeRegExp(brandName), "gi"), "the brand");
+  }
+  context = context
+    .replace(/品牌名\s*(?:是|为|叫)?\s*[^，,。.;；]+/gi, "")
+    .replace(/brand\s+name\s+(?:is|called)?\s*[^,.;\n]+/gi, "");
+  return context
+    .split(/[。！？.!?\n;；]+/)
+    .map((clause) => clause.trim())
+    .filter(Boolean)
+    .filter((clause) => !/(?:wordmark|typograph|letter|exact\s+text|brand\s+name|文字|字母|字体|排版|名称)/i.test(clause))
+    .join(". ")
+    .slice(0, 1200);
+}
+
+function buildSymbolOnlyPrompt(input, conceptIndex, track, retryAttempt = 0) {
+  const brandName = String(input?.brandName || "").trim();
+  const industry = String(input?.industry || "brand").replace(/_/g, " ").trim() || "brand";
+  const feelings = [input?.keywords, input?.styleCues]
+    .filter(Boolean)
+    .map((value) => String(value).trim())
+    .filter(Boolean)
+    .join(", ");
+  const iconDirection = String(input?.iconDirection || "").trim();
+  const paletteCue = buildHardColorContract(input) || buildPaletteVariationCue(input);
+  const knownSymbol = buildKnownSymbolRequirement(input, "");
+  const contextWithoutBrandName = sanitizeSymbolCreativeContext(
+    input?.promptOverride || input?.prompt || "",
+    brandName
+  );
+  const routeCue = [
+    "Use a soft, organic silhouette with a warm human rhythm and one memorable contour.",
+    "Use a gently rounded geometric construction with purposeful negative space and a strong small-size silhouette.",
+    "Use one bold continuous shape with a distinctive cut or notch; keep it simple enough for an app icon.",
+    "Use an unexpected but restrained abstract construction that still clearly expresses the requested subject.",
+  ][conceptIndex % 4];
+  const layoutCue = conceptIndex % 2 === 0 ? "horizontal wordmark pairing" : "stacked wordmark pairing";
+
+  return [
+    `Create one original standalone graphic symbol only for a ${industry} identity.`,
+    "This request is only for the symbol layer of a logo system; typography will be added separately by the product.",
+    "ABSOLUTE TEXT BAN: do not draw letters, words, initials, monograms, numbers, captions, labels, signatures, legal marks, or typography of any kind.",
+    "Return one large centered symbol with a clean, isolated silhouette on a pure bright white (#FFFFFF) background.",
+    "Flat vector-logo appearance only: no mockup, no scene, no packaging, no photograph, no texture, no shadow, no 3D, no border, and no presentation board.",
+    iconDirection ? `Requested symbol direction: ${iconDirection}.` : "Invent one distinctive non-letter symbol from the brand meaning.",
+    knownSymbol,
+    feelings ? `The symbol should feel: ${feelings}.` : "The symbol should feel clear, memorable, and commercially usable.",
+    contextWithoutBrandName ? `Semantic brand context only; never render this wording: ${contextWithoutBrandName}.` : "",
+    paletteCue,
+    routeCue,
+    `Design it so it will later pair cleanly in a ${layoutCue}; do not draw the wordmark yourself.`,
+    track === "creative"
+      ? "Use Magic Prompt creativity to explore a more surprising form, while every requested subject, color, and exclusion remains mandatory."
+      : "Use Magic Prompt creativity to develop a distinctive, polished symbol without changing the requested subject, color, or exclusions.",
+    retryAttempt > 0
+      ? "CORRECTION PASS: the previous symbol failed automated logo checks. Return only one unmistakable standalone symbol with no text-like strokes, no tiny marks, no warm-tinted canvas, and no forbidden category cliché."
+      : "",
+  ].filter(Boolean).join(" ");
+}
+
+function resolveWordmarkColor(input) {
+  const palette = buildIdeogramColorPalette(input);
+  const firstVisible = palette?.members?.find((member) => member.color_hex !== "#FFFFFF")?.color_hex;
+  return firstVisible || "#111827";
+}
+
+function resolveWordmarkFont(input) {
+  const direction = String(input?.typographyDirection || "").toLowerCase();
+  if (/serif|editorial|elegant|refined|luxury/.test(direction)) {
+    return { family: "Georgia, 'DejaVu Serif', serif", weight: 600, spacingEm: 0.045 };
+  }
+  if (/rounded|friendly|soft|playful/.test(direction)) {
+    return { family: "'DejaVu Sans', Arial, sans-serif", weight: 700, spacingEm: 0.035 };
+  }
+  return { family: "'DejaVu Sans', Arial, sans-serif", weight: 700, spacingEm: 0.055 };
+}
+
+async function fetchSymbolBuffer(imageUrl) {
+  if (/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(imageUrl || "")) {
+    return Buffer.from(String(imageUrl).split(",", 2)[1], "base64");
+  }
+  const response = await fetch(imageUrl);
+  if (!response.ok) throw new Error(`SYMBOL_FETCH_FAILED_${response.status}`);
+  return Buffer.from(await response.arrayBuffer());
+}
+
+async function isolateSymbolArtwork(sourceBuffer, targetSize) {
+  const { data, info } = await sharp(sourceBuffer)
+    .flatten({ background: "#FFFFFF" })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  let visiblePixels = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const minChannel = Math.min(data[i], data[i + 1], data[i + 2]);
+    if (minChannel >= 246) {
+      data[i + 3] = 0;
+    } else if (minChannel >= 230) {
+      data[i + 3] = Math.min(data[i + 3], Math.round(((246 - minChannel) / 16) * 255));
+      if (data[i + 3] > 18) visiblePixels += 1;
+    } else {
+      visiblePixels += 1;
+    }
+  }
+  if (visiblePixels < Math.max(1, Math.round(info.width * info.height * 0.0005))) {
+    throw new Error("SYMBOL_ARTWORK_EMPTY");
+  }
+
+  return sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
+    .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 4 })
+    .resize(targetSize, targetSize, {
+      fit: "contain",
+      background: { r: 255, g: 255, b: 255, alpha: 0 },
+    })
+    .png()
+    .toBuffer();
+}
+
+function buildWordmarkSvg(input, layout) {
+  const brandName = String(input?.brandName || "").trim();
+  if (!brandName) throw new Error("WORDMARK_REQUIRED");
+  if (Array.from(brandName).length > 80) throw new Error("WORDMARK_TOO_LONG");
+
+  const { family, weight, spacingEm } = resolveWordmarkFont(input);
+  const characters = Math.max(1, Array.from(brandName).length);
+  const maxWidth = layout === "horizontal" ? 520 : 760;
+  const maxFontSize = layout === "horizontal" ? 152 : 172;
+  const fontSize = Math.max(64, Math.min(maxFontSize, Math.round(maxWidth / (characters * 0.67))));
+  const letterSpacing = Math.max(1, Math.round(fontSize * spacingEm));
+  const x = layout === "horizontal" ? 688 : 512;
+  const y = layout === "horizontal" ? 528 : 724;
+
+  return Buffer.from(
+    `<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">` +
+      `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" ` +
+      `font-family="${escapeXml(family)}" font-size="${fontSize}" font-weight="${weight}" ` +
+      `letter-spacing="${letterSpacing}" fill="${resolveWordmarkColor(input)}">${escapeXml(brandName)}</text>` +
+    `</svg>`,
+    "utf8"
+  );
+}
+
+async function composeSymbolWordmark(sourceImageUrl, input, conceptIndex) {
+  const layout = conceptIndex % 2 === 0 ? "horizontal" : "vertical";
+  const symbolSize = layout === "horizontal" ? 286 : 330;
+  const symbolLeft = layout === "horizontal" ? 118 : Math.round((1024 - symbolSize) / 2);
+  const symbolTop = layout === "horizontal" ? Math.round((1024 - symbolSize) / 2) : 188;
+  const sourceBuffer = await fetchSymbolBuffer(sourceImageUrl);
+  const symbolBuffer = await isolateSymbolArtwork(sourceBuffer, symbolSize);
+  const wordmarkSvg = buildWordmarkSvg(input, layout);
+  const output = await sharp({
+    create: { width: 1024, height: 1024, channels: 4, background: "#FFFFFF" },
+  })
+    .composite([
+      { input: symbolBuffer, left: symbolLeft, top: symbolTop },
+      { input: wordmarkSvg, left: 0, top: 0 },
+    ])
+    .png()
+    .toBuffer();
+
+  return {
+    imageUrl: `data:image/png;base64,${output.toString("base64")}`,
+    layout,
+  };
+}
+
+async function generateIdeogramLogos(input = {}, options = {}) {
   const apiKey = process.env.IDEOGRAM_API_KEY;
   if (!apiKey) {
     throw new Error("Missing IDEOGRAM_API_KEY in env");
@@ -1422,13 +1605,28 @@ async function generateIdeogramLogos(input = {}) {
   const conceptCount = generationMode === "four_directions" ? 4 : 2;
   const numImages = 1;
   const ideogramColorPalette = buildIdeogramColorPalette(input);
+  const useHybridSymbolWordmark = normalizeRequestedLogoStructure(input) === "symbol_wordmark";
+  const retryAttempt = Math.max(0, Math.min(1, Number(options?.retryAttempt || 0)));
+  const requestedConceptIndexes = Array.isArray(options?.conceptIndexes)
+    ? [...new Set(options.conceptIndexes.map(Number))]
+        .filter((index) => Number.isInteger(index) && index >= 0 && index < conceptCount)
+    : Array.from({ length: conceptCount }, (_, index) => index);
+  if (requestedConceptIndexes.length === 0) throw new Error("NO_LOGO_CONCEPTS_REQUESTED");
+
+  if (input?.conceptPrompts && typeof input.conceptPrompts === "object") {
+    for (const direction of Object.values(input.conceptPrompts)) {
+      if (typeof direction === "string" && direction.trim().length > 6000) {
+        throw new Error("BRAND_DIRECTION_TOO_LONG");
+      }
+    }
+  }
 
   if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
     console.log("[ideogram-palette] colorDirection=%j palette=%j", input?.colorDirection || input?.colorTheme || "", ideogramColorPalette);
   }
 
   // Compile/validate every prompt before starting any paid provider request.
-  const prepared = Array.from({ length: conceptCount }, (_, conceptIndex) => {
+  const prepared = requestedConceptIndexes.map((conceptIndex) => {
       const TRACK_ASSIGNMENTS = normalizeRequestedLogoStructure(input) === "symbol_wordmark"
         ? ["commercial", "creative", "commercial", "creative"]
         : ["commercial", "creative", "symbol_fusion", "commercial"];
@@ -1436,19 +1634,28 @@ async function generateIdeogramLogos(input = {}) {
       if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
         console.log("[ideogram-track] conceptIndex=%d track=%s generationMode=%s", conceptIndex, track, generationMode);
       }
-      let { prompt, style_name, conceptLabel, magicPromptOverride } = buildIdeogramPrompt(input, conceptIndex, track);
+      let { prompt, style_name, conceptLabel, magicPromptOverride } = useHybridSymbolWordmark
+        ? {
+            prompt: buildSymbolOnlyPrompt(input, conceptIndex, track, retryAttempt),
+            style_name: "logofunny-hybrid",
+            conceptLabel: ["organic_symbol", "geometric_symbol", "negative_space_symbol", "bold_symbol"][conceptIndex],
+            magicPromptOverride: "ON",
+          }
+        : buildIdeogramPrompt(input, conceptIndex, track);
       if (hasStyleReference) {
-        prompt = prompt + " Use the uploaded reference image as a strong visual style guide only. Strongly follow its overall visual language, such as shape language, composition, color mood, line weight, simplicity level, icon or mascot feel, and layout. Create a new original logo for the requested brand. Do not copy exact artwork, text, brand names, trademarks, or protected logos from the reference.";
+        prompt += useHybridSymbolWordmark
+          ? " Use the uploaded reference image as a visual style guide only. Follow its shape language, color mood, line weight, simplicity level, and icon feel, but return one new original standalone symbol only. Do not copy exact artwork, text, brand names, trademarks, protected logos, or the reference layout. Do not add any typography."
+          : " Use the uploaded reference image as a strong visual style guide only. Strongly follow its overall visual language, such as shape language, composition, color mood, line weight, simplicity level, icon or mascot feel, and layout. Create a new original logo for the requested brand. Do not copy exact artwork, text, brand names, trademarks, or protected logos from the reference.";
       }
       const resolvedMagicPrompt = VALID_MAGIC_PROMPT.has(magicPromptOverride ?? "")
         ? magicPromptOverride
         : globalMagicPrompt;
       if (prompt.length > 14000) throw new Error("LOGO_PROMPT_TOO_LONG");
-      return { conceptIndex, prompt, style_name, conceptLabel, resolvedMagicPrompt };
+      return { conceptIndex, prompt, style_name, conceptLabel, resolvedMagicPrompt, useHybridSymbolWordmark };
   });
 
   const groups = await Promise.all(
-    prepared.map(async ({ conceptIndex, prompt, style_name, conceptLabel, resolvedMagicPrompt }) => {
+    prepared.map(async ({ conceptIndex, prompt, style_name, conceptLabel, resolvedMagicPrompt, useHybridSymbolWordmark }) => {
 
       if (process.env.LOGOFUNNY_DEBUG_PROMPT === "true") {
         console.log("[ideogram-request] conceptIndex=%d num_images=%d magic_prompt=%s style_type=DESIGN aspect_ratio=1x1 rendering_speed=QUALITY hasStyleReference=%s promptPreview=%j",
@@ -1513,20 +1720,26 @@ async function generateIdeogramLogos(input = {}) {
         (Array.isArray(data?.results) && data.results) ||
         [];
 
-      const images = raw
+      const sourceImages = raw
         .map((item) => ({ imageUrl: item?.url || item?.image_url || item?.imageUrl || item?.image?.url, providerPrompt: item?.prompt, seed: item?.seed, safe: item?.is_image_safe }))
         .filter((item) => typeof item.imageUrl === "string" && item.imageUrl.trim() && item.safe !== false)
         .slice(0, numImages);
 
-      if (images.length < 1) {
-        throw new Error(`Ideogram returned ${images.length} usable images for concept ${conceptIndex}, expected ${numImages}`);
+      if (sourceImages.length < 1) {
+        throw new Error(`Ideogram returned ${sourceImages.length} usable images for concept ${conceptIndex}, expected ${numImages}`);
       }
 
-      return images.map(({ imageUrl, providerPrompt, seed }) => ({
+      const images = await Promise.all(sourceImages.map(async (item) => {
+        if (!useHybridSymbolWordmark) return { ...item, layout: null };
+        const composed = await composeSymbolWordmark(item.imageUrl, input, conceptIndex);
+        return { ...item, imageUrl: composed.imageUrl, layout: composed.layout };
+      }));
+
+      return images.map(({ imageUrl, providerPrompt, seed, layout }) => ({
         imageUrl,
         prompt,
         generationTrace: {
-          version: "brand-direction.v2",
+          version: useHybridSymbolWordmark ? "brand-direction.v3" : "brand-direction.v2",
           provider: "ideogram-v3",
           conceptKey: conceptLabel,
           magicPrompt: resolvedMagicPrompt,
@@ -1535,12 +1748,21 @@ async function generateIdeogramLogos(input = {}) {
           submittedColorPalette: ideogramColorPalette,
           providerPrompt: typeof providerPrompt === "string" ? providerPrompt : null,
           seed: Number.isInteger(seed) ? seed : null,
+          conceptIndex,
+          retryAttempt,
+          ...(useHybridSymbolWordmark ? {
+            compositionMode: "creative-symbol-deterministic-wordmark",
+            wordmarkText: String(input?.brandName || "").trim(),
+            layout,
+          } : {}),
         },
         style_name,
         // This is an internal prompt route, never a customer-facing logo type.
         conceptLabel: "logo_concept",
         model: "ideogram",
-        mode: hasRawStyleReference ? "image-guided" : "text-to-image",
+        mode: useHybridSymbolWordmark
+          ? "hybrid-symbol-wordmark"
+          : (hasRawStyleReference ? "image-guided" : "text-to-image"),
       }));
     })
   );
