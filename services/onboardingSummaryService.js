@@ -21,8 +21,15 @@ const INPUT_LIMITS = Object.freeze({
 
 function getSummaryConfig() {
   const timeoutRaw = Number.parseInt(process.env.ONBOARDING_SUMMARY_FETCH_TIMEOUT_MS || "", 10);
+  const summaryFlag = String(process.env.ONBOARDING_SUMMARY_ENABLED || "").trim();
+  // Summary is the final step of the same Brand Chat journey. If it has not
+  // been explicitly configured, inherit the already-enabled conversation
+  // capability rather than silently dropping the user into a fallback.
+  const enabled = summaryFlag
+    ? summaryFlag.toLowerCase() === "true"
+    : String(process.env.ONBOARDING_FOLLOWUP_ENABLED || "").toLowerCase() === "true";
   return {
-    enabled: String(process.env.ONBOARDING_SUMMARY_ENABLED || "").toLowerCase() === "true",
+    enabled,
     apiKey: process.env.ONBOARDING_CONVERSATION_API_KEY || process.env.OPENAI_API_KEY || "",
     baseUrl: (process.env.ONBOARDING_CONVERSATION_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, ""),
     // Summary is a bounded, high-volume synthesis task and intentionally
