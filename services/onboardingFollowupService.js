@@ -47,7 +47,13 @@ function userReadinessText(input = {}) {
   ].filter((value) => typeof value === "string").join("\n");
 }
 
-function hasExplicitReadinessEvidence(field, input = {}) {
+function hasExplicitReadinessEvidence(field, input = {}, evidence = "") {
+  const quote = evidence.trim();
+  const userText = userReadinessText(input);
+  // Accept grounded natural answers, without requiring category keywords.
+  if (quote.length >= 4 && userText.includes(quote)
+    && quote !== String(input.business_description || "").trim()
+    && quote !== String(input.rough_feeling || "").trim()) return true;
   const text = userReadinessText(input);
   if (field === "audience") {
     return /(?:面向|主要(?:是|服务|给|针对)|目标(?:客户|用户)?(?:是|为)?|适合)\s*[^。！？\n]{2,}|\b(?:for|serving|aimed at|targeting)\s+[^.!?\n]{2,}/i.test(text);
@@ -75,7 +81,7 @@ const READINESS_QUESTIONS = {
   },
   differentiation: {
     en: "What should make this feel like your brand instead of another option in the same category?",
-    "zh-CN": "你最希望它和同类宠物用品品牌有什么不一样？",
+    "zh-CN": "你最希望它和同类品牌有什么不一样？",
     es: "¿Qué debería hacer que se sienta como tu marca y no como otra opción de la categoría?",
     ja: "同じカテゴリーの他の選択肢ではなく、このブランドらしいと感じてほしい違いは何ですか？",
   },
@@ -112,7 +118,7 @@ function normalizeReadiness(raw, input) {
             ? "covered"
             : status;
     if (["audience", "differentiation", "logo_context"].includes(field)
-      && !hasExplicitReadinessEvidence(field, input)
+      && !hasExplicitReadinessEvidence(field, input, evidence)
       && !(status === "intentionally_open" && hasExplicitOpenDecision(input))) {
       normalizedStatus = "missing";
     }
@@ -482,7 +488,7 @@ function normalizeAdvisorResponse(parsed, input = {}) {
   const requiredQuestion = missing && questions.length === 0 ? readinessQuestion(missing, language) : null;
 
   return {
-    assistant_message: assistantMessage,
+    assistant_message: missing ? readinessQuestion(missing, language).question : assistantMessage,
     ready_to_review: parsed.ready_to_review === true && !missing,
     readiness,
     research,
@@ -653,7 +659,7 @@ function buildFallbackAdvisorResponse(input = {}) {
  * reliable, conservative fallbacks.
  * @returns {Promise<{ ok: true, questions: Array } | { ok: false, failure: 'timeout'|'http'|'fetch_json'|'empty'|'parse'|'disabled'|'misconfigured'|'network', detail?: string }>}
  */
-async function attemptOnboardingFollowupLLM(input = {}) {
+async function attemptOnboardingFollowupOnce(input = {}, timeoutMs = getFetchTimeoutMs()) {
   const cfg = getFollowupConfig();
   if (!cfg.enabled) {
     return { ok: false, failure: "disabled" };
@@ -685,13 +691,14 @@ async function attemptOnboardingFollowupLLM(input = {}) {
     guided_choices: input.guided_choices && typeof input.guided_choices === "object" ? input.guided_choices : {},
   };
   const messages = buildFollowupMessages(structured);
+  messages[0].content += "\nFor every covered readiness dimension, evidence must quote the relevant user words verbatim (in their original language), not an invented or translated inference. Accept natural answers without requiring special keywords. When all dimensions are covered, set ready_to_review=true and questions=[].";
 
   const url = `${cfg.baseUrl}/responses`;
-  const timeoutMs = getFetchTimeoutMs();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   let res;
+  try {
   try {
     res = await fetch(url, {
       method: "POST",
@@ -718,7 +725,7 @@ async function attemptOnboardingFollowupLLM(input = {}) {
           },
         },
         store: false,
-        max_output_tokens: 600,
+        max_output_tokens: 1600,
       }),
     });
   } catch (e) {
@@ -728,16 +735,15 @@ async function attemptOnboardingFollowupLLM(input = {}) {
       return { ok: false, failure: "timeout", detail: `${timeoutMs}ms` };
     }
     return { ok: false, failure: "network", detail: msg.slice(0, 200) };
-  } finally {
-    clearTimeout(timeoutId);
   }
 
+
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
+
     return {
       ok: false,
       failure: "http",
-      detail: `${res.status} ${body.slice(0, 200)}`,
+      detail: String(res.status),
     };
   }
 
@@ -745,7 +751,11 @@ async function attemptOnboardingFollowupLLM(input = {}) {
   try {
     data = await res.json();
   } catch (e) {
-    return { ok: false, failure: "fetch_json", detail: e?.message || String(e) };
+    return { ok: false, failure: controller.signal.aborted ? "timeout" : "json_parse" };
+  }
+
+  if (data?.status === "incomplete" && data?.incomplete_details?.reason === "max_output_tokens") {
+    return { ok: false, failure: "output_truncation" };
   }
 
   const content =
@@ -762,17 +772,37 @@ async function attemptOnboardingFollowupLLM(input = {}) {
       return "";
     })();
   if (content == null || !String(content).trim()) {
-    return { ok: false, failure: "empty" };
+    return { ok: false, failure: "response_structure" };
   }
 
   const parsed = extractJsonObject(content);
   if (!parsed) {
-    return { ok: false, failure: "parse" };
+    return { ok: false, failure: "json_parse" };
   }
 
+  if (typeof parsed.ready_to_review !== "boolean" || (typeof parsed.assistant_message !== "string" || !parsed.assistant_message.trim())
+    || !Array.isArray(parsed.questions) || !parsed.research
+    || !READINESS_FIELDS.every(field => ["covered", "missing", "intentionally_open"].includes(parsed.readiness?.[field]?.status) && typeof parsed.readiness[field].evidence === "string")) {
+    return { ok: false, failure: "response_structure" };
+  }
   const advisor = normalizeAdvisorResponse(parsed, structured);
-  if (!advisor) return { ok: false, failure: "parse" };
+  if (!advisor) return { ok: false, failure: "response_structure" };
   return { ok: true, ...advisor };
+  } finally { clearTimeout(timeoutId); }
+}
+
+async function attemptOnboardingFollowupLLM(input = {}) {
+  const budgetMs = Math.min(getFetchTimeoutMs(), 45000);
+  const deadline = Date.now() + budgetMs;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) return { ok: false, failure: "timeout" };
+    const result = await attemptOnboardingFollowupOnce(input, remaining);
+    if (result.ok) return result;
+    const retry = attempt === 1 && ["output_truncation", "json_parse", "response_structure"].includes(result.failure) && Date.now() < deadline;
+    console.warn("[onboarding-followup] AI attempt failed", { failure: result.failure, attempt, retry });
+    if (!retry) return result;
+  }
 }
 
 /**
