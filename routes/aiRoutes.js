@@ -330,6 +330,7 @@ router.post("/onboarding-followup", requireInternalKey, async (req, res) => {
         source: result.source === "ai" ? "ai" : "deterministic_fallback",
         assistant_message: toText(result.assistant_message).trim(),
         ready_to_review: result.ready_to_review === true,
+        readiness: result.readiness && typeof result.readiness === "object" ? result.readiness : null,
         research: result.research && typeof result.research === "object"
           ? result.research
           : { offered: false, reason: "", confirmation_question: "" },

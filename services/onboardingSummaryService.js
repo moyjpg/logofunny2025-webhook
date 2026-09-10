@@ -13,7 +13,9 @@ const INPUT_LIMITS = Object.freeze({
   rough_feeling: 500,
   primary_use: 300,
   voluntary_extra_context: 12_000,
-  adaptive_answers: 2,
+  // Keep the bounded complete conversation, rather than silently dropping
+  // later answers such as audience or the main use context.
+  adaptive_answers: 5,
   adaptive_question: 300,
   adaptive_answer: 1_000,
   conversation_language: 16,

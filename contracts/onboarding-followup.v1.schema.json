@@ -1,10 +1,22 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["assistant_message", "ready_to_review", "research", "questions"],
+  "required": ["assistant_message", "ready_to_review", "readiness", "research", "questions"],
   "properties": {
     "assistant_message": { "type": "string" },
     "ready_to_review": { "type": "boolean" },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["business", "audience", "differentiation", "personality", "logo_context"],
+      "properties": {
+        "business": { "$ref": "#/$defs/readiness_field" },
+        "audience": { "$ref": "#/$defs/readiness_field" },
+        "differentiation": { "$ref": "#/$defs/readiness_field" },
+        "personality": { "$ref": "#/$defs/readiness_field" },
+        "logo_context": { "$ref": "#/$defs/readiness_field" }
+      }
+    },
     "research": {
       "type": "object",
       "additionalProperties": false,
@@ -30,6 +42,17 @@
             "enum": ["audience", "existing_visual_idea", "things_to_avoid", "rough_feeling", "visual_foundation", "other"]
           }
         }
+      }
+    }
+  },
+  "$defs": {
+    "readiness_field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence"],
+      "properties": {
+        "status": { "enum": ["covered", "intentionally_open", "missing"] },
+        "evidence": { "type": "string" }
       }
     }
   }

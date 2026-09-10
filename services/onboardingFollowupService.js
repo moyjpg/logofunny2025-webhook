@@ -27,6 +27,141 @@
 const fetch = require("node-fetch");
 const followupSchema = require("../contracts/onboarding-followup.v1.schema.json");
 
+const READINESS_FIELDS = ["business", "audience", "differentiation", "personality", "logo_context"];
+
+function userReadinessText(input = {}) {
+  const history = Array.isArray(input.conversation_history)
+    ? input.conversation_history.filter((entry) => entry?.role === "user").map((entry) => entry.content)
+    : [];
+  const answers = Array.isArray(input.adaptive_answers)
+    ? input.adaptive_answers.map((answer) => answer?.answer)
+    : [];
+  return [
+    input.business_description,
+    input.rough_feeling,
+    input.voluntary_extra_context,
+    input.latest_message,
+    input.primary_use,
+    ...answers,
+    ...history,
+  ].filter((value) => typeof value === "string").join("\n");
+}
+
+function hasExplicitReadinessEvidence(field, input = {}) {
+  const text = userReadinessText(input);
+  if (field === "audience") {
+    return /(?:面向|主要(?:是|服务|给|针对)|目标(?:客户|用户)?(?:是|为)?|适合)\s*[^。！？\n]{2,}|\b(?:for|serving|aimed at|targeting)\s+[^.!?\n]{2,}/i.test(text);
+  }
+  if (field === "differentiation") {
+    return /(?:区别|不同|特别|优势|价值|解决|不想像|与众不同|差异)\s*[^。！？\n]{1,}|\b(?:different|distinct|unlike|advantage|value|solve|stand out)\b/i.test(text);
+  }
+  if (field === "logo_context") {
+    return /(?:包装|门店|招牌|社交媒体|小红书|网店|头像|网站|名片|店铺|应用图标|在哪里使用)|\b(?:packaging|shop sign|storefront|social media|profile|website|business card|app icon)\b/i.test(text)
+      || Boolean(String(input.primary_use || "").trim());
+  }
+  return true;
+}
+
+function hasExplicitOpenDecision(input = {}) {
+  return /(?:你(?:来|帮我|可以)?推荐|交给你|你决定|都可以|没偏好|你觉得合适|you recommend|you decide|up to you|no preference)/i.test(userReadinessText(input));
+}
+
+const READINESS_QUESTIONS = {
+  audience: {
+    en: "Who are you mainly hoping will choose this brand?",
+    "zh-CN": "你最希望主要打动哪一类人？",
+    es: "¿A quién esperas atraer principalmente con esta marca?",
+    ja: "このブランドを主に選んでほしいのはどんな人ですか？",
+  },
+  differentiation: {
+    en: "What should make this feel like your brand instead of another option in the same category?",
+    "zh-CN": "你最希望它和同类宠物用品品牌有什么不一样？",
+    es: "¿Qué debería hacer que se sienta como tu marca y no como otra opción de la categoría?",
+    ja: "同じカテゴリーの他の選択肢ではなく、このブランドらしいと感じてほしい違いは何ですか？",
+  },
+  logo_context: {
+    en: "Where will people most often see the logo first — packaging, a shop sign, social media, or somewhere else?",
+    "zh-CN": "人们最常会先在哪里看到这个 Logo——包装、门店招牌、社交媒体，还是别的地方？",
+    es: "¿Dónde verá la gente este logo con más frecuencia: en el empaque, un letrero, redes sociales u otro lugar?",
+    ja: "このロゴは最初にどこで見られることが多いですか。パッケージ、店頭サイン、SNS、それとも別の場所ですか？",
+  },
+  personality: {
+    en: "What feeling should people take away from the brand?",
+    "zh-CN": "你希望人们从这个品牌感受到什么？",
+    es: "¿Qué sensación debería dejar la marca?",
+    ja: "このブランドからどんな印象を受け取ってほしいですか？",
+  },
+  business: {
+    en: "What do you sell or help people do?",
+    "zh-CN": "你具体卖什么，或帮助人们做什么？",
+    es: "¿Qué vendes o ayudas a hacer a las personas?",
+    ja: "具体的に何を売る、または人の何を手伝うブランドですか？",
+  },
+};
+
+function normalizeReadiness(raw, input) {
+  const readiness = {};
+  for (const field of READINESS_FIELDS) {
+    const item = raw && typeof raw === "object" ? raw[field] : null;
+    const status = item?.status === "covered" || item?.status === "intentionally_open" ? item.status : "missing";
+    const evidence = typeof item?.evidence === "string" ? item.evidence.trim().slice(0, 500) : "";
+    let normalizedStatus =
+        field === "business" && String(input.business_description || "").trim()
+          ? "covered"
+          : field === "personality" && String(input.rough_feeling || "").trim()
+            ? "covered"
+            : status;
+    if (["audience", "differentiation", "logo_context"].includes(field)
+      && !hasExplicitReadinessEvidence(field, input)
+      && !(status === "intentionally_open" && hasExplicitOpenDecision(input))) {
+      normalizedStatus = "missing";
+    }
+    readiness[field] = {
+      status: normalizedStatus,
+      evidence,
+    };
+  }
+  return readiness;
+}
+
+function firstMissingReadinessField(readiness) {
+  return READINESS_FIELDS.find((field) => readiness[field]?.status === "missing") || null;
+}
+
+function readinessQuestion(field, language) {
+  return {
+    id: `clarify_${field}`,
+    question: READINESS_QUESTIONS[field]?.[language] || READINESS_QUESTIONS[field]?.en || "What else should guide this direction?",
+    reason: `Clarifies ${field.replace(/_/g, " ")} before the direction is reviewed.`,
+    target_field: field === "logo_context" ? "other" : field === "differentiation" ? "other" : field,
+  };
+}
+
+function fallbackReadiness(input = {}) {
+  return normalizeReadiness({
+    business: { status: input.business_description ? "covered" : "missing", evidence: input.business_description || "" },
+    audience: { status: "missing", evidence: "" },
+    differentiation: { status: "missing", evidence: "" },
+    personality: { status: input.rough_feeling ? "covered" : "missing", evidence: input.rough_feeling || "" },
+    logo_context: { status: "missing", evidence: "" },
+  }, input);
+}
+
+function applyFallbackReadiness(response, input = {}) {
+  const readiness = fallbackReadiness(input);
+  const missing = firstMissingReadinessField(readiness);
+  const language = normalizeConversationLanguage(input.conversation_language, input.latest_message);
+  const questions = Array.isArray(response.questions) && response.questions.length
+    ? response.questions
+    : missing ? [readinessQuestion(missing, language)] : [];
+  return {
+    ...response,
+    ready_to_review: false,
+    readiness,
+    questions,
+  };
+}
+
 const MAX_QUESTIONS = 1;
 const ALLOWED_CONVERSATION_LANGUAGES = new Set(["en", "zh-CN", "es", "ja"]);
 
@@ -98,8 +233,10 @@ For every turn:
 - When there are two plausible directions, compare them briefly and recommend one, including why it better fits what the user has already said.
 - If a new idea conflicts with an earlier goal, name the tension gently and suggest a way to keep the useful part of both.
 - Ask at most one short question only when the answer would meaningfully improve the direction. Do not ask a question just to keep the chat going.
-- Once the name, business, and desired feeling are known, check whether the user has made a visual foundation clear. If neither their choices nor their answers say whether the name should lead or a simple graphic should appear with the name, ask one plain-language visual-foundation question before ending the conversation. You may include color in that same question only when color is also unknown.
-- Use ordinary language for that question. Good example: "For the logo itself, do you picture the name doing most of the work, or a simple graphic together with the name? Is there a color family you want me to keep in mind, or should I recommend one?" Do not use terms such as wordmark, monogram, layout, typography, serif, or logo type.
+- Before a direction is ready, assess five useful dimensions from the user's actual words: what the business/product is, who it is for, what should make it distinct or valuable, the desired personality/feeling, and where the logo needs to work. A user may answer several dimensions in one natural message; absorb all of them and never repeat them.
+- Do not treat the obvious buyers implied by a category (for example, "people who buy pet supplies") as a meaningful audience. Do not infer a differentiator or a real use context from a logo format. Mark those dimensions missing unless the user actually stated them, or explicitly left that decision to your recommendation.
+- Do not use a fixed number of turns. Ask one short, plain-language question only for the single missing dimension that would most improve the direction. If the user expressly leaves a decision open for your recommendation, mark that dimension intentionally_open rather than forcing another question. A logo structure such as "graphic plus text" is useful visual guidance, but does not itself tell you the logo's real use context.
+- Do not call the direction ready while any dimension is missing. Do not hide a question in assistant_message: when a question is needed, return it in questions[0].
 - Keep assistant_message to 2-4 short sentences. Write assistant_message, research confirmation text, and any question in ${responseLanguageName}. Brand names and exact logo text must never be translated, transliterated, or renamed.
 
 Hard rules:
@@ -111,7 +248,7 @@ Hard rules:
 - Never ask the user to choose professional design terms such as logo type, wordmark, lettermark, layout, detail level, typography, serif, or font category. Translate the underlying decision into everyday language instead.
 - A visual idea the user volunteers is welcome. Analyze whether it may feel memorable, too literal, generic, or hard to use, then suggest a simpler or more ownable direction in plain language.
 - Creative tension phrases such as "premium but playful" are useful direction, not a contradiction to resolve.
-- ready_to_review should be true once the brand name, what it does, and a rough direction are known. It may still be true while the user keeps chatting.
+- ready_to_review can be true only when readiness has no missing dimensions. It may remain true while the user keeps chatting.
 - Return at most 1 question. "questions" may be empty.
 
 Conversation-stage rules:
@@ -121,7 +258,7 @@ Conversation-stage rules:
 - Do not force a question just because of a conversation stage. If one is useful, include it naturally in assistant_message and return questions as an empty array.
 
 Output strict JSON only, no markdown, no code fences, no extra keys:
-{"assistant_message":"2-4 short helpful sentences","ready_to_review":true,"research":{"offered":false,"reason":"","confirmation_question":""},"questions":[{"id":"short_stable_snake_case_id","question":"one short everyday-language question","reason":"short internal reason","target_field":"one of: audience | existing_visual_idea | things_to_avoid | rough_feeling | visual_foundation | other"}]}`;
+{"assistant_message":"2-4 short helpful sentences","ready_to_review":false,"readiness":{"business":{"status":"covered | intentionally_open | missing","evidence":"short user-grounded evidence or empty"},"audience":{"status":"covered | intentionally_open | missing","evidence":"short user-grounded evidence or empty"},"differentiation":{"status":"covered | intentionally_open | missing","evidence":"short user-grounded evidence or empty"},"personality":{"status":"covered | intentionally_open | missing","evidence":"short user-grounded evidence or empty"},"logo_context":{"status":"covered | intentionally_open | missing","evidence":"short user-grounded evidence or empty"}},"research":{"offered":false,"reason":"","confirmation_question":""},"questions":[{"id":"short_stable_snake_case_id","question":"one short everyday-language question","reason":"short internal reason","target_field":"one of: audience | existing_visual_idea | things_to_avoid | rough_feeling | visual_foundation | other"}]}`;
 
   const user = `Onboarding conversation state:
 ${JSON.stringify(structured, null, 2)}
@@ -312,7 +449,16 @@ function finalizeQuestions(parsed) {
   return filtered.slice(0, MAX_QUESTIONS);
 }
 
-function normalizeAdvisorResponse(parsed) {
+function asksForCoveredReadiness(question, readiness) {
+  const field = question?.targetField === "rough_feeling"
+    ? "personality"
+    : question?.targetField === "audience"
+      ? "audience"
+      : null;
+  return Boolean(field && readiness[field]?.status !== "missing");
+}
+
+function normalizeAdvisorResponse(parsed, input = {}) {
   if (!parsed || typeof parsed !== "object") return null;
   const assistantMessage = typeof parsed.assistant_message === "string"
     ? parsed.assistant_message.trim().slice(0, 1600)
@@ -329,11 +475,18 @@ function normalizeAdvisorResponse(parsed) {
         : "",
   };
 
+  const readiness = normalizeReadiness(parsed.readiness, input);
+  const missing = firstMissingReadinessField(readiness);
+  const questions = finalizeQuestions(parsed).filter((question) => !asksForCoveredReadiness(question, readiness));
+  const language = normalizeConversationLanguage(input.conversation_language, input.latest_message || parsed.assistant_message);
+  const requiredQuestion = missing && questions.length === 0 ? readinessQuestion(missing, language) : null;
+
   return {
     assistant_message: assistantMessage,
-    ready_to_review: parsed.ready_to_review === true,
+    ready_to_review: parsed.ready_to_review === true && !missing,
+    readiness,
     research,
-    questions: finalizeQuestions(parsed),
+    questions: requiredQuestion ? [requiredQuestion] : questions,
   };
 }
 
@@ -390,7 +543,7 @@ function buildFallbackAdvisorResponse(input = {}) {
     };
   }
 
-  if (needsVisualFoundation && input.brand_name && input.business_description && input.rough_feeling) {
+  if (needsVisualFoundation && !sharesVisualIdea && input.brand_name && input.business_description && input.rough_feeling) {
     return {
       source: "deterministic_fallback",
       assistant_message: chinese
@@ -617,7 +770,7 @@ async function attemptOnboardingFollowupLLM(input = {}) {
     return { ok: false, failure: "parse" };
   }
 
-  const advisor = normalizeAdvisorResponse(parsed);
+  const advisor = normalizeAdvisorResponse(parsed, structured);
   if (!advisor) return { ok: false, failure: "parse" };
   return { ok: true, ...advisor };
 }
@@ -640,16 +793,17 @@ async function generateOnboardingFollowup(input = {}) {
       source: "ai",
       assistant_message: result.assistant_message,
       ready_to_review: result.ready_to_review,
+      readiness: result.readiness,
       research: result.research,
       needs_followup: result.questions.length > 0,
       questions: result.questions,
     };
   }
-  const fallback = buildFallbackAdvisorResponse(input);
+  const fallback = applyFallbackReadiness(buildFallbackAdvisorResponse(input), input);
   // Keep the deterministic response available to non-interactive callers,
   // but preserve why the model was unavailable. The web client uses this
   // provenance to avoid presenting a template as an AI reply.
-  return { ...fallback, needs_followup: false, failure: result.failure };
+  return { ...fallback, needs_followup: fallback.questions.length > 0, failure: result.failure };
 }
 
 module.exports = {
