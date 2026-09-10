@@ -47,13 +47,20 @@ function userReadinessText(input = {}) {
   ].filter((value) => typeof value === "string").join("\n");
 }
 
+function normalizeEvidenceText(value) {
+  return String(value || "").normalize("NFKC").toLowerCase().replace(/[\p{P}\s]+/gu, "");
+}
+
 function hasExplicitReadinessEvidence(field, input = {}, evidence = "") {
-  const quote = evidence.trim();
-  const userText = userReadinessText(input);
-  // Accept grounded natural answers, without requiring category keywords.
-  if (quote.length >= 4 && userText.includes(quote)
-    && quote !== String(input.business_description || "").trim()
-    && quote !== String(input.rough_feeling || "").trim()) return true;
+  const userText = normalizeEvidenceText(userReadinessText(input));
+  // Every meaningful fragment must occur in real user text. Only formatting
+  // and explicit joining words are ignored; no fuzzy or semantic matching.
+  const fragments = evidence.split(/以及|并且|\band\b|[&+]/i)
+    .map(normalizeEvidenceText).filter(Boolean);
+  const generic = [input.business_description, input.rough_feeling].map(normalizeEvidenceText);
+  if (fragments.length > 0
+    && fragments.every(fragment => fragment.length >= 4 && userText.includes(fragment))
+    && fragments.some(fragment => !generic.includes(fragment))) return true;
   const text = userReadinessText(input);
   if (field === "audience") {
     return /(?:面向|主要(?:是|服务|给|针对)|目标(?:客户|用户)?(?:是|为)?|适合)\s*[^。！？\n]{2,}|\b(?:for|serving|aimed at|targeting)\s+[^.!?\n]{2,}/i.test(text);

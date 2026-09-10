@@ -39,3 +39,21 @@ test('bounded parse retry, persistent failure, schema, truncation, auth and conf
  const started=Date.now();assert.equal((await generateOnboardingFollowup(input)).failure,'timeout');assert.equal(calls,2);assert.ok(Date.now()-started<150);
  } finally {global.fetch=oldFetch;for(const k of keys){if(old[k]===undefined)delete process.env[k];else process.env[k]=old[k]}}
 });
+
+
+test('production luckday evidence tolerates quotes, punctuation and joining words without inventing facts',()=>{
+ const productionInput={...input,latest_message:'我们店名叫 luckday。顾客是喜欢精致甜点的人、家庭、情侣。分享具有甜蜜仪式感；温暖而精致、不普通。Logo 用在网店、门店、蛋糕物料。'};
+ const quoted=JSON.parse(JSON.stringify(reply));
+ quoted.readiness.audience.evidence='“顾客是喜欢精致甜点的人、家庭、情侣”';
+ quoted.readiness.differentiation.evidence='“分享具有甜蜜仪式感”以及“温暖而精致、不普通”';
+ const result=normalizeAdvisorResponse(quoted,productionInput);
+ assert.equal(result.ready_to_review,true);
+ assert.ok(Object.values(result.readiness).every(x=>x.status==='covered'));
+ quoted.readiness.differentiation.evidence=' "分享具有甜蜜仪式感" and “温暖而精致 - 不普通” ';
+ assert.equal(normalizeAdvisorResponse(quoted,productionInput).ready_to_review,true);
+ quoted.readiness.differentiation.evidence='“分享具有甜蜜仪式感”以及“全部使用有机原料”';
+ const invented=normalizeAdvisorResponse(quoted,productionInput);
+ assert.equal(invented.readiness.differentiation.status,'missing');
+ assert.equal(invented.ready_to_review,false);
+ assert.doesNotMatch(invented.assistant_message,/可以生成|准备完成|可以查看/);
+});
