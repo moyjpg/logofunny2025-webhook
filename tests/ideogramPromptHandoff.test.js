@@ -193,3 +193,48 @@ test('constraints late in the user notes are preserved, not silently truncated',
   await api.generateIdeogramLogos(input);
   assert.ok(api.requests.every(({ prompt }) => prompt.includes('Avoid shields and coffee cups')));
 });
+
+test('mapElementorToAI forwards audience/mustKeep/mustAvoid from the request body', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../routes/logoApiRoutes.js'), 'utf8');
+  const start = source.indexOf('function mapElementorToAI(');
+  const end = source.indexOf('function cleanReferenceText(');
+  assert.ok(start > 0 && end > start);
+  const sandbox = {};
+  vm.runInNewContext(source.slice(start, end) + '\nthis.mapElementorToAI = mapElementorToAI;', sandbox);
+  const mapped = sandbox.mapElementorToAI({
+    fields: {
+      brandName: 'ELOVER',
+      audience: 'college students',
+      mustKeep: ['a leaf icon'],
+      mustAvoid: ['coffee cup cliche'],
+    },
+  });
+  assert.equal(mapped.audience, 'college students');
+  assert.deepEqual(mapped.mustKeep, ['a leaf icon']);
+  assert.deepEqual(mapped.mustAvoid, ['coffee cup cliche']);
+});
+
+test('audience survives into the final Ideogram prompt for the default symbol_wordmark path', async () => {
+  const api = fixture();
+  const input = brief('two_concepts');
+  input.audience = 'college students';
+  await api.generateIdeogramLogos(input);
+  assert.ok(api.requests.every(({ prompt }) => prompt.includes('college students')));
+});
+
+test('mustKeep survives into the final Ideogram prompt for the default symbol_wordmark path', async () => {
+  const api = fixture();
+  const input = brief('two_concepts');
+  input.mustKeep = ['a hand-drawn leaf silhouette'];
+  await api.generateIdeogramLogos(input);
+  assert.ok(api.requests.every(({ prompt }) => prompt.includes('a hand-drawn leaf silhouette')));
+});
+
+test('mustAvoid survives into the final Ideogram prompt for the default symbol_wordmark path', async () => {
+  const api = fixture();
+  const input = brief('two_concepts');
+  input.mustAvoid = ['coffee cup cliche', 'tech SaaS aesthetic'];
+  await api.generateIdeogramLogos(input);
+  assert.ok(api.requests.every(({ prompt }) => prompt.includes('coffee cup cliche')));
+  assert.ok(api.requests.every(({ prompt }) => prompt.includes('tech SaaS aesthetic')));
+});

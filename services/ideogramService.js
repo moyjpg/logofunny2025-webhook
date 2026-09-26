@@ -1441,6 +1441,18 @@ function buildSymbolOnlyPrompt(input, conceptIndex, track, retryAttempt = 0) {
   const routeCue = require("./symbolConceptContract").getSymbolConcept(conceptIndex).requirement;
   const layoutCue = conceptIndex % 2 === 0 ? "horizontal wordmark pairing" : "stacked wordmark pairing";
 
+  // audience/mustKeep/mustAvoid are explicit, already-confirmed structured
+  // constraints (not raw conversation dump) -- join as-is rather than
+  // running them through the free-text clause sanitizer above, which would
+  // fragment or strip legitimate short phrases (e.g. one containing "letter").
+  const joinConstraintList = (value) =>
+    Array.isArray(value)
+      ? value.map((item) => String(item || "").trim()).filter(Boolean).join("; ")
+      : String(value || "").trim();
+  const audience = joinConstraintList(input?.audience);
+  const mustKeep = joinConstraintList(input?.mustKeep);
+  const mustAvoid = joinConstraintList(input?.mustAvoid);
+
   return [
     `Create one original standalone graphic symbol only for a ${industry} identity.`,
     "This request is only for the symbol layer of a logo system; typography will be added separately by the product.",
@@ -1452,6 +1464,9 @@ function buildSymbolOnlyPrompt(input, conceptIndex, track, retryAttempt = 0) {
     `THIS CONCEPT'S VISUAL REQUIREMENT: ${routeCue}`,
     feelings ? `The symbol should feel: ${feelings}.` : "The symbol should feel clear, memorable, and commercially usable.",
     contextWithoutBrandName ? `Semantic brand context only; never render this wording: ${contextWithoutBrandName}.` : "",
+    audience ? `Target audience: ${audience}.` : "",
+    mustKeep ? `MUST KEEP (non-negotiable): ${mustKeep}.` : "",
+    mustAvoid ? `MUST AVOID (non-negotiable): do not include ${mustAvoid}.` : "",
     paletteCue,
     "Preserve the confirmed subject, palette and exclusions. Interpret emotional words through the specified construction; a warm feeling does not require an organic outline. Do not borrow the other concepts' form language.",
     `Design it so it will later pair cleanly in a ${layoutCue}; do not draw the wordmark yourself.`,
