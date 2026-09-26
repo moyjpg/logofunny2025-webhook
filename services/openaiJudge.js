@@ -48,6 +48,12 @@ function buildJudgePrompt(context) {
     `Preferred colors: ${colorTheme}`,
     `Selected color direction: ${colorDirection}`,
     `Selected logo structure: ${logoStructure}`,
+    ...(context?.symbolRequirement ? [
+      `Specific symbol construction to verify: ${context.symbolRequirement}`,
+      `User exclusions and context: ${context.otherNotes || context.notes || ""}`,
+      "creativeCompliance.matchesCreativeDirection must be false if the icon does not visibly meet that construction. Layout, rotation, or correct text alone cannot satisfy this check. In particular, an irregular veined botanical leaf is NOT geometric construction.",
+      "creativeCompliance.respectsExclusions must be false if the image visibly includes a user-forbidden element.",
+    ] : ["No separate symbol construction supplied: set both creativeCompliance checks to true."]),
     "",
     "Color and canvas checks:",
     "- If a non-monochrome color direction was selected, colorCompliance.matchesRequestedColor must be false when the requested color is absent, merely a tiny accent, or the logo is black-only.",
@@ -59,10 +65,15 @@ function buildResponseSchema() {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["score", "breakdown", "notes", "violations", "colorCompliance", "structureCompliance"],
+    required: ["score", "breakdown", "notes", "violations", "colorCompliance", "structureCompliance", "creativeCompliance"],
     properties: {
       score: { type: "number", minimum: 0, maximum: 100 },
       notes: { type: "string" },
+      creativeCompliance: {
+        type: "object", additionalProperties: false,
+        required: ["matchesCreativeDirection", "respectsExclusions"],
+        properties: { matchesCreativeDirection: { type: "boolean" }, respectsExclusions: { type: "boolean" } },
+      },
       colorCompliance: {
         type: "object",
         additionalProperties: false,
@@ -258,7 +269,8 @@ async function judgeLogo(imageUrl, context = {}, opts = {}) {
         },
       },
       temperature: 0,
-      max_output_tokens: 300,
+      // Leave room for the full compliance schema and a short explanation.
+      max_output_tokens: 900,
     }),
   });
 

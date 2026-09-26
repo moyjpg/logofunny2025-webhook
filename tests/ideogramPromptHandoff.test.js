@@ -162,3 +162,34 @@ test('non symbol-wordmark requests retain the existing full-logo generation path
   assert.equal(results[0].mode, 'text-to-image');
   assert.match(results[0].imageUrl, /^https:\/\/example\.test\/\d+\.png$/);
 });
+
+test('MORI production regression: isolate icon context and make route requirements observable', async () => {
+  const api = fixture();
+  const input = brief('two_concepts');
+  input.brandName = 'MORI';
+  input.notes = '我们是一家社区咖啡店。温暖、安静、友好。';
+  input.otherNotes = '不要咖啡杯、盾牌、徽章、标语或 ®。';
+  input.keywords = '温暖、安静、友好；独立叶子图标，图标与准确英文文字 MORI 分开。';
+  input.styleCues = input.keywords;
+  input.promptOverride = 'User brief: MORI. Color palette: sage green and beige. Logo-only output: Create one finished logo lockup.';
+  const results = await api.generateIdeogramLogos(input);
+  api.requests.forEach(({ prompt }) => {
+    assert.ok(prompt.includes('社区咖啡店'));
+    assert.ok(prompt.includes('不要咖啡杯、盾牌、徽章、标语或 ®'));
+    assert.equal(/MORI|sage green and beige|Create one finished logo lockup|准确英文文字/.test(prompt), false);
+  });
+  assert.match(api.requests[0].prompt, /ORGANIC CONTOUR/);
+  assert.match(api.requests[1].prompt, /GEOMETRIC CONSTRUCTION/);
+  assert.match(api.requests[1].prompt, /No botanical veins/);
+  assert.match(results[1].generationTrace.symbolRequirement, /GEOMETRIC CONSTRUCTION/);
+  assert.equal(results[1].generationTrace.wordmarkText, 'MORI');
+});
+
+test('constraints late in the user notes are preserved, not silently truncated', async () => {
+  const api = fixture();
+  const input = brief('two_concepts');
+  input.notes = 'A neighbourhood cafe.';
+  input.otherNotes = 'Calm community space. '.repeat(120) + 'Avoid shields and coffee cups.';
+  await api.generateIdeogramLogos(input);
+  assert.ok(api.requests.every(({ prompt }) => prompt.includes('Avoid shields and coffee cups')));
+});

@@ -121,7 +121,7 @@ async function runDualTrackPipeline(mapped, requestId = null) {
     const judgeSettled = await Promise.allSettled(
       normalized.map((item) =>
         item.imageUrl
-          ? judgeLogo(item.imageUrl, mapped, { r2Key: item.r2Key })
+          ? judgeLogo(item.imageUrl, { ...mapped, symbolRequirement: item.generationTrace?.symbolRequirement }, { r2Key: item.r2Key })
           : Promise.resolve(null)
       )
     );
@@ -166,6 +166,14 @@ async function runDualTrackPipeline(mapped, requestId = null) {
       if (requiresIndependentSymbol && structureCompliance.hasIndependentGraphicSymbol !== true) {
         warnings.push("Missing the required independent graphic symbol");
       }
+      if (item.generationTrace?.symbolRequirement) {
+        if (judgeResult.creativeCompliance?.matchesCreativeDirection !== true) {
+          warnings.push("Could not verify the required distinct symbol construction");
+        }
+        if (judgeResult.creativeCompliance?.respectsExclusions !== true) {
+          warnings.push("Could not verify the user's symbol exclusions");
+        }
+      }
 
       if (warnings.length > 0) {
         console.log('[quality-gate] concept needs review label=%j warnings=%j', item.label ?? 'unknown', warnings);
@@ -198,7 +206,7 @@ async function runDualTrackPipeline(mapped, requestId = null) {
           });
           const retryItem = await normalizeResultToItem(regenerated[0], requestId);
           const retryJudge = retryItem.imageUrl
-            ? await judgeLogo(retryItem.imageUrl, mapped, { r2Key: retryItem.r2Key })
+            ? await judgeLogo(retryItem.imageUrl, { ...mapped, symbolRequirement: retryItem.generationTrace?.symbolRequirement }, { r2Key: retryItem.r2Key })
             : null;
           return { conceptIndex, item: annotateItem(retryItem, retryJudge) };
         })
@@ -211,7 +219,7 @@ async function runDualTrackPipeline(mapped, requestId = null) {
         const { conceptIndex, item } = settled.value;
         const originalWarningCount = annotated[conceptIndex]?.qualityWarnings?.length ?? Number.MAX_SAFE_INTEGER;
         const retryWarningCount = item.qualityWarnings?.length ?? Number.MAX_SAFE_INTEGER;
-        if (item.qualityStatus === 'pass' || retryWarningCount < originalWarningCount) {
+        if (item.qualityStatus === 'pass' || (item.qualityStatus === 'needs_review' && retryWarningCount < originalWarningCount)) {
           annotated[conceptIndex] = item;
         }
       });

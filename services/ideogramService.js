@@ -1402,7 +1402,11 @@ function escapeXml(value) {
 }
 
 function sanitizeSymbolCreativeContext(value, brandName) {
-  let context = String(value || "").slice(0, 2500);
+  let context = String(value || "");
+  if (context.length > 6000) throw new Error("BRAND_DIRECTION_TOO_LONG");
+  // Legacy assembled full-logo instructions are not semantic brand context.
+  // Prefer the structured notes below; this is only for older callers.
+  context = context.split(/(?:Color palette:|Logo-only output:|COLOR CONTRACT|Industry:)/i)[0];
   if (brandName) {
     context = context.replace(new RegExp(escapeRegExp(brandName), "gi"), "the brand");
   }
@@ -1410,12 +1414,13 @@ function sanitizeSymbolCreativeContext(value, brandName) {
     .replace(/品牌名\s*(?:是|为|叫)?\s*[^，,。.;；]+/gi, "")
     .replace(/brand\s+name\s+(?:is|called)?\s*[^,.;\n]+/gi, "");
   return context
-    .split(/[。！？.!?\n;；]+/)
+    .split(/[。！？.!?\n;；，,]+/)
     .map((clause) => clause.trim())
     .filter(Boolean)
-    .filter((clause) => !/(?:wordmark|typograph|letter|exact\s+text|brand\s+name|文字|字母|字体|排版|名称)/i.test(clause))
-    .join(". ")
-    .slice(0, 1200);
+    .filter((clause) => !/(?:wordmark|typograph|letter|exact\s+text|brand\s+name|spelling|capitalization|logo lockup|文字|字母|字体|排版|名称)/i.test(clause))
+    .filter((clause) => !/^(?:User brief:|The|Keep the|Visual cues:)$/i.test(clause))
+    .filter((clause, index, all) => all.indexOf(clause) === index)
+    .join(". ");
 }
 
 function buildSymbolOnlyPrompt(input, conceptIndex, track, retryAttempt = 0) {
@@ -1423,22 +1428,17 @@ function buildSymbolOnlyPrompt(input, conceptIndex, track, retryAttempt = 0) {
   const industry = String(input?.industry || "brand").replace(/_/g, " ").trim() || "brand";
   const feelings = [input?.keywords, input?.styleCues]
     .filter(Boolean)
-    .map((value) => String(value).trim())
+    .map((value) => sanitizeSymbolCreativeContext(value, brandName))
     .filter(Boolean)
     .join(", ");
-  const iconDirection = String(input?.iconDirection || "").trim();
+  const iconDirection = sanitizeSymbolCreativeContext(input?.iconDirection, brandName);
   const paletteCue = buildHardColorContract(input) || buildPaletteVariationCue(input);
   const knownSymbol = buildKnownSymbolRequirement(input, "");
   const contextWithoutBrandName = sanitizeSymbolCreativeContext(
-    input?.promptOverride || input?.prompt || "",
+    [input?.notes || input?.prompt || input?.promptOverride || "", input?.otherNotes || ""].filter(Boolean).join("\n"),
     brandName
   );
-  const routeCue = [
-    "Use a soft, organic silhouette with a warm human rhythm and one memorable contour.",
-    "Use a gently rounded geometric construction with purposeful negative space and a strong small-size silhouette.",
-    "Use one bold continuous shape with a distinctive cut or notch; keep it simple enough for an app icon.",
-    "Use an unexpected but restrained abstract construction that still clearly expresses the requested subject.",
-  ][conceptIndex % 4];
+  const routeCue = require("./symbolConceptContract").getSymbolConcept(conceptIndex).requirement;
   const layoutCue = conceptIndex % 2 === 0 ? "horizontal wordmark pairing" : "stacked wordmark pairing";
 
   return [
@@ -1449,10 +1449,11 @@ function buildSymbolOnlyPrompt(input, conceptIndex, track, retryAttempt = 0) {
     "Flat vector-logo appearance only: no mockup, no scene, no packaging, no photograph, no texture, no shadow, no 3D, no border, and no presentation board.",
     iconDirection ? `Requested symbol direction: ${iconDirection}.` : "Invent one distinctive non-letter symbol from the brand meaning.",
     knownSymbol,
+    `THIS CONCEPT'S VISUAL REQUIREMENT: ${routeCue}`,
     feelings ? `The symbol should feel: ${feelings}.` : "The symbol should feel clear, memorable, and commercially usable.",
     contextWithoutBrandName ? `Semantic brand context only; never render this wording: ${contextWithoutBrandName}.` : "",
     paletteCue,
-    routeCue,
+    "Preserve the confirmed subject, palette and exclusions. Interpret emotional words through the specified construction; a warm feeling does not require an organic outline. Do not borrow the other concepts' form language.",
     `Design it so it will later pair cleanly in a ${layoutCue}; do not draw the wordmark yourself.`,
     track === "creative"
       ? "Use Magic Prompt creativity to explore a more surprising form, while every requested subject, color, and exclusion remains mandatory."
@@ -1753,6 +1754,7 @@ async function generateIdeogramLogos(input = {}, options = {}) {
           ...(useHybridSymbolWordmark ? {
             compositionMode: "creative-symbol-deterministic-wordmark",
             wordmarkText: String(input?.brandName || "").trim(),
+            symbolRequirement: require("./symbolConceptContract").getSymbolConcept(conceptIndex).requirement,
             layout,
           } : {}),
         },
