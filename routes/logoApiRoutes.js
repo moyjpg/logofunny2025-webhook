@@ -693,6 +693,34 @@ router.post('/generate-brand-scene-openai-test', requireInternalKey, async (req,
   }
 });
 
+// POST /generate-brand-scene
+// Internal production-only model route. User authentication and credit handling
+// happen in the Next API route before this route is called.
+router.post('/generate-brand-scene', requireInternalKey, async (req, res) => {
+  if (process.env.LOGOFUNNY_OPENAI_IMAGE_ENABLED !== 'true') {
+    return res.status(503).json({ success: false, data: null, error: 'Brand World generation is unavailable.' });
+  }
+
+  const brandName = String(req.body?.brandName || '').trim();
+  const logoUrl = String(req.body?.logoUrl || '').trim();
+  const template = String(req.body?.template || '').trim();
+  const storagePrefix = String(req.body?.storagePrefix || '').trim();
+  if (!brandName || !logoUrl || !Object.prototype.hasOwnProperty.call(SCENE_TEMPLATES, template)) {
+    return res.status(400).json({ success: false, data: null, error: 'Invalid Brand World request.' });
+  }
+  if (!/^brand-world\/[0-9a-f-]{36}$/i.test(storagePrefix)) {
+    return res.status(400).json({ success: false, data: null, error: 'Invalid storage destination.' });
+  }
+
+  try {
+    const data = await generateOpenAIBrandScene({ brandName, logoUrl, template, storagePrefix });
+    return res.status(200).json({ success: true, data, error: null });
+  } catch (err) {
+    console.error('[brand-world] generation failed:', err?.message || err);
+    return res.status(502).json({ success: false, data: null, error: 'Brand World generation failed.' });
+  }
+});
+
 // POST /generate-logo-hybrid-test
 // Internal 2 Ideogram + 2 OpenAI hybrid inspection route.
 // Does not charge credits, trigger refund, or trigger referral.
